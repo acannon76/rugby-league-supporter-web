@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { fixturesData, type FixtureDay, type Game } from "@/data/fixturesData";
+import { leagueTableData } from "@/data/leagueTableData";
 
 type IconKey = "table" | "calendar" | "score" | "team";
 
@@ -7,6 +9,13 @@ type HomeCardData = {
   icon: IconKey;
   title: string;
   text: string;
+};
+
+type DisplayGame = Game & {
+  date: string;
+  sortDate: string;
+  originalDayIndex: number;
+  originalGameIndex: number;
 };
 
 const homeCards: HomeCardData[] = [
@@ -37,83 +46,254 @@ const homeCards: HomeCardData[] = [
 ];
 
 export default function Home() {
-  return (
-    <main className="min-h-screen bg-[#efe6d8] px-4 py-5 font-sans sm:px-6 lg:px-10">
-      <div className="mx-auto max-w-[1180px]">
-        <section className="relative overflow-hidden rounded-[34px] border-[3px] border-[#d81e05] bg-[#111] p-6 text-white shadow-xl sm:p-8 lg:p-10">
-          <div className="absolute right-[-80px] top-[-80px] h-[210px] w-[210px] rounded-full bg-[#d81e05] opacity-25" />
-          <div className="absolute bottom-[-110px] left-[-90px] h-[240px] w-[240px] rounded-full bg-[#d81e05] opacity-20" />
+  const allGames = flattenFixtures(fixturesData);
+  const liveGames = allGames.filter((game) => isLive(game));
+  const upcomingGames = allGames
+    .filter((game) => !isResult(game) && !isLive(game))
+    .sort(sortUpcomingFixtures);
 
-          <div className="relative z-10">
-            <p className="mb-4 text-xs font-black tracking-[0.2em] text-[#d81e05] sm:text-sm">
-              INDEPENDENT SUPPORTER GUIDE
+  const featuredGame = liveGames[0] || upcomingGames[0];
+
+  const topFour = [...leagueTableData]
+    .sort((a, b) => a.position - b.position)
+    .slice(0, 4);
+
+  return (
+    <main className="min-h-screen bg-[#eef1f5] font-sans text-[#111]">
+      <header className="border-b border-white/10 bg-[#18243a] px-4 py-4 text-white sm:px-6 lg:px-10">
+        <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-5">
+          <Link href="/" className="flex items-center gap-3 no-underline">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#35d6b4] bg-[#111827] text-lg font-black text-white">
+              RL
+            </div>
+
+            <div>
+              <p className="text-lg font-black leading-none text-white">
+                Rugby League
+              </p>
+              <p className="text-sm font-black leading-none text-[#35d6b4]">
+                Supporter Guide
+              </p>
+            </div>
+          </Link>
+
+          <nav className="hidden items-center gap-6 text-sm font-black md:flex">
+            <Link href="/fixtures" className="text-white no-underline">
+              Fixtures
+            </Link>
+            <Link href="/results" className="text-white no-underline">
+              Results
+            </Link>
+            <Link href="/league-table" className="text-white no-underline">
+              League Table
+            </Link>
+            <Link href="/teams" className="text-white no-underline">
+              Teams
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      <section className="bg-[#18243a] px-4 py-8 text-white sm:px-6 lg:px-10 lg:py-12">
+        <div className="mx-auto grid max-w-[1180px] gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+          <div>
+            <p className="mb-4 text-xs font-black uppercase tracking-[0.22em] text-[#35d6b4]">
+              Independent supporter guide
             </p>
 
-            <h1 className="max-w-[850px] text-[42px] font-black leading-[0.95] sm:text-[70px] lg:text-[92px]">
-              Rugby Super League
-              <span className="block text-[#d81e05]">Supporter</span>
+            <h1 className="max-w-[760px] text-[42px] font-black leading-[0.98] sm:text-[64px] lg:text-[78px]">
+              Your Super League matchday starts here.
             </h1>
 
-            <p className="mt-5 max-w-[720px] text-base font-bold leading-7 text-[#efe6d8] sm:text-lg lg:text-xl">
-              Fixtures, results, league table and club guides for supporters
-              following Super League.
+            <p className="mt-5 max-w-[700px] text-base font-bold leading-7 text-[#dce4f0] sm:text-lg">
+              Fixtures, results, league table, club guides, venue information
+              and supporter travel details in one simple place.
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <FeaturePill text="Fixtures" />
-              <FeaturePill text="Results" />
-              <FeaturePill text="League Table" />
-              <FeaturePill text="Club Guides" />
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link
+                href="/fixtures"
+                className="rounded-full bg-[#35d6b4] px-5 py-3 text-sm font-black text-[#111827] no-underline"
+              >
+                View Fixtures
+              </Link>
+
+              <Link
+                href="/league-table"
+                className="rounded-full border-2 border-white px-5 py-3 text-sm font-black text-white no-underline"
+              >
+                League Table
+              </Link>
             </div>
           </div>
-        </section>
 
-        <section className="mt-6 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-black tracking-[0.18em] text-[#d81e05]">
-              MATCHDAY HUB
+          <div className="rounded-[30px] border border-white/15 bg-white/8 p-5 shadow-2xl backdrop-blur">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#35d6b4]">
+              Supporter tools
             </p>
 
-            
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <FeatureItem title="Fixtures" text="Upcoming matches and kick-off times" />
+              <FeatureItem title="Results" text="Latest final scores" />
+              <FeatureItem title="League Table" text="Current standings and points difference" />
+              <FeatureItem title="Club Guides" text="Stadium and matchday information" />
+            </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {homeCards.map((card) => (
-            <HomeCard
-              key={card.href}
-              href={card.href}
-              icon={card.icon}
-              title={card.title}
-              text={card.text}
-            />
-          ))}
-        </section>
+      <section className="px-4 py-6 sm:px-6 lg:px-10">
+        <div className="mx-auto max-w-[1180px]">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {homeCards.map((card) => (
+              <HomeCard
+                key={card.href}
+                href={card.href}
+                icon={card.icon}
+                title={card.title}
+                text={card.text}
+              />
+            ))}
+          </div>
 
-        <section className="mt-6 rounded-[28px] border-[3px] border-[#111] bg-[#f5ede0] p-5">
-          <p className="text-xs font-black tracking-[0.18em] text-[#d81e05]">
-            QUICK UPDATE
-          </p>
+          <div className="mt-7 grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+            <section className="rounded-[30px] border border-[#d6dce5] bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d81e05]">
+                    Match centre
+                  </p>
 
-          <h2 className="mt-2 text-2xl font-black text-[#111]">
-            Built for quick matchday checks.
-          </h2>
+                  <h2 className="mt-1 text-2xl font-black text-[#18243a]">
+                    {featuredGame && isLive(featuredGame)
+                      ? "Live now"
+                      : "Next fixture"}
+                  </h2>
+                </div>
 
-          <p className="mt-2 text-sm font-bold leading-6 text-[#444]">
-            Check the latest table, upcoming fixtures, recent results and team
-            information from one simple homepage.
-          </p>
-        </section>
-      </div>
+                {featuredGame && (
+                  <span
+                    className={
+                      isLive(featuredGame)
+                        ? "rounded-full bg-[#d81e05] px-4 py-2 text-xs font-black text-white"
+                        : "rounded-full bg-[#18243a] px-4 py-2 text-xs font-black text-white"
+                    }
+                  >
+                    {isLive(featuredGame) ? "LIVE" : featuredGame.kickOff}
+                  </span>
+                )}
+              </div>
+
+              {featuredGame ? (
+                <div className="rounded-[24px] bg-[#f3f5f8] p-5">
+                  <p className="text-sm font-black text-[#d81e05]">
+                    {featuredGame.date}
+                  </p>
+
+                  <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                    <p className="text-left text-xl font-black leading-tight text-[#111]">
+                      {featuredGame.home}
+                    </p>
+
+                    <div className="rounded-2xl bg-[#18243a] px-4 py-3 text-center text-white">
+                      {hasScore(featuredGame) ? (
+                        <p className="text-xl font-black">
+                          {featuredGame.homeScore} - {featuredGame.awayScore}
+                        </p>
+                      ) : (
+                        <p className="text-sm font-black">VS</p>
+                      )}
+                    </div>
+
+                    <p className="text-right text-xl font-black leading-tight text-[#111]">
+                      {featuredGame.away}
+                    </p>
+                  </div>
+
+                  <p className="mt-4 text-sm font-bold text-[#4b5563]">
+                    {featuredGame.venue}
+                  </p>
+                </div>
+              ) : (
+                <p className="font-bold text-[#4b5563]">
+                  No upcoming fixture found.
+                </p>
+              )}
+
+              <Link
+                href="/fixtures"
+                className="mt-4 inline-block text-sm font-black text-[#d81e05] no-underline"
+              >
+                View all fixtures →
+              </Link>
+            </section>
+
+            <section className="rounded-[30px] border border-[#d6dce5] bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d81e05]">
+                    Standings
+                  </p>
+
+                  <h2 className="mt-1 text-2xl font-black text-[#18243a]">
+                    Top of the table
+                  </h2>
+                </div>
+
+                <Link
+                  href="/league-table"
+                  className="text-sm font-black text-[#d81e05] no-underline"
+                >
+                  Full table →
+                </Link>
+              </div>
+
+              <div className="overflow-hidden rounded-[22px] border border-[#d6dce5]">
+                {topFour.map((row) => {
+                  const pointsDifference = row.pointsFor - row.pointsAgainst;
+
+                  return (
+                    <Link
+                      key={row.team}
+                      href={`/team/${row.slug}`}
+                      className="grid grid-cols-[42px_1fr_58px_58px] items-center border-b border-[#d6dce5] bg-[#f8fafc] px-4 py-4 text-[#111] no-underline last:border-b-0"
+                    >
+                      <p className="text-lg font-black text-[#d81e05]">
+                        {row.position}
+                      </p>
+
+                      <div>
+                        <p className="font-black leading-tight">{row.team}</p>
+                        <p className="mt-1 text-xs font-bold text-[#64748b]">
+                          P {row.played} · W {row.won} · L {row.lost}
+                        </p>
+                      </div>
+
+                      <p className="text-center text-sm font-black">
+                        {pointsDifference > 0 ? `+${pointsDifference}` : pointsDifference}
+                      </p>
+
+                      <p className="text-right text-xl font-black">
+                        {row.points}
+                      </p>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
 
-function FeaturePill({ text }: { text: string }) {
+function FeatureItem({ title, text }: { title: string; text: string }) {
   return (
-    <span className="rounded-full border-2 border-[#d81e05] bg-[#1c1c1c] px-4 py-2 text-xs font-black tracking-wide text-white">
-      {text}
-    </span>
+    <div className="rounded-2xl bg-white/10 p-4">
+      <p className="text-sm font-black text-white">{title}</p>
+      <p className="mt-1 text-sm font-bold leading-5 text-[#dce4f0]">{text}</p>
+    </div>
   );
 }
 
@@ -131,19 +311,17 @@ function HomeCard({
   return (
     <Link
       href={href}
-      className="group flex min-h-[155px] flex-col rounded-[28px] border-[3px] border-[#111] bg-[#f5ede0] p-5 text-[#111] no-underline transition hover:-translate-y-1 hover:bg-white hover:shadow-lg sm:min-h-[185px]"
+      className="group flex min-h-[155px] flex-col rounded-[26px] border border-[#d6dce5] bg-white p-5 text-[#111] no-underline shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
     >
-      <div className="mb-5 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[#111] text-white transition group-hover:bg-[#d81e05]">
+      <div className="mb-5 flex h-[52px] w-[52px] items-center justify-center rounded-2xl bg-[#18243a] text-white transition group-hover:bg-[#d81e05]">
         <CardIcon icon={icon} />
       </div>
 
-      <h2 className="text-2xl font-black leading-tight text-[#111] lg:text-xl">
+      <h2 className="text-xl font-black leading-tight text-[#18243a]">
         {title}
       </h2>
 
-      <p className="mt-2 text-sm font-extrabold leading-5 text-[#444]">
-        {text}
-      </p>
+      <p className="mt-2 text-sm font-bold leading-5 text-[#64748b]">{text}</p>
 
       <div className="mt-auto flex items-center gap-2 pt-5 text-xs font-black tracking-widest text-[#d81e05]">
         OPEN <span className="transition group-hover:translate-x-1">→</span>
@@ -221,4 +399,52 @@ function TeamIcon() {
       />
     </svg>
   );
+}
+
+function flattenFixtures(fixtureDays: FixtureDay[]): DisplayGame[] {
+  return fixtureDays.flatMap((day, dayIndex) =>
+    day.games.map((game, gameIndex) => ({
+      ...game,
+      date: day.date,
+      sortDate: day.sortDate,
+      originalDayIndex: dayIndex,
+      originalGameIndex: gameIndex,
+    }))
+  );
+}
+
+function isResult(game: Game) {
+  return game.status.toUpperCase() === "FT";
+}
+
+function isLive(game: Game) {
+  return game.status.toUpperCase() === "LIVE";
+}
+
+function hasScore(game: Game) {
+  return typeof game.homeScore === "number" && typeof game.awayScore === "number";
+}
+
+function sortUpcomingFixtures(a: DisplayGame, b: DisplayGame) {
+  const dateCompare = a.sortDate.localeCompare(b.sortDate);
+
+  if (dateCompare !== 0) {
+    return dateCompare;
+  }
+
+  return getKickOffSortValue(a.kickOff) - getKickOffSortValue(b.kickOff);
+}
+
+function getKickOffSortValue(kickOff: string) {
+  if (!kickOff || kickOff.toUpperCase() === "TBC") {
+    return 9999;
+  }
+
+  const [hours, minutes] = kickOff.split(":").map(Number);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return 9999;
+  }
+
+  return hours * 60 + minutes;
 }
