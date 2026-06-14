@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { teamsData } from "@/data/teamsData";
@@ -11,6 +13,13 @@ type DisplayGame = Game & {
   sortDate: string;
   originalDayIndex: number;
   originalGameIndex: number;
+};
+
+type ParkingSpot = {
+  name: string;
+  note: string;
+  latitude: number;
+  longitude: number;
 };
 
 type PageProps = {
@@ -71,6 +80,7 @@ export default async function TeamDetailPage({ params }: PageProps) {
     .sort(sortResults)[0];
 
   const featuredGame = liveGame || nextFixture;
+  const parkingSpots = readParkingSpots(team);
 
   const infoCards = [
     {
@@ -84,15 +94,6 @@ export default async function TeamDetailPage({ params }: PageProps) {
     {
       title: "Capacity",
       text: capacity || "Capacity information to be added.",
-    },
-    {
-      title: "Parking",
-      text: readDisplayValue(team, [
-        "parking",
-        "parkingInfo",
-        "carParking",
-        "parkingDetails",
-      ]),
     },
     {
       title: "Away End",
@@ -228,14 +229,8 @@ export default async function TeamDetailPage({ params }: PageProps) {
       <section className="px-4 py-6 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-[1180px]">
           <section className="mb-7 grid gap-4 sm:grid-cols-3">
-            <StatCard
-              title="Stadium"
-              valueText={stadium || "To add"}
-            />
-            <StatCard
-              title="Capacity"
-              valueText={capacity || "To add"}
-            />
+            <StatCard title="Stadium" valueText={stadium || "To add"} />
+            <StatCard title="Capacity" valueText={capacity || "To add"} />
             <StatCard
               title="Location"
               valueText={city || address || "To add"}
@@ -263,6 +258,16 @@ export default async function TeamDetailPage({ params }: PageProps) {
           />
 
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ParkingCard
+              fallbackText={readDisplayValue(team, [
+                "parking",
+                "parkingInfo",
+                "carParking",
+                "parkingDetails",
+              ])}
+              parkingSpots={parkingSpots}
+            />
+
             {infoCards.map((card) => (
               <InfoCard key={card.title} title={card.title} text={card.text} />
             ))}
@@ -449,6 +454,56 @@ function InfoCard({ title, text }: { title: string; text: string }) {
   );
 }
 
+function ParkingCard({
+  fallbackText,
+  parkingSpots,
+}: {
+  fallbackText: string;
+  parkingSpots: ParkingSpot[];
+}) {
+  return (
+    <section className="rounded-[26px] border border-[#d6dce5] bg-white p-5 shadow-sm">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d81e05]">
+        Parking
+      </p>
+
+      {parkingSpots.length > 0 ? (
+        <div className="mt-3 space-y-3">
+          {parkingSpots.slice(0, 2).map((spot) => (
+            <a
+              key={spot.name}
+              href={`https://www.google.com/maps/dir/?api=1&destination=${spot.latitude},${spot.longitude}`}
+              target="_blank"
+              rel="noreferrer"
+              className="block rounded-2xl bg-[#f3f5f8] p-4 text-[#18243a] no-underline transition hover:bg-[#e7edf5]"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-black">{spot.name}</p>
+
+                  {spot.note && (
+                    <p className="mt-1 text-xs font-bold leading-5 text-[#64748b]">
+                      {spot.note}
+                    </p>
+                  )}
+                </div>
+
+                <span className="shrink-0 text-xs font-black text-[#d81e05]">
+                  Directions →
+                </span>
+              </div>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm font-bold leading-6 text-[#64748b]">
+          {fallbackText || "Parking information to be added."}
+        </p>
+      )}
+    </section>
+  );
+}
+
 function readText(team: TeamData, keys: string[]) {
   for (const key of keys) {
     const value = team[key];
@@ -516,6 +571,64 @@ function readDisplayValue(team: TeamData, keys: string[]) {
   }
 
   return "Information to be added.";
+}
+
+function readParkingSpots(team: TeamData): ParkingSpot[] {
+  const value = team.parkingSpots;
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const spots: ParkingSpot[] = [];
+
+  for (const item of value) {
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+
+    const parkingItem = item as {
+      name?: unknown;
+      note?: unknown;
+      latitude?: unknown;
+      longitude?: unknown;
+    };
+
+    const name = typeof parkingItem.name === "string" ? parkingItem.name : "";
+    const note = typeof parkingItem.note === "string" ? parkingItem.note : "";
+
+    const latitude = readSingleNumber(parkingItem.latitude);
+    const longitude = readSingleNumber(parkingItem.longitude);
+
+    if (!name || latitude === null || longitude === null) {
+      continue;
+    }
+
+    spots.push({
+      name,
+      note,
+      latitude,
+      longitude,
+    });
+  }
+
+  return spots;
+}
+
+function readSingleNumber(value: unknown) {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
 }
 
 function getImageSource(value: unknown) {
