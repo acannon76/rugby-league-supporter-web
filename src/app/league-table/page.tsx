@@ -57,18 +57,7 @@ export default function LeagueTablePage() {
 
       <section className="px-4 py-6 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-[1180px]">
-          <section className="mb-7 grid gap-4 sm:grid-cols-3">
-            <StatCard title="Teams" value={sortedTable.length} />
-            <StatCard title="Leader" valueText={leader?.team || "TBC"} />
-            <StatCard
-              title="Best Pts Diff"
-              valueText={
-                bestPointsDifference
-                  ? formatPointsDifference(getPointsDifference(bestPointsDifference))
-                  : "TBC"
-              }
-            />
-          </section>
+          
 
           <SectionHeading
             eyebrow="Standings"
@@ -80,17 +69,7 @@ export default function LeagueTablePage() {
 
           <DesktopLeagueTable rows={sortedTable} />
 
-          <section className="mt-6 rounded-[26px] border border-[#d6dce5] bg-white p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d81e05]">
-              Table Note
-            </p>
-
-            <p className="mt-2 text-sm font-bold leading-6 text-[#64748b]">
-              Points difference is calculated automatically from points scored
-              minus points conceded. Update For and Against in leagueTableData.ts
-              and the table will work it out.
-            </p>
-          </section>
+          
         </div>
       </section>
     </main>
@@ -187,27 +166,7 @@ function HeroStandingsCard({
   );
 }
 
-function StatCard({
-  title,
-  value,
-  valueText,
-}: {
-  title: string;
-  value?: number;
-  valueText?: string;
-}) {
-  return (
-    <section className="rounded-[26px] border border-[#d6dce5] bg-white p-5 shadow-sm">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d81e05]">
-        {title}
-      </p>
 
-      <p className="mt-2 text-3xl font-black text-[#18243a] sm:text-4xl">
-        {valueText ?? value}
-      </p>
-    </section>
-  );
-}
 
 function SectionHeading({
   eyebrow,
