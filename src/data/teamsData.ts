@@ -26,7 +26,7 @@ export const teamsData = {
      image: require("../assets/stadiums/bradford.jpg"),
     address: "Rooley Avenue, Bradford, BD6 1BS",
     latitude: 53.765006,  longitude: -1.757262,
-    capacity: "Approx. 25,000",
+    capacity: "26,019",
     awayFans: "Away supporter section to confirm",
     parking: ["Parking available around the stadium area", "Arrive early on matchdays"],
     parkingSpots: [
@@ -43,7 +43,7 @@ export const teamsData = {
     longitude: -1.761095,
   },
 ],
-    trainStations: ["Bradford Interchange", "Bradford Forster Square"],
+    trainStations: ["Bradford Interchange is another option, with onward bus connections to Odsal."],
     pubs: ["Bradford city centre pubs", "Local pubs near Odsal to confirm"],
     food: ["Stadium kiosks", "Bradford city centre food options"],
     directions: "Odsal Stadium is located south of Bradford city centre near the M606.",
