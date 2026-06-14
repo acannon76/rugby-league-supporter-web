@@ -16,66 +16,255 @@ const teamSlugsByName = buildTeamSlugs(teamsData as TeamRecord);
 export default function FixturesPage() {
   const allGames = flattenFixtures(fixturesData);
 
-  const upcomingFixtures = allGames
-    .filter((game) => !isResult(game))
+  const liveGames = allGames
+    .filter((game) => isLive(game))
     .sort(sortUpcomingFixtures);
 
-  const nextFixture = upcomingFixtures[0];
+  const upcomingFixtures = allGames
+    .filter((game) => !isResult(game) && !isLive(game))
+    .sort(sortUpcomingFixtures);
+
+  const featuredGame = liveGames[0] || upcomingFixtures[0];
 
   return (
-    <main className="min-h-screen bg-[#efe6d8] px-4 py-6 font-sans sm:px-6 lg:px-10">
-      <div className="mx-auto max-w-[1180px]">
-        <Link
-          href="/"
-          className="mb-5 inline-block text-sm font-black tracking-wide text-[#111] no-underline"
-        >
-          ← BACK HOME
+    <main className="min-h-screen bg-[#eef1f5] font-sans text-[#111]">
+      <SiteHeader />
+
+      <section className="bg-[#18243a] px-4 py-8 text-white sm:px-6 lg:px-10 lg:py-12">
+        <div className="mx-auto grid max-w-[1180px] gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+          <div>
+            <p className="mb-4 text-xs font-black uppercase tracking-[0.22em] text-[#35d6b4]">
+              Match centre
+            </p>
+
+            <h1 className="max-w-[760px] text-[46px] font-black leading-[0.98] sm:text-[66px] lg:text-[82px]">
+              Fixtures
+            </h1>
+
+            <p className="mt-5 max-w-[700px] text-base font-bold leading-7 text-[#dce4f0] sm:text-lg">
+              Upcoming Super League matches, kick-off times, venues and live
+              match updates.
+            </p>
+
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link
+                href="/results"
+                className="rounded-full bg-[#35d6b4] px-5 py-3 text-sm font-black text-[#111827] no-underline"
+              >
+                View Results
+              </Link>
+
+              <Link
+                href="/league-table"
+                className="rounded-full border-2 border-white px-5 py-3 text-sm font-black text-white no-underline"
+              >
+                League Table
+              </Link>
+            </div>
+          </div>
+
+          <HeroMatchCard game={featuredGame} />
+        </div>
+      </section>
+
+      <section className="px-4 py-6 sm:px-6 lg:px-10">
+        <div className="mx-auto max-w-[1180px]">
+          <section className="mb-7 grid gap-4 sm:grid-cols-3">
+            <StatCard title="Live" value={liveGames.length} />
+            <StatCard title="Upcoming" value={upcomingFixtures.length} />
+            <StatCard title="Dates Listed" value={groupByDate(upcomingFixtures).length} />
+          </section>
+
+          {liveGames.length > 0 && (
+            <section className="mb-9">
+              <SectionHeading
+                eyebrow="Live now"
+                title="Live Matches"
+                text="Matches currently marked as live in your fixtures data."
+              />
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                {liveGames.map((game) => (
+                  <FixtureCard key={gameKey(game)} game={game} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section>
+            <SectionHeading
+              eyebrow="Upcoming"
+              title="Upcoming Fixtures"
+              text="Fixtures are grouped by match date and sorted from soonest to latest."
+            />
+
+            {upcomingFixtures.length > 0 ? (
+              <div className="space-y-8">
+                {groupByDate(upcomingFixtures).map((day) => (
+                  <FixtureDateGroup
+                    key={day.sortDate}
+                    date={day.date}
+                    games={day.games}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyMessage text="No upcoming fixtures found." />
+            )}
+          </section>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function SiteHeader() {
+  return (
+    <header className="border-b border-white/10 bg-[#18243a] px-4 py-4 text-white sm:px-6 lg:px-10">
+      <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-5">
+        <Link href="/" className="flex items-center gap-3 no-underline">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#35d6b4] bg-[#111827] text-lg font-black text-white">
+            RL
+          </div>
+
+          <div>
+            <p className="text-lg font-black leading-none text-white">
+              Rugby League
+            </p>
+            <p className="text-sm font-black leading-none text-[#35d6b4]">
+              Supporter Guide
+            </p>
+          </div>
         </Link>
 
-        <section className="mb-6 rounded-[34px] border-[3px] border-[#111] bg-[#d81e05] p-6 text-[#111] sm:p-8 lg:p-10">
-          <p className="mb-3 text-xs font-black tracking-[0.18em]">
-            SUPER LEAGUE
-          </p>
-
-          <h1 className="max-w-[900px] text-[46px] font-black leading-none sm:text-[72px] lg:text-[92px]">
+        <nav className="hidden items-center gap-6 text-sm font-black md:flex">
+          <Link href="/fixtures" className="text-[#35d6b4] no-underline">
             Fixtures
-          </h1>
-
-          <p className="mt-5 max-w-[760px] text-sm font-extrabold leading-6 sm:text-base lg:text-lg">
-            Upcoming matches, kick-off times and venue information for
-            supporters.
-          </p>
-        </section>
-
-        <section className="mb-8 grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
-          <SummaryBox title="Upcoming Fixtures" value={upcomingFixtures.length} />
-
-          <NextFixtureBox game={nextFixture} />
-        </section>
-
-        <section>
-          <SectionHeading
-            eyebrow="UPCOMING"
-            title="Upcoming Fixtures"
-            text="Fixtures are grouped by match date and sorted from soonest to latest."
-          />
-
-          {upcomingFixtures.length > 0 ? (
-            <div className="space-y-7">
-              {groupByDate(upcomingFixtures).map((day) => (
-                <FixtureDateGroup
-                  key={day.sortDate}
-                  date={day.date}
-                  games={day.games}
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyMessage text="No upcoming fixtures found." />
-          )}
-        </section>
+          </Link>
+          <Link href="/results" className="text-white no-underline">
+            Results
+          </Link>
+          <Link href="/league-table" className="text-white no-underline">
+            League Table
+          </Link>
+          <Link href="/teams" className="text-white no-underline">
+            Teams
+          </Link>
+        </nav>
       </div>
-    </main>
+    </header>
+  );
+}
+
+function HeroMatchCard({ game }: { game?: DisplayGame }) {
+  if (!game) {
+    return (
+      <div className="rounded-[30px] border border-white/15 bg-white/8 p-5 shadow-2xl backdrop-blur">
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-[#35d6b4]">
+          Next match
+        </p>
+
+        <p className="mt-4 text-2xl font-black text-white">
+          No fixture found
+        </p>
+      </div>
+    );
+  }
+
+  const live = isLive(game);
+
+  return (
+    <div className="rounded-[30px] border border-white/15 bg-white/8 p-5 shadow-2xl backdrop-blur">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#35d6b4]">
+            {live ? "Live now" : "Next fixture"}
+          </p>
+
+          <h2 className="mt-2 text-2xl font-black text-white">
+            {game.date}
+          </h2>
+        </div>
+
+        <span
+          className={
+            live
+              ? "rounded-full bg-[#d81e05] px-4 py-2 text-xs font-black tracking-widest text-white"
+              : "rounded-full bg-[#35d6b4] px-4 py-2 text-xs font-black tracking-widest text-[#111827]"
+          }
+        >
+          {live ? "LIVE" : game.kickOff}
+        </span>
+      </div>
+
+      <div className="rounded-[24px] bg-[#111827] p-5">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          <p className="text-left text-xl font-black leading-tight text-white">
+            {game.home}
+          </p>
+
+          <div
+            className={
+              live
+                ? "rounded-2xl bg-[#d81e05] px-4 py-3 text-center text-white"
+                : "rounded-2xl bg-white px-4 py-3 text-center text-[#111827]"
+            }
+          >
+            {hasScore(game) ? (
+              <p className="text-xl font-black">
+                {game.homeScore} - {game.awayScore}
+              </p>
+            ) : (
+              <p className="text-sm font-black">VS</p>
+            )}
+          </div>
+
+          <p className="text-right text-xl font-black leading-tight text-white">
+            {game.away}
+          </p>
+        </div>
+
+        <p className="mt-4 text-sm font-bold text-[#dce4f0]">{game.venue}</p>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ title, value }: { title: string; value: number }) {
+  return (
+    <section className="rounded-[26px] border border-[#d6dce5] bg-white p-5 shadow-sm">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d81e05]">
+        {title}
+      </p>
+
+      <p className="mt-2 text-4xl font-black text-[#18243a]">{value}</p>
+    </section>
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  text,
+}: {
+  eyebrow: string;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="mb-5">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d81e05]">
+        {eyebrow}
+      </p>
+
+      <h2 className="mt-1 text-3xl font-black text-[#18243a] sm:text-4xl">
+        {title}
+      </h2>
+
+      <p className="mt-2 max-w-[720px] text-sm font-bold leading-6 text-[#64748b]">
+        {text}
+      </p>
+    </div>
   );
 }
 
@@ -88,14 +277,12 @@ function FixtureDateGroup({
 }) {
   return (
     <section>
-      <div className="mb-3 flex items-center gap-3">
-        <div className="h-[3px] flex-1 bg-[#111]" />
-
-        <h3 className="rounded-full border-2 border-[#111] bg-[#f5ede0] px-4 py-2 text-center text-sm font-black uppercase tracking-[0.12em] text-[#111]">
+      <div className="mb-4 flex items-center gap-3">
+        <h3 className="rounded-full bg-[#18243a] px-4 py-2 text-sm font-black uppercase tracking-[0.12em] text-white">
           {date}
         </h3>
 
-        <div className="h-[3px] flex-1 bg-[#111]" />
+        <div className="h-[2px] flex-1 bg-[#d6dce5]" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -111,15 +298,15 @@ function FixtureCard({ game }: { game: DisplayGame }) {
   const live = isLive(game);
 
   return (
-    <article className="rounded-[28px] border-[3px] border-[#111] bg-[#f5ede0] p-5 text-[#111] transition hover:-translate-y-1 hover:shadow-lg">
+    <article className="rounded-[28px] border border-[#d6dce5] bg-white p-5 text-[#111] shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d81e05]">
             {game.date}
           </p>
 
-          <p className="mt-1 text-sm font-extrabold text-[#444]">
-            {kickOffText(game.kickOff)}
+          <p className="mt-1 text-sm font-bold text-[#64748b]">
+            {live ? "Live match" : kickOffText(game.kickOff)}
           </p>
         </div>
 
@@ -129,31 +316,31 @@ function FixtureCard({ game }: { game: DisplayGame }) {
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <TeamBlock team={game.home} align="left" />
 
-       <div
-  className={
-    live
-      ? "rounded-2xl bg-[#d81e05] px-4 py-3 text-center text-white"
-      : "rounded-2xl bg-[#111] px-4 py-3 text-center text-white"
-  }
->
-  {typeof game.homeScore === "number" && typeof game.awayScore === "number" ? (
-    <div className="text-xl font-black sm:text-2xl">
-      {game.homeScore} - {game.awayScore}
-    </div>
-  ) : (
-    <div className="text-sm font-black tracking-widest">VS</div>
-  )}
-</div>
+        <div
+          className={
+            live
+              ? "rounded-2xl bg-[#d81e05] px-4 py-3 text-center text-white"
+              : "rounded-2xl bg-[#18243a] px-4 py-3 text-center text-white"
+          }
+        >
+          {hasScore(game) ? (
+            <div className="text-xl font-black sm:text-2xl">
+              {game.homeScore} - {game.awayScore}
+            </div>
+          ) : (
+            <div className="text-sm font-black tracking-widest">VS</div>
+          )}
+        </div>
 
         <TeamBlock team={game.away} align="right" />
       </div>
 
-      <div className="mt-5 rounded-[18px] border-2 border-[#111] bg-white px-4 py-3">
+      <div className="mt-5 rounded-[18px] bg-[#f3f5f8] px-4 py-3">
         <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#d81e05]">
           Venue
         </p>
 
-        <p className="mt-1 text-sm font-black text-[#111]">{game.venue}</p>
+        <p className="mt-1 text-sm font-black text-[#18243a]">{game.venue}</p>
       </div>
     </article>
   );
@@ -173,12 +360,14 @@ function TeamBlock({
       {slug ? (
         <Link
           href={`/team/${slug}`}
-          className="text-lg font-black leading-tight text-[#111] underline decoration-[#111] underline-offset-2 sm:text-xl"
+          className="text-lg font-black leading-tight text-[#18243a] underline decoration-[#18243a] underline-offset-2 sm:text-xl"
         >
           {team}
         </Link>
       ) : (
-        <p className="text-lg font-black leading-tight sm:text-xl">{team}</p>
+        <p className="text-lg font-black leading-tight text-[#18243a] sm:text-xl">
+          {team}
+        </p>
       )}
     </div>
   );
@@ -195,91 +384,23 @@ function StatusBadge({ status }: { status: string }) {
 
   if (status.toUpperCase() === "TBC") {
     return (
-      <span className="rounded-full border-2 border-[#111] px-4 py-2 text-xs font-black tracking-widest text-[#111]">
+      <span className="rounded-full bg-[#eef1f5] px-4 py-2 text-xs font-black tracking-widest text-[#18243a]">
         TBC
       </span>
     );
   }
 
   return (
-    <span className="rounded-full border-2 border-[#111] px-4 py-2 text-xs font-black tracking-widest text-[#111]">
+    <span className="rounded-full bg-[#eef1f5] px-4 py-2 text-xs font-black tracking-widest text-[#18243a]">
       {status}
     </span>
   );
 }
 
-function SummaryBox({ title, value }: { title: string; value: number }) {
-  return (
-    <div className="rounded-[24px] border-[3px] border-[#111] bg-[#f5ede0] p-5">
-      <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d81e05]">
-        {title}
-      </p>
-
-      <p className="mt-2 text-4xl font-black text-[#111]">{value}</p>
-    </div>
-  );
-}
-
-function NextFixtureBox({ game }: { game?: DisplayGame }) {
-  if (!game) {
-    return (
-      <div className="rounded-[24px] border-[3px] border-[#111] bg-[#111] p-5 text-white">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d81e05]">
-          Next Fixture
-        </p>
-
-        <p className="mt-2 text-2xl font-black">No upcoming fixture found</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-[24px] border-[3px] border-[#111] bg-[#111] p-5 text-white">
-      <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d81e05]">
-        Next Fixture
-      </p>
-
-      <p className="mt-2 text-2xl font-black">
-        {game.home} v {game.away}
-      </p>
-
-      <p className="mt-3 text-sm font-bold leading-6 text-[#efe6d8]">
-        {game.date} · {kickOffText(game.kickOff)} · {game.venue}
-      </p>
-    </div>
-  );
-}
-
-function SectionHeading({
-  eyebrow,
-  title,
-  text,
-}: {
-  eyebrow: string;
-  title: string;
-  text: string;
-}) {
-  return (
-    <div className="mb-4">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d81e05]">
-        {eyebrow}
-      </p>
-
-      <h2 className="mt-1 text-3xl font-black text-[#111] sm:text-4xl">
-        {title}
-      </h2>
-
-      <p className="mt-2 max-w-[720px] text-sm font-bold leading-6 text-[#444]">
-        {text}
-      </p>
-    </div>
-  );
-}
-
 function EmptyMessage({ text }: { text: string }) {
   return (
-    <div className="rounded-[24px] border-[3px] border-[#111] bg-[#f5ede0] p-5">
-      <p className="font-black text-[#111]">{text}</p>
+    <div className="rounded-[24px] border border-[#d6dce5] bg-white p-5 shadow-sm">
+      <p className="font-black text-[#18243a]">{text}</p>
     </div>
   );
 }
@@ -322,6 +443,10 @@ function isResult(game: Game) {
 
 function isLive(game: Game) {
   return game.status.toUpperCase() === "LIVE";
+}
+
+function hasScore(game: Game) {
+  return typeof game.homeScore === "number" && typeof game.awayScore === "number";
 }
 
 function kickOffText(kickOff: string) {
