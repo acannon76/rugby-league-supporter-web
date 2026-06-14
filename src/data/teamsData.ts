@@ -29,6 +29,20 @@ export const teamsData = {
     capacity: "Approx. 25,000",
     awayFans: "Away supporter section to confirm",
     parking: ["Parking available around the stadium area", "Arrive early on matchdays"],
+    parkingSpots: [
+  {
+    name: "Odsal Stadium Car Park",
+    note: "Closest parking option to the stadium.",
+    latitude: 53.7654,
+    longitude: -1.7601,
+  },
+  {
+    name: "Richard Dunn Sports Centre",
+    note: "Alternative parking option nearby.",
+    latitude: 53.7639,
+    longitude: -1.7572,
+  },
+],
     trainStations: ["Bradford Interchange", "Bradford Forster Square"],
     pubs: ["Bradford city centre pubs", "Local pubs near Odsal to confirm"],
     food: ["Stadium kiosks", "Bradford city centre food options"],
