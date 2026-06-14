@@ -43,8 +43,8 @@ export default function TeamsPage() {
             </h1>
 
             <p className="mt-5 max-w-[700px] text-base font-bold leading-7 text-[#dce4f0] sm:text-lg">
-              Browse every club guide, including stadium details, venue
-              information and supporter travel notes.
+              Browse every Super League club guide, including stadium details,
+              venue information and supporter travel notes.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
@@ -64,18 +64,12 @@ export default function TeamsPage() {
             </div>
           </div>
 
-          <HeroTeamsCard totalTeams={allTeams.length} firstTeam={allTeams[0]} />
+          <GuideIncludesCard />
         </div>
       </section>
 
       <section className="px-4 py-6 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-[1180px]">
-          <section className="mb-7 grid gap-4 sm:grid-cols-3">
-            <StatCard title="Teams" value={allTeams.length} />
-            <StatCard title="Sorted" valueText="A-Z" />
-            <StatCard title="Guides" valueText="Club Info" />
-          </section>
-
           <SectionHeading
             eyebrow="Directory"
             title="Choose a team"
@@ -131,63 +125,46 @@ function SiteHeader() {
   );
 }
 
-function HeroTeamsCard({
-  totalTeams,
-  firstTeam,
-}: {
-  totalTeams: number;
-  firstTeam?: DisplayTeam;
-}) {
+function GuideIncludesCard() {
+  const items = [
+    "Stadium information",
+    "Parking details",
+    "Away end guidance",
+    "Train station info",
+    "Local pubs",
+    "Google directions",
+  ];
+
   return (
     <div className="rounded-[30px] border border-white/15 bg-white/8 p-5 shadow-2xl backdrop-blur">
       <p className="text-xs font-black uppercase tracking-[0.2em] text-[#35d6b4]">
-        Team directory
+        Supporter guide
       </p>
 
-      <div className="mt-5 rounded-[24px] bg-[#111827] p-5">
-        <p className="text-5xl font-black text-white">{totalTeams}</p>
+      <h2 className="mt-4 text-3xl font-black leading-tight text-white sm:text-4xl">
+        Plan before you travel.
+      </h2>
 
-        <p className="mt-2 text-sm font-bold text-[#dce4f0]">
-          Club guides available
-        </p>
-      </div>
+      <p className="mt-3 text-sm font-bold leading-6 text-[#dce4f0]">
+        Each club page is built to help supporters quickly find useful matchday
+        information.
+      </p>
 
-      <div className="mt-4 rounded-[24px] bg-white p-5 text-[#111827]">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d81e05]">
-          First alphabetically
-        </p>
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {items.map((item) => (
+          <div
+            key={item}
+            className="flex items-center gap-3 rounded-2xl bg-[#111827] p-3"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#35d6b4] text-sm font-black text-[#111827]">
+              ✓
+            </div>
 
-        <p className="mt-2 text-2xl font-black">
-          {firstTeam?.name || "Team TBC"}
-        </p>
-
-        <p className="mt-2 text-sm font-bold text-[#64748b]">
-          {firstTeam?.stadium || "Stadium information to be added"}
-        </p>
+            <p className="text-sm font-black text-white">{item}</p>
+          </div>
+        ))}
       </div>
     </div>
-  );
-}
-
-function StatCard({
-  title,
-  value,
-  valueText,
-}: {
-  title: string;
-  value?: number;
-  valueText?: string;
-}) {
-  return (
-    <section className="rounded-[26px] border border-[#d6dce5] bg-white p-5 shadow-sm">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d81e05]">
-        {title}
-      </p>
-
-      <p className="mt-2 text-3xl font-black text-[#18243a] sm:text-4xl">
-        {valueText ?? value}
-      </p>
-    </section>
   );
 }
 
