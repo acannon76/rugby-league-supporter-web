@@ -38,49 +38,49 @@ const homeCards: HomeCardData[] = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#efe6d8] px-4 py-6 font-sans sm:px-6 lg:px-10">
+    <main className="min-h-screen bg-[#efe6d8] px-4 py-5 font-sans sm:px-6 lg:px-10">
       <div className="mx-auto max-w-[1180px]">
-        <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch">
-          <div className="rounded-[34px] border-[3px] border-[#d81e05] bg-[#111] p-6 text-white sm:p-8 lg:p-10">
-            <p className="mb-4 text-xs font-black tracking-[0.18em] text-[#d81e05] sm:text-sm">
+        <section className="relative overflow-hidden rounded-[34px] border-[3px] border-[#d81e05] bg-[#111] p-6 text-white shadow-xl sm:p-8 lg:p-10">
+          <div className="absolute right-[-80px] top-[-80px] h-[210px] w-[210px] rounded-full bg-[#d81e05] opacity-25" />
+          <div className="absolute bottom-[-110px] left-[-90px] h-[240px] w-[240px] rounded-full bg-[#d81e05] opacity-20" />
+
+          <div className="relative z-10">
+            <p className="mb-4 text-xs font-black tracking-[0.2em] text-[#d81e05] sm:text-sm">
               INDEPENDENT SUPPORTER GUIDE
             </p>
 
-            <h1 className="text-[38px] font-black leading-[1.05] sm:text-[56px] lg:text-[72px]">
+            <h1 className="max-w-[850px] text-[42px] font-black leading-[0.95] sm:text-[70px] lg:text-[92px]">
               Rugby Super League
+              <span className="block text-[#d81e05]">Supporter</span>
             </h1>
 
-            <h2 className="mt-2 text-[58px] font-black leading-[0.95] text-[#d81e05] sm:text-[78px] lg:text-[96px]">
-              Supporter
-            </h2>
-
-            <p className="mt-6 max-w-[680px] text-base font-bold leading-7 text-[#efe6d8] sm:text-lg lg:text-xl">
-              Fixtures, results, tables, teams and matchday information for
-              travelling fans.
-            </p>
-          </div>
-
-          <div className="rounded-[34px] border-[3px] border-[#111] bg-[#d81e05] p-6 text-[#111] sm:p-8 lg:p-10">
-            <p className="text-xs font-black tracking-[0.18em]">
-              BUILT FOR SUPPORTERS
+            <p className="mt-5 max-w-[720px] text-base font-bold leading-7 text-[#efe6d8] sm:text-lg lg:text-xl">
+              Fixtures, results, league table and club guides for supporters
+              following Super League.
             </p>
 
-            <h3 className="mt-4 text-[34px] font-black leading-none sm:text-[46px] lg:text-[54px]">
-              Plan your matchday before you travel.
-            </h3>
-
-            <p className="mt-5 text-sm font-extrabold leading-6 sm:text-base">
-              Check upcoming fixtures, latest results, the league table and club
-              guides in one simple supporter hub.
-            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <FeaturePill text="Fixtures" />
+              <FeaturePill text="Results" />
+              <FeaturePill text="League Table" />
+              <FeaturePill text="Club Guides" />
+            </div>
           </div>
         </section>
 
-        <h3 className="mb-4 mt-8 text-xl font-black tracking-wide text-[#111] sm:text-2xl">
-          MATCHDAY HUB
-        </h3>
+        <section className="mt-6 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-black tracking-[0.18em] text-[#d81e05]">
+              MATCHDAY HUB
+            </p>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <h2 className="mt-1 text-2xl font-black text-[#111] sm:text-3xl">
+              What do you need?
+            </h2>
+          </div>
+        </section>
+
+        <section className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {homeCards.map((card) => (
             <HomeCard
               key={card.href}
@@ -91,8 +91,31 @@ export default function Home() {
             />
           ))}
         </section>
+
+        <section className="mt-6 rounded-[28px] border-[3px] border-[#111] bg-[#f5ede0] p-5">
+          <p className="text-xs font-black tracking-[0.18em] text-[#d81e05]">
+            QUICK UPDATE
+          </p>
+
+          <h2 className="mt-2 text-2xl font-black text-[#111]">
+            Built for quick matchday checks.
+          </h2>
+
+          <p className="mt-2 text-sm font-bold leading-6 text-[#444]">
+            Check the latest table, upcoming fixtures, recent results and team
+            information from one simple homepage.
+          </p>
+        </section>
       </div>
     </main>
+  );
+}
+
+function FeaturePill({ text }: { text: string }) {
+  return (
+    <span className="rounded-full border-2 border-[#d81e05] bg-[#1c1c1c] px-4 py-2 text-xs font-black tracking-wide text-white">
+      {text}
+    </span>
   );
 }
 
@@ -110,9 +133,9 @@ function HomeCard({
   return (
     <Link
       href={href}
-      className="flex min-h-[170px] flex-col rounded-[28px] border-2 border-[#111] bg-[#f5ede0] p-5 no-underline transition hover:-translate-y-1 hover:shadow-lg sm:min-h-[190px]"
+      className="group flex min-h-[155px] flex-col rounded-[28px] border-[3px] border-[#111] bg-[#f5ede0] p-5 text-[#111] no-underline transition hover:-translate-y-1 hover:bg-white hover:shadow-lg sm:min-h-[185px]"
     >
-      <div className="mb-5 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[#111] text-white">
+      <div className="mb-5 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[#111] text-white transition group-hover:bg-[#d81e05]">
         <CardIcon icon={icon} />
       </div>
 
@@ -125,7 +148,7 @@ function HomeCard({
       </p>
 
       <div className="mt-auto flex items-center gap-2 pt-5 text-xs font-black tracking-widest text-[#d81e05]">
-        OPEN <span>→</span>
+        OPEN <span className="transition group-hover:translate-x-1">→</span>
       </div>
     </Link>
   );
