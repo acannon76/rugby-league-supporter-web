@@ -74,9 +74,7 @@ export default function Home() {
               MATCHDAY HUB
             </p>
 
-            <h2 className="mt-1 text-2xl font-black text-[#111] sm:text-3xl">
-              What do you need?
-            </h2>
+            
           </div>
         </section>
 
