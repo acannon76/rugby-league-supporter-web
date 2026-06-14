@@ -129,15 +129,21 @@ function FixtureCard({ game }: { game: DisplayGame }) {
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <TeamBlock team={game.home} align="left" />
 
-        <div
-          className={
-            live
-              ? "rounded-2xl bg-[#d81e05] px-4 py-3 text-center text-white"
-              : "rounded-2xl bg-[#111] px-4 py-3 text-center text-white"
-          }
-        >
-          <div className="text-sm font-black tracking-widest">VS</div>
-        </div>
+       <div
+  className={
+    live
+      ? "rounded-2xl bg-[#d81e05] px-4 py-3 text-center text-white"
+      : "rounded-2xl bg-[#111] px-4 py-3 text-center text-white"
+  }
+>
+  {typeof game.homeScore === "number" && typeof game.awayScore === "number" ? (
+    <div className="text-xl font-black sm:text-2xl">
+      {game.homeScore} - {game.awayScore}
+    </div>
+  ) : (
+    <div className="text-sm font-black tracking-widest">VS</div>
+  )}
+</div>
 
         <TeamBlock team={game.away} align="right" />
       </div>
@@ -311,10 +317,7 @@ function groupByDate(games: DisplayGame[]) {
 }
 
 function isResult(game: Game) {
-  return (
-    game.status.toUpperCase() === "FT" ||
-    (typeof game.homeScore === "number" && typeof game.awayScore === "number")
-  );
+  return game.status.toUpperCase() === "FT";
 }
 
 function isLive(game: Game) {

@@ -288,10 +288,7 @@ function groupByDate(games: DisplayGame[]) {
 }
 
 function isResult(game: Game) {
-  return (
-    game.status.toUpperCase() === "FT" ||
-    (typeof game.homeScore === "number" && typeof game.awayScore === "number")
-  );
+  return game.status.toUpperCase() === "FT";
 }
 
 function sortResults(a: DisplayGame, b: DisplayGame) {
