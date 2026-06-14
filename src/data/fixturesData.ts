@@ -173,8 +173,8 @@ export const fixturesData: FixtureDay[] = [
     sortDate: "2026-06-14",
     games: [
       {
-        status: "LIVE",
-        kickOff: "15:00",
+        status: "FT",
+        kickOff: "TBC",
         home: "Bradford Bulls",
         away: "Leigh Leopards",
         homeScore: 12,
