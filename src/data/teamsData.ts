@@ -33,14 +33,14 @@ export const teamsData = {
   {
     name: "Odsal Stadium Car Park",
     note: "Closest parking option to the stadium.",
-    latitude: 53.7654,
-    longitude: -1.7601,
+    latitude: 53.764414,
+    longitude: -1.758574,
   },
   {
     name: "Richard Dunn Sports Centre",
     note: "Alternative parking option nearby.",
-    latitude: 53.7639,
-    longitude: -1.7572,
+    latitude: 53.766141,
+    longitude: -1.761095,
   },
 ],
     trainStations: ["Bradford Interchange", "Bradford Forster Square"],
