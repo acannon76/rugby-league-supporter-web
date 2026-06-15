@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { resetVehicleCheckMockup } from "../vehicle-checks/VehicleCheckTimer";
+import VehicleCheckTimer, {
+  resetVehicleCheckMockup,
+} from "../vehicle-checks/VehicleCheckTimer";
 
 type AppButton = {
   title: string;
@@ -15,11 +17,11 @@ type AppButton = {
 
 const appButtons: AppButton[] = [
   {
-  title: "Navigation",
-  text: "Route guidance and journey information. Mock reset for vehicle check journey.",
-  icon: "➤",
-  isNavigation: true,
-},
+    title: "Navigation",
+    text: "Route guidance and journey information. Mock reset for vehicle check journey.",
+    icon: "➤",
+    isNavigation: true,
+  },
   {
     title: "Driving Style",
     text: "Driving behaviour and safety indicators.",
@@ -67,6 +69,11 @@ const appButtons: AppButton[] = [
 export default function HgvDriverPdaMockupClient() {
   const [messageReceived, setMessageReceived] = useState(false);
 
+  function handleNavigationReset() {
+    resetVehicleCheckMockup();
+    window.location.href = "/internal/app-ideas";
+  }
+
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#111]">
       <header className="border-b border-white/20 bg-[#b00020] px-4 py-4 text-white sm:px-6 lg:px-10">
@@ -76,13 +83,17 @@ export default function HgvDriverPdaMockupClient() {
               HGV
             </div>
 
-            <div>
-              <p className="text-lg font-black leading-none text-white">
-                Driver PDA
-              </p>
-              <p className="text-sm font-black leading-none text-[#ffd9df]">
-                Concept Mockup
-              </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-lg font-black leading-none text-white">
+                  Driver PDA
+                </p>
+                <p className="text-sm font-black leading-none text-[#ffd9df]">
+                  Concept Mockup
+                </p>
+              </div>
+
+              <VehicleCheckTimer />
             </div>
           </div>
 
@@ -102,9 +113,7 @@ export default function HgvDriverPdaMockupClient() {
               <p className="text-xs font-black uppercase tracking-widest text-[#ffd9df]">
                 Driver
               </p>
-              <p className="text-base font-black text-white">
-                Andrew Cannon
-              </p>
+              <p className="text-base font-black text-white">Andrew Cannon</p>
             </div>
 
             <Link
@@ -121,33 +130,24 @@ export default function HgvDriverPdaMockupClient() {
         <div className="mx-auto max-w-[1180px]">
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:auto-rows-[340px]">
             {appButtons.map((button) => (
-              
-<ActionCard
-  key={button.title}
-  title={button.title}
-  text={
-    button.isMessaging && messageReceived
-      ? "New message received. Tap to clear mock notification."
-      : button.text
-  }
-  href={button.href}
-  icon={button.icon}
-  isMessaging={button.isMessaging}
-  isNavigation={button.isNavigation}
-  messageReceived={button.isMessaging ? messageReceived : false}
-  onMessagingClick={() =>
-    setMessageReceived((currentValue) => !currentValue)
-  }
-  onNavigationClick={() => {
-    resetVehicleCheckMockup();
-    window.location.href = "/internal/app-ideas";
-  }}
-/>
-
-
-
-
-
+              <ActionCard
+                key={button.title}
+                title={button.title}
+                text={
+                  button.isMessaging && messageReceived
+                    ? "New message received. Tap to clear mock notification."
+                    : button.text
+                }
+                href={button.href}
+                icon={button.icon}
+                isMessaging={button.isMessaging}
+                isNavigation={button.isNavigation}
+                messageReceived={button.isMessaging ? messageReceived : false}
+                onMessagingClick={() =>
+                  setMessageReceived((currentValue) => !currentValue)
+                }
+                onNavigationClick={handleNavigationReset}
+              />
             ))}
           </section>
         </div>
@@ -177,11 +177,6 @@ function ActionCard({
   onMessagingClick?: () => void;
   onNavigationClick?: () => void;
 }) {
-
-
-
-
-
   const cardClasses = `
     group flex h-[300px] w-full flex-col rounded-[32px] border p-6 text-[#111]
     no-underline shadow-sm transition hover:shadow-lg
@@ -212,27 +207,30 @@ function ActionCard({
     mt-auto flex items-center gap-2 pt-6 text-xs font-black uppercase tracking-widest
     ${messageReceived ? "text-[#15803d]" : "text-[#b00020]"}
   `;
-if (isNavigation) {
-  return (
-    <button
-      type="button"
-      onClick={onNavigationClick}
-      className={`${cardClasses} text-left`}
-    >
-      <div className={iconClasses}>{icon}</div>
 
-      <h2 className={titleClasses}>{title}</h2>
+  if (isNavigation) {
+    return (
+      <button
+        type="button"
+        onClick={onNavigationClick}
+        className={`${cardClasses} text-left`}
+      >
+        <div className={iconClasses}>{icon}</div>
 
-      <p className="mt-3 text-sm font-bold leading-6 text-[#64748b]">
-        {text}
-      </p>
+        <h2 className={titleClasses}>{title}</h2>
 
-      <div className={actionTextClasses}>
-        Reset mock journey <span className="transition group-hover:translate-x-1">→</span>
-      </div>
-    </button>
-  );
-}
+        <p className="mt-3 text-sm font-bold leading-6 text-[#64748b]">
+          {text}
+        </p>
+
+        <div className={actionTextClasses}>
+          Reset mock journey{" "}
+          <span className="transition group-hover:translate-x-1">→</span>
+        </div>
+      </button>
+    );
+  }
+
   if (isMessaging) {
     return (
       <button
