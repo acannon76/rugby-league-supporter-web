@@ -106,7 +106,7 @@ export default function HgvDriverPdaMockupClient() {
 
       <section className="px-4 py-6 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-[1180px]">
-         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:auto-rows-[340px]">
             {appButtons.map((button) => (
               <ActionCard
                 key={button.title}
@@ -149,11 +149,11 @@ function ActionCard({
   messageReceived?: boolean;
   onMessagingClick?: () => void;
 }) {
-    
-  const cardClasses = `
-  group flex h-[300px] flex-col rounded-[32px] border p-6 text-[#111]
-  no-underline shadow-sm transition hover:-translate-y-1 hover:shadow-lg
-  sm:h-[330px] md:h-[340px]
+
+   const cardClasses = `
+  group flex h-[300px] w-full flex-col rounded-[32px] border p-6 text-[#111]
+  no-underline shadow-sm transition hover:shadow-lg
+  sm:h-[330px] md:h-full
   ${
     messageReceived
       ? "border-[#15803d] bg-[#dcfce7]"
