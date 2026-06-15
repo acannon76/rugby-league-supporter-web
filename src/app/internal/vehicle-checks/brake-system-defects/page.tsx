@@ -62,7 +62,11 @@ export default function BrakeSystemDefectsPage() {
       [number]: fileName,
     }));
   }
-
+function resetMockup() {
+  setStatuses({});
+  setDescriptions({});
+  setPhotoNames({});
+}
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#111]">
       <header className="border-b border-white/20 bg-[#b00020] px-4 py-4 text-white sm:px-6 lg:px-10">
@@ -109,24 +113,32 @@ export default function BrakeSystemDefectsPage() {
       </section>
 
       <section className="px-4 py-6 sm:px-6 lg:px-10">
-        <div className="mx-auto max-w-[900px] space-y-4">
-          {brakeChecks.map((check) => (
-            <BrakeCheckCard
-              key={check.number}
-              check={check}
-              status={statuses[check.number] || "none"}
-              description={descriptions[check.number] || ""}
-              photoName={photoNames[check.number] || ""}
-              onSetStatus={(status) => setCheckStatus(check.number, status)}
-              onDescriptionChange={(value) =>
-                updateDescription(check.number, value)
-              }
-              onPhotoSelected={(fileName) =>
-                updatePhotoName(check.number, fileName)
-              }
-            />
-          ))}
-        </div>
+       <div className="mx-auto max-w-[900px] space-y-4">
+  {brakeChecks.map((check) => (
+    <BrakeCheckCard
+      key={check.number}
+      check={check}
+      status={statuses[check.number] || "none"}
+      description={descriptions[check.number] || ""}
+      photoName={photoNames[check.number] || ""}
+      onSetStatus={(status) => setCheckStatus(check.number, status)}
+      onDescriptionChange={(value) =>
+        updateDescription(check.number, value)
+      }
+      onPhotoSelected={(fileName) =>
+        updatePhotoName(check.number, fileName)
+      }
+    />
+  ))}
+
+  <button
+    type="button"
+    onClick={resetMockup}
+    className="mt-6 w-full rounded-[24px] bg-[#18243a] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm transition hover:bg-[#b00020]"
+  >
+    MOCKUP Reset
+  </button>
+</div>
       </section>
     </main>
   );
