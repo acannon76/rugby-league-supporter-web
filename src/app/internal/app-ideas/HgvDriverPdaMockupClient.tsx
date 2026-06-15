@@ -106,7 +106,7 @@ export default function HgvDriverPdaMockupClient() {
 
       <section className="px-4 py-6 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-[1180px]">
-          <section className="grid min-h-[calc(100vh-110px)] grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:items-center">
+         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
             {appButtons.map((button) => (
               <ActionCard
                 key={button.title}
@@ -149,16 +149,17 @@ function ActionCard({
   messageReceived?: boolean;
   onMessagingClick?: () => void;
 }) {
+    
   const cardClasses = `
-    group flex min-h-[220px] flex-col rounded-[32px] border p-6 text-[#111]
-    no-underline shadow-sm transition hover:-translate-y-1 hover:shadow-lg
-    sm:min-h-[260px] md:min-h-[280px]
-    ${
-      messageReceived
-        ? "border-[#15803d] bg-[#dcfce7]"
-        : "border-[#d6dce5] bg-white"
-    }
-  `;
+  group flex h-[300px] flex-col rounded-[32px] border p-6 text-[#111]
+  no-underline shadow-sm transition hover:-translate-y-1 hover:shadow-lg
+  sm:h-[330px] md:h-[340px]
+  ${
+    messageReceived
+      ? "border-[#15803d] bg-[#dcfce7]"
+      : "border-[#d6dce5] bg-white"
+  }
+`;
 
   const iconClasses = `
     mb-6 flex h-16 w-16 items-center justify-center rounded-3xl text-2xl
