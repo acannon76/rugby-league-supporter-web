@@ -24,11 +24,11 @@ const appButtons = [
     icon: "◆",
   },
   {
-    title: "Vehicle Checks",
-    text: "Daily checks and defect reporting.",
-    href: "#",
-    icon: "✓",
-  },
+  title: "Vehicle Checks",
+  text: "Daily checks and defect reporting.",
+  href: "/internal/vehicle-checks",
+  icon: "✓",
+},
   {
     title: "FNOL / Breakdown",
     text: "Report an incident, damage or breakdown.",
