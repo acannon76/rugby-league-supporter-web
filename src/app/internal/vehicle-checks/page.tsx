@@ -79,6 +79,7 @@ const storageKey = "hgv-vehicle-check-status";
 
 export default function VehicleChecksPage() {
   const [statuses, setStatuses] = useState<Record<number, CheckStatus>>({});
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(storageKey);
@@ -112,7 +113,9 @@ export default function VehicleChecksPage() {
 
     saveStatus(nextStatuses);
   }
-
+function submitMockup() {
+  setSubmitted(true);
+}
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#111]">
       <header className="border-b border-white/20 bg-[#b00020] px-4 py-4 text-white sm:px-6 lg:px-10">
@@ -159,18 +162,38 @@ export default function VehicleChecksPage() {
       </section>
 
       <section className="px-4 py-6 sm:px-6 lg:px-10">
-        <div className="mx-auto max-w-[900px] space-y-3">
-          {checks.map((check) => (
-            <CheckRow
-              key={check.number}
-              check={check}
-              status={statuses[check.number] || "none"}
-              onMarkOk={() => markOk(check.number)}
-              onOpen={() => markOpened(check.number)}
-            />
-          ))}
-        </div>
-      </section>
+  <div className="mx-auto max-w-[900px] space-y-3">
+    {checks.map((check) => (
+      <CheckRow
+        key={check.number}
+        check={check}
+        status={statuses[check.number] || "none"}
+        onMarkOk={() => markOk(check.number)}
+        onOpen={() => markOpened(check.number)}
+      />
+    ))}
+
+    <button
+      type="button"
+      onClick={submitMockup}
+      className="mt-6 w-full rounded-[24px] bg-[#b00020] px-5 py-5 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm transition hover:bg-[#7d0017]"
+    >
+      MOCKUP Submit Vehicle Checks
+    </button>
+
+    {submitted && (
+      <div className="rounded-[24px] border border-[#078a3d] bg-[#e8f7ee] p-5 text-center">
+        <p className="text-sm font-black uppercase tracking-[0.16em] text-[#078a3d]">
+          Mockup Submitted
+        </p>
+
+        <p className="mt-2 text-sm font-bold leading-6 text-[#18243a]">
+          Vehicle checks have been submitted for demonstration purposes only.
+        </p>
+      </div>
+    )}
+  </div>
+</section>
     </main>
   );
 }
