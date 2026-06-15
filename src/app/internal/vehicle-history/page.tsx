@@ -173,19 +173,42 @@ export default function VehicleHistoryPage() {
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b00020]">
                 Vehicle overview
               </p>
+
               <h2 className="mt-2 text-2xl font-black text-[#18243a] sm:text-3xl">
                 Visual history markers
               </h2>
+
               <p className="mt-2 text-sm font-bold leading-6 text-[#64748b]">
-                Basic mock vehicle views showing previously reported areas.
+                Mock vehicle views showing previously reported areas and
+                inspection points.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <TruckDiagram title="Front View" view="front" />
-              <TruckDiagram title="Rear View" view="rear" />
-              <TruckDiagram title="Left Side View" view="left" showDoorDent />
-              <TruckDiagram title="Right Side View" view="right" />
+            <div className="rounded-[24px] border border-[#e2e8f0] bg-[#f8fafc] p-3">
+              <img
+                src="/images/truck-history-overview.png"
+                alt="Vehicle history visual marker overview showing front, rear, left side, right side and top view of the vehicle"
+                className="h-auto w-full rounded-[18px] border border-[#e2e8f0] bg-white object-contain"
+              />
+            </div>
+
+            <div className="mt-4 rounded-[20px] border border-[#f8df8d] bg-[#fff7e6] p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f59e0b] text-lg font-black text-white">
+                  ★
+                </div>
+
+                <div>
+                  <p className="text-sm font-black uppercase tracking-[0.14em] text-[#92400e]">
+                    Current visual marker
+                  </p>
+
+                  <p className="mt-1 text-sm font-bold leading-6 text-[#18243a]">
+                    Star marker shows a previously recorded nearside door dent,
+                    reported on 12/05/2026 and closed under PMT104582.
+                  </p>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -194,9 +217,11 @@ export default function VehicleHistoryPage() {
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b00020]">
                 Previous records
               </p>
+
               <h2 className="mt-2 text-2xl font-black text-[#18243a] sm:text-3xl">
                 Past vehicle history
               </h2>
+
               <p className="mt-2 text-sm font-bold leading-6 text-[#64748b]">
                 Fictitious mock entries showing previously raised PMTs for the
                 vehicle.
@@ -227,10 +252,10 @@ export default function VehicleHistoryPage() {
 function HistoryCard({ item }: { item: HistoryItem }) {
   const typeClasses =
     item.type === "Defect"
-      ? "bg-[#ffe6eb] text-[#b00020] border-[#f3c2cb]"
+      ? "border-[#f3c2cb] bg-[#ffe6eb] text-[#b00020]"
       : item.type === "Vehicle Issue"
-      ? "bg-[#fef3c7] text-[#92400e] border-[#f8df8d]"
-      : "bg-[#e8f7ee] text-[#078a3d] border-[#b9e6c8]";
+      ? "border-[#f8df8d] bg-[#fef3c7] text-[#92400e]"
+      : "border-[#b9e6c8] bg-[#e8f7ee] text-[#078a3d]";
 
   return (
     <article className="rounded-[24px] border border-[#d6dce5] bg-[#fbfbfc] p-4 shadow-sm">
@@ -238,6 +263,7 @@ function HistoryCard({ item }: { item: HistoryItem }) {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-lg font-black text-[#18243a]">{item.issue}</p>
+
             <span
               className={`rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] ${typeClasses}`}
             >
@@ -265,117 +291,14 @@ function HistoryCard({ item }: { item: HistoryItem }) {
   );
 }
 
-function InfoMini({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function InfoMini({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-[#e2e8f0] bg-white px-3 py-2">
       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#b00020]">
         {label}
       </p>
+
       <p className="mt-1 text-sm font-black text-[#18243a]">{value}</p>
-    </div>
-  );
-}
-
-function TruckDiagram({
-  title,
-  view,
-  showDoorDent = false,
-}: {
-  title: string;
-  view: "front" | "rear" | "left" | "right";
-  showDoorDent?: boolean;
-}) {
-  return (
-    <div className="rounded-[24px] border border-[#d6dce5] bg-[#f8fafc] p-4">
-      <p className="mb-3 text-xs font-black uppercase tracking-[0.16em] text-[#b00020]">
-        {title}
-      </p>
-
-      <div className="flex min-h-[220px] items-center justify-center rounded-[20px] bg-white p-4">
-        {view === "front" && <FrontTruck />}
-        {view === "rear" && <RearTruck />}
-        {view === "left" && <SideTruck side="left" showDoorDent={showDoorDent} />}
-        {view === "right" && <SideTruck side="right" />}
-      </div>
-    </div>
-  );
-}
-
-function SideTruck({
-  side,
-  showDoorDent = false,
-}: {
-  side: "left" | "right";
-  showDoorDent?: boolean;
-}) {
-  return (
-    <div className="relative h-[120px] w-[280px]">
-      <div className="absolute bottom-[22px] left-[10px] h-[58px] w-[170px] rounded-[10px] border-[3px] border-[#9a001a] bg-[#d71920]">
-        <div className="absolute left-[8px] top-[8px] h-[40px] w-[42px] rounded-[6px] border-2 border-white/80 bg-[#ef9aa8]" />
-        <div className="absolute left-[56px] top-[8px] h-[40px] w-[34px] rounded-[4px] border-2 border-white/80 bg-[#ef9aa8]" />
-        <div className="absolute right-[12px] top-[14px] h-[20px] w-[56px] rounded-md border-2 border-white/60 bg-[#ffffff30]" />
-
-        {showDoorDent && (
-          <div className="absolute left-[66px] top-[10px] flex h-[24px] w-[24px] items-center justify-center rounded-full bg-[#f59e0b] text-sm font-black text-white shadow-md">
-            ★
-          </div>
-        )}
-      </div>
-
-      <div className="absolute bottom-[22px] left-[182px] h-[58px] w-[82px] rounded-[8px] border-[3px] border-[#9a001a] bg-[#d71920]" />
-
-      <div className="absolute bottom-[6px] left-[38px] h-[32px] w-[32px] rounded-full border-[4px] border-[#334155] bg-[#111827]" />
-      <div className="absolute bottom-[6px] left-[126px] h-[32px] w-[32px] rounded-full border-[4px] border-[#334155] bg-[#111827]" />
-      <div className="absolute bottom-[6px] left-[210px] h-[32px] w-[32px] rounded-full border-[4px] border-[#334155] bg-[#111827]" />
-
-      <div className="absolute bottom-[92px] left-[8px] text-[10px] font-black uppercase tracking-[0.12em] text-[#64748b]">
-        {side === "left" ? "Nearside" : "Offside"}
-      </div>
-
-      {showDoorDent && (
-        <div className="absolute bottom-[88px] left-[82px] rounded-full bg-[#fff7e6] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#92400e] shadow-sm">
-          Door dent
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FrontTruck() {
-  return (
-    <div className="relative h-[150px] w-[220px]">
-      <div className="absolute left-[32px] top-[22px] h-[82px] w-[156px] rounded-[18px] border-[4px] border-[#9a001a] bg-[#d71920]">
-        <div className="absolute left-[22px] top-[14px] h-[24px] w-[46px] rounded-md border-2 border-white/80 bg-[#ef9aa8]" />
-        <div className="absolute right-[22px] top-[14px] h-[24px] w-[46px] rounded-md border-2 border-white/80 bg-[#ef9aa8]" />
-        <div className="absolute left-[48px] bottom-[14px] h-[14px] w-[60px] rounded-md bg-[#f1f5f9]" />
-      </div>
-
-      <div className="absolute left-[44px] top-[98px] h-[18px] w-[24px] rounded-md bg-[#facc15]" />
-      <div className="absolute right-[44px] top-[98px] h-[18px] w-[24px] rounded-md bg-[#facc15]" />
-
-      <div className="absolute bottom-[8px] left-[48px] h-[34px] w-[34px] rounded-full border-[4px] border-[#334155] bg-[#111827]" />
-      <div className="absolute bottom-[8px] right-[48px] h-[34px] w-[34px] rounded-full border-[4px] border-[#334155] bg-[#111827]" />
-    </div>
-  );
-}
-
-function RearTruck() {
-  return (
-    <div className="relative h-[150px] w-[220px]">
-      <div className="absolute left-[34px] top-[18px] h-[92px] w-[152px] rounded-[12px] border-[4px] border-[#9a001a] bg-[#d71920]">
-        <div className="absolute left-[18px] top-[16px] h-[50px] w-[116px] rounded-md border-2 border-white/70 bg-[#ffffff18]" />
-        <div className="absolute left-[18px] bottom-[10px] h-[10px] w-[20px] rounded-sm bg-[#facc15]" />
-        <div className="absolute right-[18px] bottom-[10px] h-[10px] w-[20px] rounded-sm bg-[#facc15]" />
-      </div>
-
-      <div className="absolute bottom-[8px] left-[48px] h-[34px] w-[34px] rounded-full border-[4px] border-[#334155] bg-[#111827]" />
-      <div className="absolute bottom-[8px] right-[48px] h-[34px] w-[34px] rounded-full border-[4px] border-[#334155] bg-[#111827]" />
     </div>
   );
 }
