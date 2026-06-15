@@ -85,6 +85,17 @@ export default function HgvDriverPdaMockupClient() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            {messageReceived && (
+              <div className="rounded-2xl border border-[#86efac] bg-[#dcfce7] px-4 py-2 shadow-sm">
+                <p className="text-xs font-black uppercase tracking-widest text-[#15803d]">
+                  New Message
+                </p>
+                <p className="text-sm font-black text-[#14532d]">
+                  Message from NWHUB Transport
+                </p>
+              </div>
+            )}
+
             <div className="rounded-2xl border border-white/30 bg-white/10 px-4 py-2">
               <p className="text-xs font-black uppercase tracking-widest text-[#ffd9df]">
                 Driver
@@ -106,7 +117,7 @@ export default function HgvDriverPdaMockupClient() {
 
       <section className="px-4 py-6 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-[1180px]">
-         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:auto-rows-[340px]">
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:auto-rows-[340px]">
             {appButtons.map((button) => (
               <ActionCard
                 key={button.title}
@@ -149,17 +160,16 @@ function ActionCard({
   messageReceived?: boolean;
   onMessagingClick?: () => void;
 }) {
-
-   const cardClasses = `
-  group flex h-[300px] w-full flex-col rounded-[32px] border p-6 text-[#111]
-  no-underline shadow-sm transition hover:shadow-lg
-  sm:h-[330px] md:h-full
-  ${
-    messageReceived
-      ? "border-[#15803d] bg-[#dcfce7]"
-      : "border-[#d6dce5] bg-white"
-  }
-`;
+  const cardClasses = `
+    group flex h-[300px] w-full flex-col rounded-[32px] border p-6 text-[#111]
+    no-underline shadow-sm transition hover:shadow-lg
+    sm:h-[330px] md:h-full
+    ${
+      messageReceived
+        ? "border-[#15803d] bg-[#dcfce7]"
+        : "border-[#d6dce5] bg-white"
+    }
+  `;
 
   const iconClasses = `
     mb-6 flex h-16 w-16 items-center justify-center rounded-3xl text-2xl
