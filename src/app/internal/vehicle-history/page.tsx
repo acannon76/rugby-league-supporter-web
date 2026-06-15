@@ -13,6 +13,7 @@ type HistoryItem = {
   type: "Vehicle Issue" | "Defect" | "Maintenance";
   reported: string;
   fixed: string;
+  mileageReported: string;
   status: "Closed";
   notes: string;
 };
@@ -21,6 +22,7 @@ const driverName = "Andrew Cannon";
 
 const vehicleDetails: VehicleDetail[] = [
   { label: "Registration", value: "PE68UHD" },
+  { label: "Last Mileage", value: "684,218 km" },
   { label: "Weight", value: "41T" },
   { label: "Axle", value: "4x2" },
   { label: "Asset", value: "23301273" },
@@ -36,6 +38,7 @@ const historyItems: HistoryItem[] = [
     type: "Vehicle Issue",
     reported: "12/05/2026",
     fixed: "15/05/2026",
+    mileageReported: "681,442 km",
     status: "Closed",
     notes:
       "Minor bodywork dent reported on nearside cab door. Repaired by workshop panel team.",
@@ -46,6 +49,7 @@ const historyItems: HistoryItem[] = [
     type: "Defect",
     reported: "03/05/2026",
     fixed: "04/05/2026",
+    mileageReported: "679,886 km",
     status: "Closed",
     notes:
       "Diagnostic check identified faulty pressure sensor. Sensor replaced and vehicle tested.",
@@ -56,6 +60,7 @@ const historyItems: HistoryItem[] = [
     type: "Maintenance",
     reported: "24/04/2026",
     fixed: "24/04/2026",
+    mileageReported: "677,921 km",
     status: "Closed",
     notes:
       "Tyre wear found during inspection. Tyre replaced before vehicle returned to service.",
@@ -66,6 +71,7 @@ const historyItems: HistoryItem[] = [
     type: "Defect",
     reported: "11/04/2026",
     fixed: "12/04/2026",
+    mileageReported: "674,508 km",
     status: "Closed",
     notes:
       "Small air leak identified on trailer coupling line. Pipe connection repaired and re-tested.",
@@ -76,6 +82,7 @@ const historyItems: HistoryItem[] = [
     type: "Vehicle Issue",
     reported: "29/03/2026",
     fixed: "31/03/2026",
+    mileageReported: "671,337 km",
     status: "Closed",
     notes:
       "Offside mirror housing cracked. Unit replaced and visibility check completed.",
@@ -86,6 +93,7 @@ const historyItems: HistoryItem[] = [
     type: "Maintenance",
     reported: "14/03/2026",
     fixed: "14/03/2026",
+    mileageReported: "668,904 km",
     status: "Closed",
     notes:
       "Failed marker bulb replaced during workshop inspection.",
@@ -142,17 +150,28 @@ export default function VehicleHistoryPage() {
 
           <p className="mt-4 max-w-[760px] text-sm font-bold leading-6 text-[#ffecef] sm:text-base">
             Review previous vehicle issues, defects and maintenance history
-            before continuing to today&apos;s vehicle checks.
+            before continuing to today&apos;s vehicle checks. Last recorded
+            mileage is shown from the previous vehicle use.
           </p>
 
           <div className="mt-5 rounded-[24px] bg-white/95 p-2 shadow-sm">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
               {vehicleDetails.map((detail) => (
                 <div
                   key={detail.label}
-                  className="rounded-2xl border border-[#ead6dc] bg-[#fff7f8] px-3 py-2"
+                  className={`rounded-2xl border px-3 py-2 ${
+                    detail.label === "Last Mileage"
+                      ? "border-[#f8df8d] bg-[#fff7e6]"
+                      : "border-[#ead6dc] bg-[#fff7f8]"
+                  }`}
                 >
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#b00020]">
+                  <p
+                    className={`text-[10px] font-black uppercase tracking-[0.16em] ${
+                      detail.label === "Last Mileage"
+                        ? "text-[#92400e]"
+                        : "text-[#b00020]"
+                    }`}
+                  >
                     {detail.label}
                   </p>
 
@@ -205,7 +224,8 @@ export default function VehicleHistoryPage() {
 
                   <p className="mt-1 text-sm font-bold leading-6 text-[#18243a]">
                     Star marker shows a previously recorded nearside door dent,
-                    reported on 12/05/2026 and closed under PMT104582.
+                    reported on 12/05/2026 at 681,442 km and closed under
+                    PMT104582.
                   </p>
                 </div>
               </div>
@@ -224,7 +244,7 @@ export default function VehicleHistoryPage() {
 
               <p className="mt-2 text-sm font-bold leading-6 text-[#64748b]">
                 Fictitious mock entries showing previously raised PMTs for the
-                vehicle.
+                vehicle, including the mileage when each issue was reported.
               </p>
             </div>
 
@@ -280,9 +300,10 @@ function HistoryCard({ item }: { item: HistoryItem }) {
           </p>
         </div>
 
-        <div className="grid shrink-0 grid-cols-2 gap-3 lg:min-w-[250px]">
+        <div className="grid shrink-0 grid-cols-2 gap-3 lg:min-w-[330px]">
           <InfoMini label="Reported" value={item.reported} />
           <InfoMini label="Fixed" value={item.fixed} />
+          <InfoMini label="Mileage" value={item.mileageReported} />
           <InfoMini label="Status" value={item.status} />
           <InfoMini label="PMT" value={item.pmt} />
         </div>

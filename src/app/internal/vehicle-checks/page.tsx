@@ -25,12 +25,16 @@ const vehicleDetails: VehicleDetail[] = [
     value: "PE68UHD",
   },
   {
+    label: "Last Mileage",
+    value: "684,218 km",
+  },
+  {
     label: "Weight",
     value: "41T",
   },
   {
     label: "Axle",
-    value: "4x2",
+    value: "6x2",
   },
   {
     label: "Asset",
@@ -113,23 +117,37 @@ const checks: VehicleCheck[] = [
   },
 ];
 
-const storageKey = "hgv-vehicle-check-status";
+const statusStorageKey = "hgv-vehicle-check-status";
+const mileageStorageKey = "hgv-current-mileage-km";
 
 export default function VehicleChecksPage() {
   const [statuses, setStatuses] = useState<Record<number, CheckStatus>>({});
+  const [currentMileage, setCurrentMileage] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(storageKey);
+    const savedStatuses = window.localStorage.getItem(statusStorageKey);
+    const savedMileage = window.localStorage.getItem(mileageStorageKey);
 
-    if (saved) {
-      setStatuses(JSON.parse(saved));
+    if (savedStatuses) {
+      setStatuses(JSON.parse(savedStatuses));
+    }
+
+    if (savedMileage) {
+      setCurrentMileage(savedMileage);
     }
   }, []);
 
   function saveStatus(nextStatuses: Record<number, CheckStatus>) {
     setStatuses(nextStatuses);
-    window.localStorage.setItem(storageKey, JSON.stringify(nextStatuses));
+    window.localStorage.setItem(statusStorageKey, JSON.stringify(nextStatuses));
+  }
+
+  function updateCurrentMileage(value: string) {
+    const cleanedValue = value.replace(/[^\d]/g, "");
+
+    setCurrentMileage(cleanedValue);
+    window.localStorage.setItem(mileageStorageKey, cleanedValue);
   }
 
   function markOk(number: number) {
@@ -142,8 +160,6 @@ export default function VehicleChecksPage() {
 
     saveStatus(nextStatuses);
   }
-
- 
 
   function submitMockup() {
     setSubmitted(true);
@@ -177,7 +193,7 @@ export default function VehicleChecksPage() {
             </div>
 
             <Link
-              href="/internal/app-ideas"
+              href="/internal/vehicle-history"
               className="text-sm font-black text-white no-underline"
             >
               Back
@@ -197,29 +213,71 @@ export default function VehicleChecksPage() {
           </h1>
 
           <p className="mt-4 max-w-[720px] text-sm font-bold leading-6 text-[#ffecef] sm:text-base">
-            Select the green tick if the check is OK. Open a category to record
-            or review an issue.
+            Enter the current mileage in kilometres, then select the green tick
+            if the check is OK. Open a category to record or review an issue.
           </p>
 
-         <div className="mt-5 rounded-[24px] bg-white/95 p-2 shadow-sm">
-  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-    {vehicleDetails.map((detail) => (
-      <div
-        key={detail.label}
-        className="rounded-2xl border border-[#ead6dc] bg-[#fff7f8] px-3 py-2"
-      >
-        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#b00020]">
-          {detail.label}
-        </p>
+          <div className="mt-5 rounded-[24px] bg-white/95 p-2 shadow-sm">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+              {vehicleDetails.map((detail) => (
+                <div
+                  key={detail.label}
+                  className={`rounded-2xl border px-3 py-2 ${
+                    detail.label === "Last Mileage"
+                      ? "border-[#f8df8d] bg-[#fff7e6]"
+                      : "border-[#ead6dc] bg-[#fff7f8]"
+                  }`}
+                >
+                  <p
+                    className={`text-[10px] font-black uppercase tracking-[0.16em] ${
+                      detail.label === "Last Mileage"
+                        ? "text-[#92400e]"
+                        : "text-[#b00020]"
+                    }`}
+                  >
+                    {detail.label}
+                  </p>
 
-        <p className="mt-1 text-sm font-black text-[#18243a]">
-          {detail.value}
-        </p>
-      </div>
-    ))}
-  </div>
-</div> 
+                  <p className="mt-1 text-sm font-black text-[#18243a]">
+                    {detail.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
 
+          <div className="mt-4 rounded-[24px] border border-white/25 bg-white/10 p-3">
+            <label
+              htmlFor="current-mileage"
+              className="text-xs font-black uppercase tracking-[0.18em] text-[#ffd9df]"
+            >
+              Current Mileage / KM
+            </label>
+
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <input
+                id="current-mileage"
+                type="text"
+                inputMode="numeric"
+                value={currentMileage}
+                onChange={(event) => updateCurrentMileage(event.target.value)}
+                placeholder="Enter current mileage"
+                className="min-h-[52px] flex-1 rounded-2xl border border-white/30 bg-white px-4 text-lg font-black text-[#18243a] outline-none placeholder:text-[#94a3b8] focus:border-[#ffd9df]"
+              />
+
+              <div className="rounded-2xl border border-white/25 bg-white/10 px-4 py-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#ffd9df]">
+                  Last Use
+                </p>
+                <p className="text-sm font-black text-white">684,218 km</p>
+              </div>
+            </div>
+
+            <p className="mt-2 text-xs font-bold leading-5 text-[#ffecef]">
+              Mockup note: this mileage is saved locally in the browser for the
+              demonstration.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -227,15 +285,11 @@ export default function VehicleChecksPage() {
         <div className="mx-auto max-w-[900px] space-y-3">
           {checks.map((check) => (
             <CheckRow
-  key={check.number}
-  check={check}
-  status={statuses[check.number] || "none"}
-  onMarkOk={() => markOk(check.number)}
-/>
-
-
-
-
+              key={check.number}
+              check={check}
+              status={statuses[check.number] || "none"}
+              onMarkOk={() => markOk(check.number)}
+            />
           ))}
 
           <button
@@ -256,6 +310,11 @@ export default function VehicleChecksPage() {
                 Vehicle checks have been submitted for demonstration purposes
                 only.
               </p>
+
+              <p className="mt-2 text-sm font-black leading-6 text-[#18243a]">
+                Current mileage entered:{" "}
+                {currentMileage ? `${currentMileage} km` : "Not entered"}
+              </p>
             </div>
           )}
         </div>
@@ -273,12 +332,6 @@ function CheckRow({
   status: CheckStatus;
   onMarkOk: () => void;
 }) {
-
-
-
-
-
-
   const statusDisplay = getStatusDisplay(status);
 
   return (
@@ -286,7 +339,6 @@ function CheckRow({
       {check.active ? (
         <Link
           href={check.href}
-          
           className="flex min-h-[82px] items-center gap-4 rounded-[24px] border border-[#d6dce5] bg-white p-4 text-[#111] no-underline shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#b00020] text-lg font-black text-white">
@@ -305,9 +357,9 @@ function CheckRow({
         </Link>
       ) : (
         <button
-  type="button"
-  className="flex min-h-[82px] w-full items-center gap-4 rounded-[24px] border border-[#d6dce5] bg-white p-4 text-left text-[#111] shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
->
+          type="button"
+          className="flex min-h-[82px] w-full items-center gap-4 rounded-[24px] border border-[#d6dce5] bg-white p-4 text-left text-[#111] shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+        >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#b00020] text-lg font-black text-white">
             {check.number}
           </div>
@@ -327,19 +379,15 @@ function CheckRow({
       <button
         type="button"
         onClick={onMarkOk}
-        
-className={`flex min-h-[82px] items-center justify-center rounded-[24px] border text-3xl font-black shadow-sm transition ${
-  status === "ok"
-    ? "border-[#078a3d] bg-[#078a3d] text-white"
-    : status === "vehicleIssue"
-    ? "border-[#f59e0b] bg-[#f59e0b] text-white"
-    : status === "defect"
-    ? "border-[#b00020] bg-[#b00020] text-white"
-    : "border-[#d6dce5] bg-white text-[#94a3b8]"
-}`}
-
-
-
+        className={`flex min-h-[82px] items-center justify-center rounded-[24px] border text-3xl font-black shadow-sm transition ${
+          status === "ok"
+            ? "border-[#078a3d] bg-[#078a3d] text-white"
+            : status === "vehicleIssue"
+            ? "border-[#f59e0b] bg-[#f59e0b] text-white"
+            : status === "defect"
+            ? "border-[#b00020] bg-[#b00020] text-white"
+            : "border-[#d6dce5] bg-white text-[#94a3b8]"
+        }`}
         aria-label={`Mark ${check.title} as OK`}
       >
         {statusDisplay}
