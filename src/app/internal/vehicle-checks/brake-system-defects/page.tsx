@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-type CheckStatus = "none" | "ok" | "defect";
+type CheckStatus = "none" | "ok" | "vehicleIssue" | "defect";
 
 type BrakeCheck = {
   number: number;
@@ -37,36 +38,163 @@ const brakeChecks: BrakeCheck[] = [
   },
 ];
 
+const brakeStatusStorageKey = "hgv-brake-system-defects-status";
+const brakeDescriptionsStorageKey = "hgv-brake-system-defects-descriptions";
+const brakePhotoNamesStorageKey = "hgv-brake-system-defects-photo-names";
+const vehicleCheckStatusStorageKey = "hgv-vehicle-check-status";
+
 export default function BrakeSystemDefectsPage() {
+  const router = useRouter();
+
   const [statuses, setStatuses] = useState<Record<number, CheckStatus>>({});
   const [descriptions, setDescriptions] = useState<Record<number, string>>({});
   const [photoNames, setPhotoNames] = useState<Record<number, string>>({});
 
+  useEffect(() => {
+    const savedStatuses = window.localStorage.getItem(brakeStatusStorageKey);
+    const savedDescriptions = window.localStorage.getItem(
+      brakeDescriptionsStorageKey
+    );
+    const savedPhotoNames = window.localStorage.getItem(
+      brakePhotoNamesStorageKey
+    );
+
+    if (savedStatuses) {
+      setStatuses(JSON.parse(savedStatuses));
+    }
+
+    if (savedDescriptions) {
+      setDescriptions(JSON.parse(savedDescriptions));
+    }
+
+    if (savedPhotoNames) {
+      setPhotoNames(JSON.parse(savedPhotoNames));
+    }
+  }, []);
+
+  function saveStatuses(nextStatuses: Record<number, CheckStatus>) {
+    setStatuses(nextStatuses);
+    window.localStorage.setItem(
+      brakeStatusStorageKey,
+      JSON.stringify(nextStatuses)
+    );
+  }
+
+  function saveDescriptions(nextDescriptions: Record<number, string>) {
+    setDescriptions(nextDescriptions);
+    window.localStorage.setItem(
+      brakeDescriptionsStorageKey,
+      JSON.stringify(nextDescriptions)
+    );
+  }
+
+  function savePhotoNames(nextPhotoNames: Record<number, string>) {
+    setPhotoNames(nextPhotoNames);
+    window.localStorage.setItem(
+      brakePhotoNamesStorageKey,
+      JSON.stringify(nextPhotoNames)
+    );
+  }
+
   function setCheckStatus(number: number, status: CheckStatus) {
-    setStatuses((current) => ({
-      ...current,
+    const nextStatuses: Record<number, CheckStatus> = {
+      ...statuses,
       [number]: status,
-    }));
+    };
+
+    saveStatuses(nextStatuses);
   }
 
   function updateDescription(number: number, value: string) {
-    setDescriptions((current) => ({
-      ...current,
+    const nextDescriptions: Record<number, string> = {
+      ...descriptions,
       [number]: value,
-    }));
+    };
+
+    saveDescriptions(nextDescriptions);
   }
 
   function updatePhotoName(number: number, fileName: string) {
-    setPhotoNames((current) => ({
-      ...current,
+    const nextPhotoNames: Record<number, string> = {
+      ...photoNames,
       [number]: fileName,
-    }));
+    };
+
+    savePhotoNames(nextPhotoNames);
   }
-function resetMockup() {
-  setStatuses({});
-  setDescriptions({});
-  setPhotoNames({});
-}
+
+  function getOverallBrakeStatus() {
+    const currentStatuses = brakeChecks.map(
+      (check) => statuses[check.number] || "none"
+    );
+
+    if (currentStatuses.includes("defect")) {
+      return "defect";
+    }
+
+    if (currentStatuses.includes("vehicleIssue")) {
+      return "vehicleIssue";
+    }
+
+    if (currentStatuses.every((status) => status === "ok")) {
+      return "ok";
+    }
+
+    return "none";
+  }
+
+  function saveAndReturnToVehicleChecks() {
+    const overallBrakeStatus = getOverallBrakeStatus();
+
+    const savedVehicleStatuses = window.localStorage.getItem(
+      vehicleCheckStatusStorageKey
+    );
+
+    const currentVehicleStatuses: Record<number, CheckStatus> =
+      savedVehicleStatuses ? JSON.parse(savedVehicleStatuses) : {};
+
+    const nextVehicleStatuses: Record<number, CheckStatus> = {
+      ...currentVehicleStatuses,
+      1: overallBrakeStatus,
+    };
+
+    window.localStorage.setItem(
+      vehicleCheckStatusStorageKey,
+      JSON.stringify(nextVehicleStatuses)
+    );
+
+    router.push("/internal/vehicle-checks");
+  }
+
+  function resetMockup() {
+    setStatuses({});
+    setDescriptions({});
+    setPhotoNames({});
+
+    window.localStorage.removeItem(brakeStatusStorageKey);
+    window.localStorage.removeItem(brakeDescriptionsStorageKey);
+    window.localStorage.removeItem(brakePhotoNamesStorageKey);
+
+    const savedVehicleStatuses = window.localStorage.getItem(
+      vehicleCheckStatusStorageKey
+    );
+
+    if (savedVehicleStatuses) {
+      const currentVehicleStatuses: Record<number, CheckStatus> =
+        JSON.parse(savedVehicleStatuses);
+
+      const nextVehicleStatuses: Record<number, CheckStatus> = {
+        ...currentVehicleStatuses,
+        1: "none",
+      };
+
+      window.localStorage.setItem(
+        vehicleCheckStatusStorageKey,
+        JSON.stringify(nextVehicleStatuses)
+      );
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#111]">
       <header className="border-b border-white/20 bg-[#b00020] px-4 py-4 text-white sm:px-6 lg:px-10">
@@ -106,39 +234,48 @@ function resetMockup() {
           </h1>
 
           <p className="mt-4 max-w-[720px] text-sm font-bold leading-6 text-[#ffecef] sm:text-base">
-            Select OK if the check is satisfactory. Select Defect to add a
-            description and take a photo.
+            Select OK if the check is satisfactory. Select Vehicle Issue for an
+            amber warning, or Defect for a red safety defect. Vehicle Issue and
+            Defect both allow notes and photo evidence.
           </p>
         </div>
       </section>
 
       <section className="px-4 py-6 sm:px-6 lg:px-10">
-       <div className="mx-auto max-w-[900px] space-y-4">
-  {brakeChecks.map((check) => (
-    <BrakeCheckCard
-      key={check.number}
-      check={check}
-      status={statuses[check.number] || "none"}
-      description={descriptions[check.number] || ""}
-      photoName={photoNames[check.number] || ""}
-      onSetStatus={(status) => setCheckStatus(check.number, status)}
-      onDescriptionChange={(value) =>
-        updateDescription(check.number, value)
-      }
-      onPhotoSelected={(fileName) =>
-        updatePhotoName(check.number, fileName)
-      }
-    />
-  ))}
+        <div className="mx-auto max-w-[900px] space-y-4">
+          {brakeChecks.map((check) => (
+            <BrakeCheckCard
+              key={check.number}
+              check={check}
+              status={statuses[check.number] || "none"}
+              description={descriptions[check.number] || ""}
+              photoName={photoNames[check.number] || ""}
+              onSetStatus={(status) => setCheckStatus(check.number, status)}
+              onDescriptionChange={(value) =>
+                updateDescription(check.number, value)
+              }
+              onPhotoSelected={(fileName) =>
+                updatePhotoName(check.number, fileName)
+              }
+            />
+          ))}
 
-  <button
-    type="button"
-    onClick={resetMockup}
-    className="mt-6 w-full rounded-[24px] bg-[#18243a] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm transition hover:bg-[#b00020]"
-  >
-    MOCKUP Reset
-  </button>
-</div>
+          <button
+            type="button"
+            onClick={saveAndReturnToVehicleChecks}
+            className="mt-6 w-full rounded-[24px] bg-[#b00020] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm transition hover:bg-[#7d0017]"
+          >
+            Save and return to Vehicle Checks
+          </button>
+
+          <button
+            type="button"
+            onClick={resetMockup}
+            className="w-full rounded-[24px] bg-[#18243a] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm transition hover:bg-[#b00020]"
+          >
+            MOCKUP Reset
+          </button>
+        </div>
       </section>
     </main>
   );
@@ -162,6 +299,13 @@ function BrakeCheckCard({
   onPhotoSelected: (fileName: string) => void;
 }) {
   const cameraInputId = `camera-input-${check.number}`;
+  const descriptionInputId = `description-${check.number}`;
+
+  const showEvidencePanel =
+    status === "vehicleIssue" || status === "defect";
+
+  const evidenceTitle =
+    status === "vehicleIssue" ? "Vehicle Issue" : "Defect";
 
   return (
     <section className="rounded-[26px] border border-[#d6dce5] bg-white p-5 shadow-sm">
@@ -180,16 +324,18 @@ function BrakeCheckCard({
           className={`flex h-[74px] items-center justify-center rounded-[22px] border text-4xl font-black ${
             status === "ok"
               ? "border-[#078a3d] bg-[#078a3d] text-white"
+              : status === "vehicleIssue"
+              ? "border-[#f59e0b] bg-[#f59e0b] text-white"
               : status === "defect"
               ? "border-[#b00020] bg-[#b00020] text-white"
               : "border-[#d6dce5] bg-[#f3f5f8] text-[#94a3b8]"
           }`}
         >
-          {status === "ok" ? "✓" : status === "defect" ? "×" : "□"}
+          {getStatusDisplay(status)}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <button
           type="button"
           onClick={() => onSetStatus("ok")}
@@ -200,6 +346,18 @@ function BrakeCheckCard({
           }`}
         >
           OK
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onSetStatus("vehicleIssue")}
+          className={`rounded-2xl px-4 py-3 text-sm font-black ${
+            status === "vehicleIssue"
+              ? "bg-[#f59e0b] text-white"
+              : "bg-[#fef3c7] text-[#92400e]"
+          }`}
+        >
+          Vehicle Issue
         </button>
 
         <button
@@ -215,33 +373,51 @@ function BrakeCheckCard({
         </button>
       </div>
 
-      {status === "defect" && (
+      {showEvidencePanel && (
         <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_220px]">
           <div className="rounded-2xl bg-[#f3f5f8] p-4">
             <label
-              htmlFor={`description-${check.number}`}
-              className="text-xs font-black uppercase tracking-[0.16em] text-[#b00020]"
+              htmlFor={descriptionInputId}
+              className={`text-xs font-black uppercase tracking-[0.16em] ${
+                status === "vehicleIssue"
+                  ? "text-[#92400e]"
+                  : "text-[#b00020]"
+              }`}
             >
-              Defect description
+              {evidenceTitle} description
             </label>
 
             <textarea
-              id={`description-${check.number}`}
+              id={descriptionInputId}
               value={description}
               onChange={(event) => onDescriptionChange(event.target.value)}
-              placeholder="Type defect details here..."
-              className="mt-3 min-h-[120px] w-full resize-none rounded-2xl border border-[#d6dce5] bg-white p-4 text-sm font-bold leading-6 text-[#18243a] outline-none focus:border-[#b00020]"
+              placeholder={`Type ${evidenceTitle.toLowerCase()} details here...`}
+              className={`mt-3 min-h-[120px] w-full resize-none rounded-2xl border bg-white p-4 text-sm font-bold leading-6 text-[#18243a] outline-none ${
+                status === "vehicleIssue"
+                  ? "border-[#f59e0b] focus:border-[#92400e]"
+                  : "border-[#d6dce5] focus:border-[#b00020]"
+              }`}
             />
           </div>
 
           <div className="rounded-2xl bg-[#f3f5f8] p-4">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#b00020]">
+            <p
+              className={`text-xs font-black uppercase tracking-[0.16em] ${
+                status === "vehicleIssue"
+                  ? "text-[#92400e]"
+                  : "text-[#b00020]"
+              }`}
+            >
               Photo evidence
             </p>
 
             <label
               htmlFor={cameraInputId}
-              className="mt-3 flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#b00020] bg-white p-4 text-center text-[#b00020]"
+              className={`mt-3 flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-white p-4 text-center ${
+                status === "vehicleIssue"
+                  ? "border-[#f59e0b] text-[#92400e]"
+                  : "border-[#b00020] text-[#b00020]"
+              }`}
             >
               <span className="text-3xl font-black">📷</span>
               <span className="mt-2 text-sm font-black">Open Camera</span>
@@ -275,4 +451,20 @@ function BrakeCheckCard({
       )}
     </section>
   );
+}
+
+function getStatusDisplay(status: CheckStatus) {
+  if (status === "ok") {
+    return "✓";
+  }
+
+  if (status === "vehicleIssue") {
+    return "?";
+  }
+
+  if (status === "defect") {
+    return "×";
+  }
+
+  return "□";
 }
