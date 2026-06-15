@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-type CheckStatus = "none" | "ok" | "issue";
+type CheckStatus = "none" | "ok" | "vehicleIssue" | "defect";
 
 type VehicleCheck = {
   number: number;
@@ -144,13 +144,13 @@ export default function VehicleChecksPage() {
   }
 
   function markOpened(number: number) {
-    const nextStatuses: Record<number, CheckStatus> = {
-      ...statuses,
-      [number]: "issue",
-    };
+  const nextStatuses: Record<number, CheckStatus> = {
+    ...statuses,
+    [number]: "defect",
+  };
 
-    saveStatus(nextStatuses);
-  }
+  saveStatus(nextStatuses);
+}
 
   function submitMockup() {
     setSubmitted(true);
@@ -286,7 +286,7 @@ function CheckRow({
       {check.active ? (
         <Link
           href={check.href}
-          onClick={onOpen}
+          
           className="flex min-h-[82px] items-center gap-4 rounded-[24px] border border-[#d6dce5] bg-white p-4 text-[#111] no-underline shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#b00020] text-lg font-black text-white">
@@ -328,13 +328,19 @@ function CheckRow({
       <button
         type="button"
         onClick={onMarkOk}
-        className={`flex min-h-[82px] items-center justify-center rounded-[24px] border text-3xl font-black shadow-sm transition ${
-          status === "ok"
-            ? "border-[#078a3d] bg-[#078a3d] text-white"
-            : status === "issue"
-            ? "border-[#b00020] bg-[#b00020] text-white"
-            : "border-[#d6dce5] bg-white text-[#94a3b8]"
-        }`}
+        
+className={`flex min-h-[82px] items-center justify-center rounded-[24px] border text-3xl font-black shadow-sm transition ${
+  status === "ok"
+    ? "border-[#078a3d] bg-[#078a3d] text-white"
+    : status === "vehicleIssue"
+    ? "border-[#f59e0b] bg-[#f59e0b] text-white"
+    : status === "defect"
+    ? "border-[#b00020] bg-[#b00020] text-white"
+    : "border-[#d6dce5] bg-white text-[#94a3b8]"
+}`}
+
+
+
         aria-label={`Mark ${check.title} as OK`}
       >
         {statusDisplay}
@@ -348,7 +354,11 @@ function getStatusDisplay(status: CheckStatus) {
     return "✓";
   }
 
-  if (status === "issue") {
+  if (status === "vehicleIssue") {
+    return "?";
+  }
+
+  if (status === "defect") {
     return "×";
   }
 
