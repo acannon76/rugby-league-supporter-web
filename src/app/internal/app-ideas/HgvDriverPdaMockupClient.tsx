@@ -27,7 +27,7 @@ const appButtons: AppButton[] = [
   {
     title: "Vehicle Checks",
     text: "Daily checks and defect reporting.",
-    href: "/internal/vehicle-checks",
+    href: "/internal/vehicle-history",
     icon: "✓",
   },
   {
