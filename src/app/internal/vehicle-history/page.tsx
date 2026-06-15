@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { startVehicleCheckTimer } from "../vehicle-checks/VehicleCheckTimer";
 
 type VehicleDetail = {
   label: string;
@@ -315,11 +316,12 @@ const combinedHistoryItems = [...extraHistoryItems, ...historyItems];
 
           <div className="flex justify-end">
             <Link
-              href="/internal/vehicle-checks"
-              className="inline-flex w-full items-center justify-center rounded-[24px] bg-[#b00020] px-6 py-5 text-sm font-black uppercase tracking-[0.16em] text-white no-underline shadow-sm transition hover:bg-[#7d0017] sm:w-auto"
-            >
-              Continue to Vehicle Checks
-            </Link>
+  href="/internal/vehicle-checks"
+  onClick={startVehicleCheckTimer}
+  className="inline-flex w-full items-center justify-center rounded-[24px] bg-[#b00020] px-6 py-5 text-sm font-black uppercase tracking-[0.16em] text-white no-underline shadow-sm transition hover:bg-[#7d0017] sm:w-auto"
+>
+  Continue to Vehicle Checks
+</Link>
           </div>
         </div>
       </section>

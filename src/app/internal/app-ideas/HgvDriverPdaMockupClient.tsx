@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { resetVehicleCheckMockup } from "../vehicle-checks/VehicleCheckTimer";
 
 type AppButton = {
   title: string;
@@ -9,15 +10,16 @@ type AppButton = {
   href?: string;
   icon: string;
   isMessaging?: boolean;
+  isNavigation?: boolean;
 };
 
 const appButtons: AppButton[] = [
   {
-    title: "Navigation",
-    text: "Route guidance and journey information.",
-    href: "#",
-    icon: "➤",
-  },
+  title: "Navigation",
+  text: "Route guidance and journey information. Mock reset for vehicle check journey.",
+  icon: "➤",
+  isNavigation: true,
+},
   {
     title: "Driving Style",
     text: "Driving behaviour and safety indicators.",
@@ -119,22 +121,33 @@ export default function HgvDriverPdaMockupClient() {
         <div className="mx-auto max-w-[1180px]">
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:auto-rows-[340px]">
             {appButtons.map((button) => (
-              <ActionCard
-                key={button.title}
-                title={button.title}
-                text={
-                  button.isMessaging && messageReceived
-                    ? "New message received. Tap to clear mock notification."
-                    : button.text
-                }
-                href={button.href}
-                icon={button.icon}
-                isMessaging={button.isMessaging}
-                messageReceived={button.isMessaging ? messageReceived : false}
-                onMessagingClick={() =>
-                  setMessageReceived((currentValue) => !currentValue)
-                }
-              />
+              
+<ActionCard
+  key={button.title}
+  title={button.title}
+  text={
+    button.isMessaging && messageReceived
+      ? "New message received. Tap to clear mock notification."
+      : button.text
+  }
+  href={button.href}
+  icon={button.icon}
+  isMessaging={button.isMessaging}
+  isNavigation={button.isNavigation}
+  messageReceived={button.isMessaging ? messageReceived : false}
+  onMessagingClick={() =>
+    setMessageReceived((currentValue) => !currentValue)
+  }
+  onNavigationClick={() => {
+    resetVehicleCheckMockup();
+    window.location.href = "/internal/app-ideas";
+  }}
+/>
+
+
+
+
+
             ))}
           </section>
         </div>
@@ -149,17 +162,26 @@ function ActionCard({
   href,
   icon,
   isMessaging = false,
+  isNavigation = false,
   messageReceived = false,
   onMessagingClick,
+  onNavigationClick,
 }: {
   title: string;
   text: string;
   href?: string;
   icon: string;
   isMessaging?: boolean;
+  isNavigation?: boolean;
   messageReceived?: boolean;
   onMessagingClick?: () => void;
+  onNavigationClick?: () => void;
 }) {
+
+
+
+
+
   const cardClasses = `
     group flex h-[300px] w-full flex-col rounded-[32px] border p-6 text-[#111]
     no-underline shadow-sm transition hover:shadow-lg
@@ -190,7 +212,27 @@ function ActionCard({
     mt-auto flex items-center gap-2 pt-6 text-xs font-black uppercase tracking-widest
     ${messageReceived ? "text-[#15803d]" : "text-[#b00020]"}
   `;
+if (isNavigation) {
+  return (
+    <button
+      type="button"
+      onClick={onNavigationClick}
+      className={`${cardClasses} text-left`}
+    >
+      <div className={iconClasses}>{icon}</div>
 
+      <h2 className={titleClasses}>{title}</h2>
+
+      <p className="mt-3 text-sm font-bold leading-6 text-[#64748b]">
+        {text}
+      </p>
+
+      <div className={actionTextClasses}>
+        Reset mock journey <span className="transition group-hover:translate-x-1">→</span>
+      </div>
+    </button>
+  );
+}
   if (isMessaging) {
     return (
       <button

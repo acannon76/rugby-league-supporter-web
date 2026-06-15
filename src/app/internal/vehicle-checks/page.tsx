@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import VehicleCheckTimer from "./VehicleCheckTimer";
 
 type CheckStatus = "none" | "ok" | "vehicleIssue" | "defect";
 
@@ -159,14 +160,22 @@ export default function VehicleChecksPage() {
               HGV
             </div>
 
-            <div>
-              <p className="text-lg font-black leading-none text-white">
-                Vehicle Checks
-              </p>
-              <p className="text-sm font-black leading-none text-[#ffd9df]">
-                Driver PDA Concept
-              </p>
-            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+  <div>
+    <p className="text-lg font-black leading-none text-white">
+      Vehicle Checks
+    </p>
+    <p className="text-sm font-black leading-none text-[#ffd9df]">
+      Driver PDA Concept
+    </p>
+  </div>
+
+  <VehicleCheckTimer />
+</div>
+
+
+
+
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
