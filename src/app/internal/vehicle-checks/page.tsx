@@ -20,38 +20,14 @@ type VehicleDetail = {
 const driverName = "Andrew Cannon";
 
 const vehicleDetails: VehicleDetail[] = [
-  {
-    label: "Registration",
-    value: "PE68UHD",
-  },
-  {
-    label: "Last Mileage",
-    value: "684,218 km",
-  },
-  {
-    label: "Weight",
-    value: "41T",
-  },
-  {
-    label: "Axle",
-    value: "6x2",
-  },
-  {
-    label: "Asset",
-    value: "23301273",
-  },
-  {
-    label: "Fuel",
-    value: "Diesel",
-  },
-  {
-    label: "Trailer",
-    value: "7338014",
-  },
-  {
-    label: "Type",
-    value: "DD95",
-  },
+  { label: "Registration", value: "PE68UHD" },
+  { label: "Last Mileage", value: "684,218 km" },
+  { label: "Weight", value: "41T" },
+  { label: "Axle", value: "6x2" },
+  { label: "Asset", value: "23301273" },
+  { label: "Fuel", value: "Diesel" },
+  { label: "Trailer", value: "7338014" },
+  { label: "Type", value: "DD95" },
 ];
 
 const checks: VehicleCheck[] = [
@@ -123,7 +99,6 @@ const mileageStorageKey = "hgv-current-mileage-km";
 export default function VehicleChecksPage() {
   const [statuses, setStatuses] = useState<Record<number, CheckStatus>>({});
   const [currentMileage, setCurrentMileage] = useState("");
-  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     const savedStatuses = window.localStorage.getItem(statusStorageKey);
@@ -161,8 +136,18 @@ export default function VehicleChecksPage() {
     saveStatus(nextStatuses);
   }
 
-  function submitMockup() {
-    setSubmitted(true);
+  const completedCategoryCount = checks.filter(
+    (check) => (statuses[check.number] || "none") !== "none"
+  ).length;
+
+  const allCategoriesComplete = completedCategoryCount === checks.length;
+
+  function continueToSummary() {
+    if (!allCategoriesComplete) {
+      return;
+    }
+
+    window.location.href = "/internal/vehicle-checks/summary";
   }
 
   return (
@@ -213,8 +198,8 @@ export default function VehicleChecksPage() {
           </h1>
 
           <p className="mt-4 max-w-[720px] text-sm font-bold leading-6 text-[#ffecef] sm:text-base">
-            Enter the current mileage in kilometres, then select the green tick
-            if the check is OK. Open a category to record or review an issue.
+            Enter the current mileage in kilometres. All 10 categories must be
+            completed before the final summary can be submitted.
           </p>
 
           <div className="mt-5 rounded-[24px] bg-white/95 p-2 shadow-sm">
@@ -272,11 +257,22 @@ export default function VehicleChecksPage() {
                 <p className="text-sm font-black text-white">684,218 km</p>
               </div>
             </div>
+          </div>
 
-            <p className="mt-2 text-xs font-bold leading-5 text-[#ffecef]">
-              Mockup note: this mileage is saved locally in the browser for the
-              demonstration.
+          <div className="mt-4 rounded-[20px] border border-white/25 bg-white/10 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ffd9df]">
+              Completion Progress
             </p>
+
+            <p className="mt-1 text-lg font-black text-white">
+              {completedCategoryCount} of {checks.length} categories completed
+            </p>
+
+            {!allCategoriesComplete && (
+              <p className="mt-1 text-sm font-bold text-[#ffecef]">
+                Complete all categories before continuing to the summary.
+              </p>
+            )}
           </div>
         </div>
       </section>
@@ -294,29 +290,18 @@ export default function VehicleChecksPage() {
 
           <button
             type="button"
-            onClick={submitMockup}
-            className="mt-6 w-full rounded-[24px] bg-[#b00020] px-5 py-5 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm transition hover:bg-[#7d0017]"
+            onClick={continueToSummary}
+            disabled={!allCategoriesComplete}
+            className={`mt-6 w-full rounded-[24px] px-5 py-5 text-sm font-black uppercase tracking-[0.16em] shadow-sm transition ${
+              allCategoriesComplete
+                ? "bg-[#b00020] text-white hover:bg-[#7d0017]"
+                : "cursor-not-allowed bg-[#cbd5e1] text-[#64748b]"
+            }`}
           >
-            MOCKUP Submit Vehicle Checks
+            {allCategoriesComplete
+              ? "Continue to Vehicle Check Summary"
+              : `Complete all categories first ${completedCategoryCount}/${checks.length}`}
           </button>
-
-          {submitted && (
-            <div className="rounded-[24px] border border-[#078a3d] bg-[#e8f7ee] p-5 text-center">
-              <p className="text-sm font-black uppercase tracking-[0.16em] text-[#078a3d]">
-                Mockup Submitted
-              </p>
-
-              <p className="mt-2 text-sm font-bold leading-6 text-[#18243a]">
-                Vehicle checks have been submitted for demonstration purposes
-                only.
-              </p>
-
-              <p className="mt-2 text-sm font-black leading-6 text-[#18243a]">
-                Current mileage entered:{" "}
-                {currentMileage ? `${currentMileage} km` : "Not entered"}
-              </p>
-            </div>
-          )}
         </div>
       </section>
     </main>

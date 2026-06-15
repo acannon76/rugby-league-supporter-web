@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 type VehicleDetail = {
   label: string;
@@ -101,6 +102,20 @@ const historyItems: HistoryItem[] = [
 ];
 
 export default function VehicleHistoryPage() {
+  const [extraHistoryItems, setExtraHistoryItems] = useState<HistoryItem[]>([]);
+
+  useEffect(() => {
+    const savedExtraHistory = window.localStorage.getItem(
+      "hgv-mock-vehicle-history-extra"
+    );
+
+    if (savedExtraHistory) {
+      setExtraHistoryItems(JSON.parse(savedExtraHistory));
+    }
+  }, []);
+
+  const combinedHistoryItems = [...extraHistoryItems, ...historyItems];
+
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#111]">
       <header className="border-b border-white/20 bg-[#b00020] px-4 py-4 text-white sm:px-6 lg:px-10">
@@ -249,9 +264,9 @@ export default function VehicleHistoryPage() {
             </div>
 
             <div className="space-y-4">
-              {historyItems.map((item) => (
-                <HistoryCard key={item.pmt} item={item} />
-              ))}
+              {combinedHistoryItems.map((item, index) => (
+  <HistoryCard key={`${item.pmt}-${index}`} item={item} />
+))}
             </div>
           </section>
 
