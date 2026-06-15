@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type CheckStatus = "none" | "ok" | "vehicleIssue" | "defect";
@@ -44,8 +43,6 @@ const brakePhotoNamesStorageKey = "hgv-brake-system-defects-photo-names";
 const vehicleCheckStatusStorageKey = "hgv-vehicle-check-status";
 
 export default function BrakeSystemDefectsPage() {
-  const router = useRouter();
-
   const [statuses, setStatuses] = useState<Record<number, CheckStatus>>({});
   const [descriptions, setDescriptions] = useState<Record<number, string>>({});
   const [photoNames, setPhotoNames] = useState<Record<number, string>>({});
@@ -123,7 +120,7 @@ export default function BrakeSystemDefectsPage() {
     savePhotoNames(nextPhotoNames);
   }
 
-  function getOverallBrakeStatus() {
+  function getOverallBrakeStatus(): CheckStatus {
     const currentStatuses = brakeChecks.map(
       (check) => statuses[check.number] || "none"
     );
@@ -163,7 +160,7 @@ export default function BrakeSystemDefectsPage() {
       JSON.stringify(nextVehicleStatuses)
     );
 
-    router.push("/internal/vehicle-checks");
+    window.location.href = "/internal/vehicle-checks";
   }
 
   function resetMockup() {
@@ -301,8 +298,7 @@ function BrakeCheckCard({
   const cameraInputId = `camera-input-${check.number}`;
   const descriptionInputId = `description-${check.number}`;
 
-  const showEvidencePanel =
-    status === "vehicleIssue" || status === "defect";
+  const showEvidencePanel = status === "vehicleIssue" || status === "defect";
 
   const evidenceTitle =
     status === "vehicleIssue" ? "Vehicle Issue" : "Defect";

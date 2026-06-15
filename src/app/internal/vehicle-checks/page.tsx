@@ -143,14 +143,7 @@ export default function VehicleChecksPage() {
     saveStatus(nextStatuses);
   }
 
-  function markOpened(number: number) {
-  const nextStatuses: Record<number, CheckStatus> = {
-    ...statuses,
-    [number]: "defect",
-  };
-
-  saveStatus(nextStatuses);
-}
+ 
 
   function submitMockup() {
     setSubmitted(true);
@@ -234,12 +227,15 @@ export default function VehicleChecksPage() {
         <div className="mx-auto max-w-[900px] space-y-3">
           {checks.map((check) => (
             <CheckRow
-              key={check.number}
-              check={check}
-              status={statuses[check.number] || "none"}
-              onMarkOk={() => markOk(check.number)}
-              onOpen={() => markOpened(check.number)}
-            />
+  key={check.number}
+  check={check}
+  status={statuses[check.number] || "none"}
+  onMarkOk={() => markOk(check.number)}
+/>
+
+
+
+
           ))}
 
           <button
@@ -272,13 +268,17 @@ function CheckRow({
   check,
   status,
   onMarkOk,
-  onOpen,
 }: {
   check: VehicleCheck;
   status: CheckStatus;
   onMarkOk: () => void;
-  onOpen: () => void;
 }) {
+
+
+
+
+
+
   const statusDisplay = getStatusDisplay(status);
 
   return (
@@ -305,10 +305,9 @@ function CheckRow({
         </Link>
       ) : (
         <button
-          type="button"
-          onClick={onOpen}
-          className="flex min-h-[82px] w-full items-center gap-4 rounded-[24px] border border-[#d6dce5] bg-white p-4 text-left text-[#111] shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-        >
+  type="button"
+  className="flex min-h-[82px] w-full items-center gap-4 rounded-[24px] border border-[#d6dce5] bg-white p-4 text-left text-[#111] shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+>
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#b00020] text-lg font-black text-white">
             {check.number}
           </div>
