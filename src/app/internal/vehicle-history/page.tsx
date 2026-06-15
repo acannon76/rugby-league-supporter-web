@@ -102,19 +102,31 @@ const historyItems: HistoryItem[] = [
 ];
 
 export default function VehicleHistoryPage() {
-  const [extraHistoryItems, setExtraHistoryItems] = useState<HistoryItem[]>([]);
+ const [extraHistoryItems, setExtraHistoryItems] = useState<HistoryItem[]>([]);
 
-  useEffect(() => {
-    const savedExtraHistory = window.localStorage.getItem(
-      "hgv-mock-vehicle-history-extra"
-    );
+useEffect(() => {
+  const savedExtraHistory = window.localStorage.getItem(
+    "hgv-mock-vehicle-history-extra"
+  );
 
-    if (savedExtraHistory) {
-      setExtraHistoryItems(JSON.parse(savedExtraHistory));
-    }
-  }, []);
+  if (savedExtraHistory) {
+    setExtraHistoryItems(JSON.parse(savedExtraHistory));
+  }
+}, []);
 
-  const combinedHistoryItems = [...extraHistoryItems, ...historyItems];
+function clearAddedMockHistory() {
+  window.localStorage.removeItem("hgv-mock-vehicle-history-extra");
+  setExtraHistoryItems([]);
+}
+
+const combinedHistoryItems = [...extraHistoryItems, ...historyItems];
+
+
+
+
+
+
+
 
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#111]">
@@ -248,22 +260,53 @@ export default function VehicleHistoryPage() {
           </section>
 
           <section className="rounded-[28px] border border-[#d6dce5] bg-white p-5 shadow-sm sm:p-6">
-            <div className="mb-5">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b00020]">
-                Previous records
-              </p>
+  <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div>
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b00020]">
+        Previous records
+      </p>
 
-              <h2 className="mt-2 text-2xl font-black text-[#18243a] sm:text-3xl">
-                Past vehicle history
-              </h2>
+      <h2 className="mt-2 text-2xl font-black text-[#18243a] sm:text-3xl">
+        Past vehicle history
+      </h2>
 
-              <p className="mt-2 text-sm font-bold leading-6 text-[#64748b]">
-                Fictitious mock entries showing previously raised PMTs for the
-                vehicle, including the mileage when each issue was reported.
-              </p>
-            </div>
+      <p className="mt-2 text-sm font-bold leading-6 text-[#64748b]">
+        Fictitious mock entries showing previously raised PMTs for the
+        vehicle, including the mileage when each issue was reported.
+      </p>
+    </div>
 
-            <div className="space-y-4">
+    {extraHistoryItems.length > 0 && (
+      <button
+        type="button"
+        onClick={clearAddedMockHistory}
+        className="rounded-[18px] bg-[#18243a] px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-white shadow-sm transition hover:bg-[#b00020]"
+      >
+        MOCKUP Clear Added History
+      </button>
+    )}
+  </div>
+
+  {extraHistoryItems.length > 0 && (
+    <div className="mb-4 rounded-[20px] border border-[#f8df8d] bg-[#fff7e6] p-4">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-[#92400e]">
+        Mockup added history
+      </p>
+      <p className="mt-1 text-sm font-bold leading-6 text-[#18243a]">
+        {extraHistoryItems.length} temporary item
+        {extraHistoryItems.length === 1 ? "" : "s"} added from submitted vehicle
+        checks. Use the clear button to reset the mock history back to the
+        original examples.
+      </p>
+    </div>
+  )}
+
+  <div className="space-y-4">
+
+
+
+
+
               {combinedHistoryItems.map((item, index) => (
   <HistoryCard key={`${item.pmt}-${index}`} item={item} />
 ))}
