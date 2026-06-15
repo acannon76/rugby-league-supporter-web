@@ -208,21 +208,25 @@ export default function VehicleChecksPage() {
             or review an issue.
           </p>
 
-          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-            {vehicleDetails.map((detail) => (
-              <div
-                key={detail.label}
-                className="rounded-2xl border border-white/25 bg-white/10 px-3 py-2"
-              >
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#ffd9df]">
-                  {detail.label}
-                </p>
-                <p className="mt-1 text-sm font-black text-white">
-                  {detail.value}
-                </p>
-              </div>
-            ))}
-          </div>
+         <div className="mt-5 rounded-[24px] bg-white/95 p-2 shadow-sm">
+  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+    {vehicleDetails.map((detail) => (
+      <div
+        key={detail.label}
+        className="rounded-2xl border border-[#ead6dc] bg-[#fff7f8] px-3 py-2"
+      >
+        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#b00020]">
+          {detail.label}
+        </p>
+
+        <p className="mt-1 text-sm font-black text-[#18243a]">
+          {detail.value}
+        </p>
+      </div>
+    ))}
+  </div>
+</div> 
+
         </div>
       </section>
 
