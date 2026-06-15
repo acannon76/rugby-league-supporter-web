@@ -12,6 +12,40 @@ type VehicleCheck = {
   active: boolean;
 };
 
+type VehicleDetail = {
+  label: string;
+  value: string;
+};
+
+const driverName = "Andrew Cannon";
+
+const vehicleDetails: VehicleDetail[] = [
+  {
+    label: "Registration",
+    value: "PE68UHD",
+  },
+  {
+    label: "Weight",
+    value: "41T",
+  },
+  {
+    label: "Axle",
+    value: "4x2",
+  },
+  {
+    label: "Asset",
+    value: "23301273",
+  },
+  {
+    label: "Trailer",
+    value: "7338014",
+  },
+  {
+    label: "Type",
+    value: "DD95",
+  },
+];
+
 const checks: VehicleCheck[] = [
   {
     number: 1,
@@ -98,28 +132,30 @@ export default function VehicleChecksPage() {
     const currentStatus = statuses[number] || "none";
 
     const nextStatuses: Record<number, CheckStatus> = {
-  ...statuses,
-  [number]: currentStatus === "ok" ? "none" : "ok",
-};
+      ...statuses,
+      [number]: currentStatus === "ok" ? "none" : "ok",
+    };
 
     saveStatus(nextStatuses);
   }
 
   function markOpened(number: number) {
     const nextStatuses: Record<number, CheckStatus> = {
-  ...statuses,
-  [number]: "issue",
-};
+      ...statuses,
+      [number]: "issue",
+    };
 
     saveStatus(nextStatuses);
   }
-function submitMockup() {
-  setSubmitted(true);
-}
+
+  function submitMockup() {
+    setSubmitted(true);
+  }
+
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#111]">
       <header className="border-b border-white/20 bg-[#b00020] px-4 py-4 text-white sm:px-6 lg:px-10">
-        <div className="mx-auto flex max-w-[900px] items-center justify-between gap-5">
+        <div className="mx-auto flex max-w-[900px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-white bg-[#7d0017] text-lg font-black text-white">
               HGV
@@ -135,16 +171,25 @@ function submitMockup() {
             </div>
           </div>
 
-          <Link
-            href="/internal/app-ideas"
-            className="text-sm font-black text-white no-underline"
-          >
-            Back
-          </Link>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="rounded-2xl border border-white/30 bg-white/10 px-4 py-2">
+              <p className="text-xs font-black uppercase tracking-widest text-[#ffd9df]">
+                Driver
+              </p>
+              <p className="text-base font-black text-white">{driverName}</p>
+            </div>
+
+            <Link
+              href="/internal/app-ideas"
+              className="text-sm font-black text-white no-underline"
+            >
+              Back
+            </Link>
+          </div>
         </div>
       </header>
 
-      <section className="bg-[#b00020] px-4 py-7 text-white sm:px-6 lg:px-10">
+      <section className="bg-[#b00020] px-4 py-6 text-white sm:px-6 lg:px-10">
         <div className="mx-auto max-w-[900px]">
           <p className="mb-3 text-xs font-black uppercase tracking-[0.22em] text-[#ffd9df]">
             Driver daily check
@@ -158,42 +203,59 @@ function submitMockup() {
             Select the green tick if the check is OK. Open a category to record
             or review an issue.
           </p>
+
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {vehicleDetails.map((detail) => (
+              <div
+                key={detail.label}
+                className="rounded-2xl border border-white/25 bg-white/10 px-3 py-2"
+              >
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#ffd9df]">
+                  {detail.label}
+                </p>
+                <p className="mt-1 text-sm font-black text-white">
+                  {detail.value}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       <section className="px-4 py-6 sm:px-6 lg:px-10">
-  <div className="mx-auto max-w-[900px] space-y-3">
-    {checks.map((check) => (
-      <CheckRow
-        key={check.number}
-        check={check}
-        status={statuses[check.number] || "none"}
-        onMarkOk={() => markOk(check.number)}
-        onOpen={() => markOpened(check.number)}
-      />
-    ))}
+        <div className="mx-auto max-w-[900px] space-y-3">
+          {checks.map((check) => (
+            <CheckRow
+              key={check.number}
+              check={check}
+              status={statuses[check.number] || "none"}
+              onMarkOk={() => markOk(check.number)}
+              onOpen={() => markOpened(check.number)}
+            />
+          ))}
 
-    <button
-      type="button"
-      onClick={submitMockup}
-      className="mt-6 w-full rounded-[24px] bg-[#b00020] px-5 py-5 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm transition hover:bg-[#7d0017]"
-    >
-      MOCKUP Submit Vehicle Checks
-    </button>
+          <button
+            type="button"
+            onClick={submitMockup}
+            className="mt-6 w-full rounded-[24px] bg-[#b00020] px-5 py-5 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm transition hover:bg-[#7d0017]"
+          >
+            MOCKUP Submit Vehicle Checks
+          </button>
 
-    {submitted && (
-      <div className="rounded-[24px] border border-[#078a3d] bg-[#e8f7ee] p-5 text-center">
-        <p className="text-sm font-black uppercase tracking-[0.16em] text-[#078a3d]">
-          Mockup Submitted
-        </p>
+          {submitted && (
+            <div className="rounded-[24px] border border-[#078a3d] bg-[#e8f7ee] p-5 text-center">
+              <p className="text-sm font-black uppercase tracking-[0.16em] text-[#078a3d]">
+                Mockup Submitted
+              </p>
 
-        <p className="mt-2 text-sm font-bold leading-6 text-[#18243a]">
-          Vehicle checks have been submitted for demonstration purposes only.
-        </p>
-      </div>
-    )}
-  </div>
-</section>
+              <p className="mt-2 text-sm font-bold leading-6 text-[#18243a]">
+                Vehicle checks have been submitted for demonstration purposes
+                only.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
     </main>
   );
 }
