@@ -13,36 +13,20 @@ type DutyLeg = {
   to: string;
 };
 
-const dutyLegs: DutyLeg[] = [
-  {
-    number: 1,
-    etd: "13:00",
-    eta: "15:35",
-    from: "NORTH WEST HUB",
-    to: "CARLISLE LD",
-  },
-  {
-    number: 2,
-    etd: "16:35",
-    eta: "18:10",
-    from: "CARLISLE LD",
-    to: "PRESTON MC",
-  },
-  {
-    number: 3,
-    etd: "18:25",
-    eta: "19:20",
-    from: "PRESTON MC",
-    to: "NORTH WEST HUB",
-  },
-];
+const dutyLeg: DutyLeg = {
+  number: 1,
+  etd: "20:00",
+  eta: "06:00",
+  from: "NORTH WEST HUB",
+  to: "NORTH WEST HUB",
+};
 
 const originTaskButtons = [
   "Empty",
   "Repat / Pre-Loaded",
   "Load",
   "Skip Leg",
-  "Flex Duty",
+  "Flex / As Directed",
 ];
 
 export default function HaulierAppMockupClient() {
@@ -50,23 +34,11 @@ export default function HaulierAppMockupClient() {
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [vehicleInput, setVehicleInput] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
-  const [legStatuses, setLegStatuses] = useState<Record<number, LegStatus>>({
-    1: "To do",
-    2: "To do",
-    3: "To do",
-  });
+  const [legStatus, setLegStatus] = useState<LegStatus>("To do");
 
   const todayText = useMemo(() => getTodayDateText(), []);
 
-  function openLeg(legNumber: number) {
-    if (legNumber !== 1) {
-      return;
-    }
-
-    if (legStatuses[1] === "Completed") {
-      return;
-    }
-
+  function openLegOne() {
     setShowVehicleModal(true);
   }
 
@@ -81,10 +53,7 @@ export default function HaulierAppMockupClient() {
     }
 
     setVehicleNumber(vehicleInput.trim());
-    setLegStatuses((current) => ({
-      ...current,
-      1: "In Progress",
-    }));
+    setLegStatus("To do");
     setShowVehicleModal(false);
     setScreenView("origin-tasks");
   }
@@ -94,11 +63,7 @@ export default function HaulierAppMockupClient() {
     setShowVehicleModal(false);
     setVehicleInput("");
     setVehicleNumber("");
-    setLegStatuses({
-      1: "To do",
-      2: "To do",
-      3: "To do",
-    });
+    setLegStatus("To do");
   }
 
   return (
@@ -109,15 +74,15 @@ export default function HaulierAppMockupClient() {
         {screenView === "duty-details" ? (
           <DutyDetailsScreen
             todayText={todayText}
-            legStatuses={legStatuses}
-            onOpenLeg={openLeg}
+            legStatus={legStatus}
+            onOpenLeg={openLegOne}
             onReset={resetMockup}
           />
         ) : (
           <OriginTasksScreen
             todayText={todayText}
             vehicleNumber={vehicleNumber}
-            legStatus={legStatuses[1]}
+            legStatus={legStatus}
             onBack={() => setScreenView("duty-details")}
             onReset={resetMockup}
           />
@@ -188,13 +153,13 @@ function AppHeader({
 
 function DutyDetailsScreen({
   todayText,
-  legStatuses,
+  legStatus,
   onOpenLeg,
   onReset,
 }: {
   todayText: string;
-  legStatuses: Record<number, LegStatus>;
-  onOpenLeg: (legNumber: number) => void;
+  legStatus: LegStatus;
+  onOpenLeg: () => void;
   onReset: () => void;
 }) {
   return (
@@ -220,16 +185,8 @@ function DutyDetailsScreen({
 
         <p className="mt-8 text-xl font-bold text-[#333]">{todayText}</p>
 
-        <div className="mt-4 space-y-4">
-          {dutyLegs.map((leg) => (
-            <LegCard
-              key={leg.number}
-              leg={leg}
-              status={legStatuses[leg.number] || "To do"}
-              disabled={leg.number !== 1}
-              onClick={() => onOpenLeg(leg.number)}
-            />
-          ))}
+        <div className="mt-4">
+          <LegCard leg={dutyLeg} status={legStatus} onClick={onOpenLeg} />
         </div>
 
         <button
@@ -247,24 +204,17 @@ function DutyDetailsScreen({
 function LegCard({
   leg,
   status,
-  disabled,
   onClick,
 }: {
   leg: DutyLeg;
   status: LegStatus;
-  disabled: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
-      className={`w-full rounded-[18px] border p-4 text-left shadow-sm transition ${
-        disabled
-          ? "border-transparent bg-[#f0f0f0] opacity-60"
-          : "border-[#d0d0d0] bg-white hover:-translate-y-1 hover:shadow-md"
-      }`}
+      className="w-full rounded-[18px] border border-[#d0d0d0] bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md"
     >
       <div className="mb-5 flex items-center justify-between">
         <p className="text-lg font-black text-[#444]">Leg {leg.number}</p>
@@ -290,12 +240,6 @@ function LegCard({
           {leg.to}
         </p>
       </div>
-
-      {disabled && (
-        <p className="mt-4 text-xs font-black uppercase tracking-[0.12em] text-[#999]">
-          Complete previous leg first
-        </p>
-      )}
     </button>
   );
 }
@@ -394,8 +338,6 @@ function OriginTasksScreen({
   onBack: () => void;
   onReset: () => void;
 }) {
-  const leg = dutyLegs[0];
-
   return (
     <>
       <AppHeader title="Origin Tasks" left="Back" onBack={onBack} />
@@ -414,13 +356,13 @@ function OriginTasksScreen({
           </div>
 
           <div className="grid grid-cols-2 gap-4 text-sm font-bold text-[#666]">
-            <p>ETD: {leg.etd}</p>
-            <p className="text-right">ETA: {leg.eta}</p>
+            <p>ETD: {dutyLeg.etd}</p>
+            <p className="text-right">ETA: {dutyLeg.eta}</p>
           </div>
 
           <div className="mt-5 grid grid-cols-[1fr_50px_1fr] items-center gap-2">
             <p className="text-sm font-black uppercase leading-tight text-[#333]">
-              {leg.from}
+              {dutyLeg.from}
             </p>
 
             <div className="flex items-center justify-center text-2xl font-black text-[#d6d6d6]">
@@ -428,7 +370,7 @@ function OriginTasksScreen({
             </div>
 
             <p className="text-right text-sm font-black uppercase leading-tight text-[#333]">
-              {leg.to}
+              {dutyLeg.to}
             </p>
           </div>
         </div>
