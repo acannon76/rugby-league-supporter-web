@@ -4,12 +4,17 @@ import { useMemo, useState } from "react";
 
 type LegStatus = "To do" | "In Progress" | "Completed";
 type MockupType = "flex" | "mockup2";
+type OriginTaskType = "empty" | "repat" | "load" | "skip" | "flex";
 
 type ScreenView =
   | "mockup-menu"
   | "duty-details"
   | "origin-tasks"
-  | "duty-in-progress"
+  | "load-screen"
+  | "scan-container"
+  | "repat-count"
+  | "destination-tasks"
+  | "unload-options"
   | "duty-completed";
 
 type DutyLeg = {
@@ -112,24 +117,43 @@ const mockupOptions: MockupOption[] = [
   },
 ];
 
-const originTaskButtons = [
-  "Empty",
-  "Repat / Pre-Loaded",
-  "Load",
-  "Skip Leg",
-  "Flex / As Directed",
+const originTaskButtons: { label: string; type: OriginTaskType }[] = [
+  { label: "Empty", type: "empty" },
+  { label: "Repat / Pre-Loaded", type: "repat" },
+  { label: "Load", type: "load" },
+  { label: "Skip Leg", type: "skip" },
+  { label: "Flex / As Directed", type: "flex" },
+];
+
+const mockContainerNumbers = [
+  "YT12345678GB",
+  "YT23456789GB",
+  "YT34567890GB",
+  "YT45678901GB",
+  "YT56789012GB",
+  "YT67890123GB",
+  "YT78901234GB",
+  "YT89012345GB",
+  "YT90123456GB",
+  "YT11223344GB",
 ];
 
 export default function HaulierAppMockupClient() {
   const [screenView, setScreenView] = useState<ScreenView>("mockup-menu");
   const [selectedMockup, setSelectedMockup] = useState<MockupType>("flex");
   const [selectedLegNumber, setSelectedLegNumber] = useState(1);
+  const [selectedTask, setSelectedTask] = useState<OriginTaskType>("empty");
 
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [showDepartModal, setShowDepartModal] = useState(false);
+  const [showLoadCompleteModal, setShowLoadCompleteModal] = useState(false);
+  const [showUnloadAllModal, setShowUnloadAllModal] = useState(false);
 
   const [vehicleInput, setVehicleInput] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
+  const [manualContainer, setManualContainer] = useState("");
+  const [repatCount, setRepatCount] = useState("");
+  const [containers, setContainers] = useState<string[]>([]);
 
   const [legStatuses, setLegStatuses] = useState<Record<number, LegStatus>>({
     1: "To do",
@@ -144,22 +168,27 @@ export default function HaulierAppMockupClient() {
     activeLegs.find((leg) => leg.number === selectedLegNumber) || activeLegs[0];
 
   function openMockup(mockupType: MockupType) {
-    setSelectedMockup(mockupType);
-    setSelectedLegNumber(1);
-    setVehicleInput("");
-    setVehicleNumber("");
-    setShowVehicleModal(false);
-    setShowDepartModal(false);
-    setScreenView("duty-details");
-
-    const startingStatuses: Record<number, LegStatus> = {};
     const legs = mockupType === "mockup2" ? mockup2DutyLegs : flexDutyLegs;
+    const startingStatuses: Record<number, LegStatus> = {};
 
     for (const leg of legs) {
       startingStatuses[leg.number] = "To do";
     }
 
+    setSelectedMockup(mockupType);
+    setSelectedLegNumber(1);
+    setSelectedTask("empty");
+    setVehicleInput("");
+    setVehicleNumber("");
+    setManualContainer("");
+    setRepatCount("");
+    setContainers([]);
+    setShowVehicleModal(false);
+    setShowDepartModal(false);
+    setShowLoadCompleteModal(false);
+    setShowUnloadAllModal(false);
     setLegStatuses(startingStatuses);
+    setScreenView("duty-details");
   }
 
   function getLegStatus(legNumber: number) {
@@ -206,15 +235,31 @@ export default function HaulierAppMockupClient() {
     setScreenView("origin-tasks");
   }
 
-  function openDepartConfirmation() {
+  function selectOriginTask(taskType: OriginTaskType) {
+    setSelectedTask(taskType);
+
+    if (taskType === "skip") {
+      completeCurrentLeg();
+      return;
+    }
+
+    if (taskType === "load") {
+      setContainers([]);
+      setManualContainer("");
+      setScreenView("load-screen");
+      return;
+    }
+
+    if (taskType === "repat") {
+      setRepatCount("");
+      setScreenView("repat-count");
+      return;
+    }
+
     setShowDepartModal(true);
   }
 
-  function cancelDepartConfirmation() {
-    setShowDepartModal(false);
-  }
-
-  function departDepot() {
+  function confirmDepartDepot() {
     setShowDepartModal(false);
 
     setLegStatuses((current) => ({
@@ -222,7 +267,70 @@ export default function HaulierAppMockupClient() {
       [selectedLegNumber]: "In Progress",
     }));
 
-    setScreenView("duty-in-progress");
+    setScreenView("destination-tasks");
+  }
+
+  function openScannerMockup() {
+    setContainers(mockContainerNumbers);
+    setScreenView("scan-container");
+  }
+
+  function addManualContainer() {
+    const value = manualContainer.trim().toUpperCase();
+
+    if (!value) {
+      return;
+    }
+
+    setContainers((current) => [...current, value]);
+    setManualContainer("");
+  }
+
+  function removeContainer(containerNumber: string) {
+    setContainers((current) =>
+      current.filter((container) => container !== containerNumber)
+    );
+  }
+
+  function completeLoadScan() {
+    setShowLoadCompleteModal(true);
+  }
+
+  function confirmLoadDepartDepot() {
+    setShowLoadCompleteModal(false);
+
+    setLegStatuses((current) => ({
+      ...current,
+      [selectedLegNumber]: "In Progress",
+    }));
+
+    setScreenView("destination-tasks");
+  }
+
+  function continueRepatCount() {
+    if (!repatCount.trim()) {
+      return;
+    }
+
+    setShowDepartModal(true);
+  }
+
+  function arriveIntoDepot() {
+    if (selectedTask === "empty" || selectedTask === "flex") {
+      completeCurrentLeg();
+      return;
+    }
+
+    setScreenView("unload-options");
+  }
+
+  function confirmUnloadAll() {
+    setShowUnloadAllModal(true);
+  }
+
+  function yesUnloadAll() {
+    setShowUnloadAllModal(false);
+    completeCurrentLeg();
   }
 
   function completeCurrentLeg() {
@@ -233,6 +341,10 @@ export default function HaulierAppMockupClient() {
       ...current,
       [selectedLegNumber]: "Completed",
     }));
+
+    setShowDepartModal(false);
+    setShowLoadCompleteModal(false);
+    setShowUnloadAllModal(false);
 
     if (isFinalLeg) {
       setScreenView("duty-completed");
@@ -246,10 +358,16 @@ export default function HaulierAppMockupClient() {
     setScreenView("mockup-menu");
     setSelectedMockup("flex");
     setSelectedLegNumber(1);
+    setSelectedTask("empty");
     setShowVehicleModal(false);
     setShowDepartModal(false);
+    setShowLoadCompleteModal(false);
+    setShowUnloadAllModal(false);
     setVehicleInput("");
     setVehicleNumber("");
+    setManualContainer("");
+    setRepatCount("");
+    setContainers([]);
     setLegStatuses({
       1: "To do",
     });
@@ -286,22 +404,67 @@ export default function HaulierAppMockupClient() {
             leg={selectedLeg}
             legStatus={getLegStatus(selectedLegNumber)}
             onBack={() => setScreenView("duty-details")}
-            onTaskSelected={openDepartConfirmation}
+            onTaskSelected={selectOriginTask}
             onReset={resetMockup}
           />
         )}
 
-        {screenView === "duty-in-progress" && (
-          <DutyInProgressScreen
-            todayText={todayText}
+        {screenView === "load-screen" && (
+          <LoadScreen
             vehicleNumber={vehicleNumber}
+            containers={containers}
+            manualContainer={manualContainer}
+            onManualContainerChange={setManualContainer}
+            onAddManualContainer={addManualContainer}
+            onOpenScanner={openScannerMockup}
+            onRemoveContainer={removeContainer}
+            onBack={() => setScreenView("origin-tasks")}
+            onLoadComplete={completeLoadScan}
+            onReset={resetMockup}
+          />
+        )}
+
+        {screenView === "scan-container" && (
+          <ScanContainerScreen
+            containers={containers}
+            onBack={() => setScreenView("load-screen")}
+            onRemoveContainer={removeContainer}
+            onLoadComplete={completeLoadScan}
+            onReset={resetMockup}
+          />
+        )}
+
+        {screenView === "repat-count" && (
+          <RepatCountScreen
+            vehicleNumber={vehicleNumber}
+            repatCount={repatCount}
+            onRepatCountChange={setRepatCount}
+            onBack={() => setScreenView("origin-tasks")}
+            onContinue={continueRepatCount}
+            onReset={resetMockup}
+          />
+        )}
+
+        {screenView === "destination-tasks" && (
+          <DestinationTasksScreen
+            vehicleNumber={vehicleNumber}
+            todayText={todayText}
             leg={selectedLeg}
             legStatus={getLegStatus(selectedLegNumber)}
-            hasMoreLegs={
-              selectedLegNumber !== activeLegs[activeLegs.length - 1].number
-            }
             onBack={() => setScreenView("origin-tasks")}
-            onCompleteLeg={completeCurrentLeg}
+            onArriveIntoDepot={arriveIntoDepot}
+            onReset={resetMockup}
+          />
+        )}
+
+        {screenView === "unload-options" && (
+          <UnloadOptionsScreen
+            vehicleNumber={vehicleNumber}
+            todayText={todayText}
+            leg={selectedLeg}
+            legStatus={getLegStatus(selectedLegNumber)}
+            onBack={() => setScreenView("destination-tasks")}
+            onUnloadAll={confirmUnloadAll}
             onReset={resetMockup}
           />
         )}
@@ -327,8 +490,25 @@ export default function HaulierAppMockupClient() {
 
         {showDepartModal && (
           <DepartDepotModal
-            onCancel={cancelDepartConfirmation}
-            onDepart={departDepot}
+            taskType={selectedTask}
+            containerCount={repatCount || String(containers.length)}
+            onCancel={() => setShowDepartModal(false)}
+            onDepart={confirmDepartDepot}
+          />
+        )}
+
+        {showLoadCompleteModal && (
+          <LoadCompleteModal
+            containerCount={containers.length}
+            onCancel={() => setShowLoadCompleteModal(false)}
+            onDepart={confirmLoadDepartDepot}
+          />
+        )}
+
+        {showUnloadAllModal && (
+          <UnloadAllModal
+            onCancel={() => setShowUnloadAllModal(false)}
+            onYes={yesUnloadAll}
           />
         )}
       </div>
@@ -413,15 +593,11 @@ function MockupMenuScreen({
             <MockupOptionButton
               key={option.title}
               option={option}
-              
-onClick={
-  option.active && option.mockupType
-    ? () => onOpenMockup(option.mockupType as MockupType)
-    : undefined
-}
-
-
-
+              onClick={
+                option.active && option.mockupType
+                  ? () => onOpenMockup(option.mockupType as MockupType)
+                  : undefined
+              }
             />
           ))}
         </div>
@@ -704,7 +880,7 @@ function OriginTasksScreen({
   leg: DutyLeg;
   legStatus: LegStatus;
   onBack: () => void;
-  onTaskSelected: () => void;
+  onTaskSelected: (taskType: OriginTaskType) => void;
   onReset: () => void;
 }) {
   return (
@@ -727,12 +903,12 @@ function OriginTasksScreen({
         <div className="mt-4 space-y-3">
           {originTaskButtons.map((task) => (
             <button
-              key={task}
+              key={task.label}
               type="button"
-              onClick={onTaskSelected}
+              onClick={() => onTaskSelected(task.type)}
               className="flex w-full items-center justify-between rounded-lg border border-[#d9d9d9] border-l-4 border-l-[#d6001c] bg-white px-4 py-4 text-left text-sm font-black text-[#222] shadow-sm transition hover:-translate-y-1 hover:shadow-md"
             >
-              <span>{task}</span>
+              <span>{task.label}</span>
               <span className="text-2xl font-black text-[#d6001c]">›</span>
             </button>
           ))}
@@ -744,61 +920,241 @@ function OriginTasksScreen({
   );
 }
 
-function DepartDepotModal({
-  onCancel,
-  onDepart,
+function LoadScreen({
+  vehicleNumber,
+  containers,
+  manualContainer,
+  onManualContainerChange,
+  onAddManualContainer,
+  onOpenScanner,
+  onRemoveContainer,
+  onBack,
+  onLoadComplete,
+  onReset,
 }: {
-  onCancel: () => void;
-  onDepart: () => void;
+  vehicleNumber: string;
+  containers: string[];
+  manualContainer: string;
+  onManualContainerChange: (value: string) => void;
+  onAddManualContainer: () => void;
+  onOpenScanner: () => void;
+  onRemoveContainer: (containerNumber: string) => void;
+  onBack: () => void;
+  onLoadComplete: () => void;
+  onReset: () => void;
 }) {
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-5">
-      <section className="w-full max-w-[430px] rounded-sm bg-white p-7 shadow-2xl">
-        <h2 className="text-3xl font-black text-[#111]">Alert</h2>
+    <>
+      <AppHeader title="Load" left="Back" onBack={onBack} />
 
-        <p className="mt-5 text-xl font-bold leading-8 text-[#222]">
-          Are you ready to depart from depot and begin this leg?
-        </p>
+      <section className="bg-white px-5 py-5">
+        <VehicleNumberBanner vehicleNumber={vehicleNumber} />
 
-        <div className="mt-7 grid grid-cols-2 gap-4">
+        <h2 className="mt-6 text-xl font-black text-[#222]">
+          Scanned {containers.length} Container (s)
+        </h2>
+
+        <div className="mt-3 flex items-center border border-[#cfcfcf]">
+          <input
+            value={manualContainer}
+            onChange={(event) => onManualContainerChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                onAddManualContainer();
+              }
+            }}
+            placeholder="Add a container manually"
+            className="min-h-[58px] flex-1 px-4 text-base font-bold outline-none"
+          />
+
           <button
             type="button"
-            onClick={onCancel}
-            className="rounded-full border-2 border-[#333] bg-white px-5 py-4 text-base font-black text-[#333]"
+            onClick={onOpenScanner}
+            className="h-[58px] w-[58px] text-2xl font-black text-[#555]"
+            aria-label="Open barcode scanner mockup"
           >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={onDepart}
-            className="rounded-full bg-[#d6001c] px-5 py-4 text-base font-black text-white"
-          >
-            Depart Depot
+            ▥
           </button>
         </div>
+
+        {manualContainer.trim() && (
+          <button
+            type="button"
+            onClick={onAddManualContainer}
+            className="mt-3 w-full rounded-[16px] bg-[#222] px-4 py-3 text-sm font-black text-white"
+          >
+            Add Manual Container
+          </button>
+        )}
+
+        <ContainerList
+          containers={containers}
+          onRemoveContainer={onRemoveContainer}
+        />
+
+        {containers.length > 0 && (
+          <button
+            type="button"
+            onClick={onLoadComplete}
+            className="mt-6 w-full rounded-full bg-[#d6001c] px-5 py-5 text-base font-black text-white"
+          >
+            Load Complete
+          </button>
+        )}
+
+        <MockResetButton onReset={onReset} />
       </section>
+    </>
+  );
+}
+
+function ScanContainerScreen({
+  containers,
+  onBack,
+  onRemoveContainer,
+  onLoadComplete,
+  onReset,
+}: {
+  containers: string[];
+  onBack: () => void;
+  onRemoveContainer: (containerNumber: string) => void;
+  onLoadComplete: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <>
+      <AppHeader title="Scan Container" left="Back" onBack={onBack} />
+
+      <section className="bg-white px-5 py-5">
+        <div className="mx-auto flex h-[300px] max-w-[330px] items-center justify-center border-4 border-[#d6001c] bg-[#f0f0f0] p-4 text-center">
+          <p className="text-3xl font-black leading-tight text-[#222]">
+            Bar Code of the York
+          </p>
+        </div>
+
+        <h2 className="mt-8 text-xl font-black text-[#222]">
+          Scanned {containers.length} Container (s)
+        </h2>
+
+        <ContainerList
+          containers={containers}
+          onRemoveContainer={onRemoveContainer}
+        />
+
+        <button
+          type="button"
+          onClick={onLoadComplete}
+          className="mt-6 w-full rounded-full bg-[#d6001c] px-5 py-5 text-base font-black text-white"
+        >
+          Load Complete
+        </button>
+
+        <MockResetButton onReset={onReset} />
+      </section>
+    </>
+  );
+}
+
+function ContainerList({
+  containers,
+  onRemoveContainer,
+}: {
+  containers: string[];
+  onRemoveContainer: (containerNumber: string) => void;
+}) {
+  if (containers.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-5 space-y-3">
+      {containers.map((container) => (
+        <div
+          key={container}
+          className="flex items-center justify-between rounded-lg border border-[#d9d9d9] bg-white px-4 py-4 text-base font-black text-[#222] shadow-sm"
+        >
+          <span>{container}</span>
+
+          <button
+            type="button"
+            onClick={() => onRemoveContainer(container)}
+            className="text-2xl font-black text-[#666]"
+          >
+            ×
+          </button>
+        </div>
+      ))}
     </div>
   );
 }
 
-function DutyInProgressScreen({
-  todayText,
+function RepatCountScreen({
   vehicleNumber,
-  leg,
-  legStatus,
-  hasMoreLegs,
+  repatCount,
+  onRepatCountChange,
   onBack,
-  onCompleteLeg,
+  onContinue,
   onReset,
 }: {
-  todayText: string;
   vehicleNumber: string;
+  repatCount: string;
+  onRepatCountChange: (value: string) => void;
+  onBack: () => void;
+  onContinue: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <>
+      <AppHeader title="Repat / Pre-Loaded" left="Back" onBack={onBack} />
+
+      <section className="bg-white px-5 py-5">
+        <VehicleNumberBanner vehicleNumber={vehicleNumber} />
+
+        <label className="mt-6 block text-xl font-black text-[#222]">
+          Container count
+        </label>
+
+        <input
+          value={repatCount}
+          onChange={(event) =>
+            onRepatCountChange(event.target.value.replace(/\D/g, ""))
+          }
+          inputMode="numeric"
+          className="mt-3 h-[60px] w-full border-2 border-[#777] px-4 text-xl font-black outline-none focus:border-[#d6001c]"
+        />
+
+        <button
+          type="button"
+          onClick={onContinue}
+          disabled={!repatCount.trim()}
+          className={`mt-8 w-full rounded-full px-5 py-5 text-base font-black text-white ${
+            repatCount.trim() ? "bg-[#d6001c]" : "bg-[#cccccc]"
+          }`}
+        >
+          Continue
+        </button>
+
+        <MockResetButton onReset={onReset} />
+      </section>
+    </>
+  );
+}
+
+function DestinationTasksScreen({
+  vehicleNumber,
+  todayText,
+  leg,
+  legStatus,
+  onBack,
+  onArriveIntoDepot,
+  onReset,
+}: {
+  vehicleNumber: string;
+  todayText: string;
   leg: DutyLeg;
   legStatus: LegStatus;
-  hasMoreLegs: boolean;
   onBack: () => void;
-  onCompleteLeg: () => void;
+  onArriveIntoDepot: () => void;
   onReset: () => void;
 }) {
   return (
@@ -820,6 +1176,7 @@ function DutyInProgressScreen({
 
         <button
           type="button"
+          onClick={onArriveIntoDepot}
           className="mt-4 flex w-full items-center justify-between rounded-lg border border-[#d9d9d9] border-l-4 border-l-[#d6001c] bg-white px-4 py-4 text-left text-sm font-black text-[#222] shadow-sm"
         >
           <span>Arrive into depot</span>
@@ -828,18 +1185,69 @@ function DutyInProgressScreen({
 
         <section className="mt-6 rounded-[18px] bg-[#f0f0f0] p-5">
           <p className="text-base font-bold leading-7 text-[#333]">
-            Your duty is now active. Please keep the app open until the end of
-            your shift so the duty can remain visible and available.
+            Please keep the app open until the end of the shift so duty
+            progress remains visible.
           </p>
         </section>
 
-        <button
-          type="button"
-          onClick={onCompleteLeg}
-          className="mt-6 w-full rounded-[18px] bg-[#d6001c] px-5 py-5 text-sm font-black uppercase tracking-[0.12em] text-white"
-        >
-          {hasMoreLegs ? "Complete Leg" : "Completed Duty, End of Shift"}
-        </button>
+        <MockResetButton onReset={onReset} />
+      </section>
+    </>
+  );
+}
+
+function UnloadOptionsScreen({
+  vehicleNumber,
+  todayText,
+  leg,
+  legStatus,
+  onBack,
+  onUnloadAll,
+  onReset,
+}: {
+  vehicleNumber: string;
+  todayText: string;
+  leg: DutyLeg;
+  legStatus: LegStatus;
+  onBack: () => void;
+  onUnloadAll: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <>
+      <AppHeader title="Destination Tasks" left="Back" onBack={onBack} />
+
+      <section className="bg-white px-5 py-5">
+        <VehicleNumberBanner vehicleNumber={vehicleNumber} />
+
+        <p className="mt-6 text-lg font-bold text-[#333]">{todayText}</p>
+
+        <div className="mt-3">
+          <LegCard leg={leg} status={legStatus} />
+        </div>
+
+        <h2 className="mt-8 text-2xl font-black text-[#222]">
+          Destination task details
+        </h2>
+
+        <div className="mt-4 space-y-3">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between rounded-lg border border-[#d9d9d9] border-l-4 border-l-[#d6001c] bg-white px-4 py-4 text-left text-sm font-black text-[#999] shadow-sm"
+          >
+            <span>Part unload</span>
+            <span className="text-2xl font-black text-[#d6001c]">›</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onUnloadAll}
+            className="flex w-full items-center justify-between rounded-lg border border-[#d9d9d9] border-l-4 border-l-[#d6001c] bg-white px-4 py-4 text-left text-sm font-black text-[#222] shadow-sm"
+          >
+            <span>Unload all</span>
+            <span className="text-2xl font-black text-[#d6001c]">›</span>
+          </button>
+        </div>
 
         <MockResetButton onReset={onReset} />
       </section>
@@ -893,6 +1301,115 @@ function DutyCompletedScreen({
         <MockResetButton onReset={onReset} />
       </section>
     </>
+  );
+}
+
+function DepartDepotModal({
+  taskType,
+  containerCount,
+  onCancel,
+  onDepart,
+}: {
+  taskType: OriginTaskType;
+  containerCount: string;
+  onCancel: () => void;
+  onDepart: () => void;
+}) {
+  const message =
+    taskType === "empty" || taskType === "flex"
+      ? "Are you sure you are taking an empty vehicle and ready to depart from depot?"
+      : `Are you sure you have added all ${containerCount} containers and are ready to depart from depot?`;
+
+  return (
+    <AlertShell
+      message={message}
+      leftLabel="Cancel"
+      rightLabel="Depart Depot"
+      onLeft={onCancel}
+      onRight={onDepart}
+    />
+  );
+}
+
+function LoadCompleteModal({
+  containerCount,
+  onCancel,
+  onDepart,
+}: {
+  containerCount: number;
+  onCancel: () => void;
+  onDepart: () => void;
+}) {
+  return (
+    <AlertShell
+      message={`Are you sure you have scanned and loaded ${containerCount} containers and are ready to depart from depot?`}
+      leftLabel="Scan More"
+      rightLabel="Depart Depot"
+      onLeft={onCancel}
+      onRight={onDepart}
+    />
+  );
+}
+
+function UnloadAllModal({
+  onCancel,
+  onYes,
+}: {
+  onCancel: () => void;
+  onYes: () => void;
+}) {
+  return (
+    <AlertShell
+      message="Are you sure you are unloading all the containers? Please click yes to confirm."
+      leftLabel="Cancel"
+      rightLabel="Yes"
+      onLeft={onCancel}
+      onRight={onYes}
+    />
+  );
+}
+
+function AlertShell({
+  message,
+  leftLabel,
+  rightLabel,
+  onLeft,
+  onRight,
+}: {
+  message: string;
+  leftLabel: string;
+  rightLabel: string;
+  onLeft: () => void;
+  onRight: () => void;
+}) {
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-5">
+      <section className="w-full max-w-[430px] rounded-sm bg-white p-7 shadow-2xl">
+        <h2 className="text-3xl font-black text-[#111]">Alert</h2>
+
+        <p className="mt-5 text-xl font-bold leading-8 text-[#222]">
+          {message}
+        </p>
+
+        <div className="mt-7 grid grid-cols-2 gap-4">
+          <button
+            type="button"
+            onClick={onLeft}
+            className="rounded-full border-2 border-[#333] bg-white px-5 py-4 text-base font-black text-[#333]"
+          >
+            {leftLabel}
+          </button>
+
+          <button
+            type="button"
+            onClick={onRight}
+            className="rounded-full bg-[#d6001c] px-5 py-4 text-base font-black text-white"
+          >
+            {rightLabel}
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
