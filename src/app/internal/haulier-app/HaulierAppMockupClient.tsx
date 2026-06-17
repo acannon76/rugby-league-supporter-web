@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 
 type LegStatus = "To do" | "In Progress" | "Completed";
-type ScreenView = "mockup-menu" | "duty-details" | "origin-tasks";
+type ScreenView =
+  | "mockup-menu"
+  | "duty-details"
+  | "origin-tasks"
+  | "duty-in-progress"
+  | "duty-completed";
 
 type DutyLeg = {
   number: number;
@@ -66,6 +71,7 @@ const originTaskButtons = [
 export default function HaulierAppMockupClient() {
   const [screenView, setScreenView] = useState<ScreenView>("mockup-menu");
   const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [showDepartModal, setShowDepartModal] = useState(false);
   const [vehicleInput, setVehicleInput] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [legStatus, setLegStatus] = useState<LegStatus>("To do");
@@ -96,9 +102,29 @@ export default function HaulierAppMockupClient() {
     setScreenView("origin-tasks");
   }
 
+  function openDepartConfirmation() {
+    setShowDepartModal(true);
+  }
+
+  function cancelDepartConfirmation() {
+    setShowDepartModal(false);
+  }
+
+  function departDepot() {
+    setShowDepartModal(false);
+    setLegStatus("In Progress");
+    setScreenView("duty-in-progress");
+  }
+
+  function completeDuty() {
+    setLegStatus("Completed");
+    setScreenView("duty-completed");
+  }
+
   function resetMockup() {
     setScreenView("mockup-menu");
     setShowVehicleModal(false);
+    setShowDepartModal(false);
     setVehicleInput("");
     setVehicleNumber("");
     setLegStatus("To do");
@@ -129,6 +155,27 @@ export default function HaulierAppMockupClient() {
             vehicleNumber={vehicleNumber}
             legStatus={legStatus}
             onBack={() => setScreenView("duty-details")}
+            onTaskSelected={openDepartConfirmation}
+            onReset={resetMockup}
+          />
+        )}
+
+        {screenView === "duty-in-progress" && (
+          <DutyInProgressScreen
+            todayText={todayText}
+            vehicleNumber={vehicleNumber}
+            legStatus={legStatus}
+            onBack={() => setScreenView("origin-tasks")}
+            onCompleteDuty={completeDuty}
+            onReset={resetMockup}
+          />
+        )}
+
+        {screenView === "duty-completed" && (
+          <DutyCompletedScreen
+            todayText={todayText}
+            vehicleNumber={vehicleNumber}
+            legStatus={legStatus}
             onReset={resetMockup}
           />
         )}
@@ -139,6 +186,13 @@ export default function HaulierAppMockupClient() {
             onChange={setVehicleInput}
             onCancel={cancelVehicleModal}
             onConfirm={confirmVehicleNumber}
+          />
+        )}
+
+        {showDepartModal && (
+          <DepartDepotModal
+            onCancel={cancelDepartConfirmation}
+            onDepart={departDepot}
           />
         )}
       </div>
@@ -299,17 +353,7 @@ function DutyDetailsScreen({
       <AppHeader title="Haulier Mock Up" left="Back" onBack={onBack} />
 
       <section className="bg-white px-5 py-6">
-        <section className="rounded-[18px] bg-[#f0f0f0] p-5">
-          <h2 className="text-2xl font-black text-[#222]">Overview</h2>
-
-          <p className="mt-6 text-lg font-bold text-[#333]">
-            <span className="font-black">Driver name:</span> Andrew Cannon
-          </p>
-
-          <p className="mt-4 text-lg font-bold text-[#333]">
-            <span className="font-black">Duty ID:</span> NWH254
-          </p>
-        </section>
+        <OverviewCard />
 
         <h2 className="mt-10 text-2xl font-black text-[#222]">
           Duty details
@@ -321,15 +365,25 @@ function DutyDetailsScreen({
           <LegCard leg={dutyLeg} status={legStatus} onClick={onOpenLeg} />
         </div>
 
-        <button
-          type="button"
-          onClick={onReset}
-          className="mt-7 w-full rounded-[18px] bg-[#222] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white"
-        >
-          MOCKUP Reset
-        </button>
+        <MockResetButton onReset={onReset} />
       </section>
     </>
+  );
+}
+
+function OverviewCard() {
+  return (
+    <section className="rounded-[18px] bg-[#f0f0f0] p-5">
+      <h2 className="text-2xl font-black text-[#222]">Overview</h2>
+
+      <p className="mt-6 text-lg font-bold text-[#333]">
+        <span className="font-black">Driver name:</span> Andrew Cannon
+      </p>
+
+      <p className="mt-4 text-lg font-bold text-[#333]">
+        <span className="font-black">Duty ID:</span> NWH254
+      </p>
+    </section>
   );
 }
 
@@ -340,13 +394,18 @@ function LegCard({
 }: {
   leg: DutyLeg;
   status: LegStatus;
-  onClick: () => void;
+  onClick?: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-[18px] border border-[#d0d0d0] bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+      disabled={!onClick}
+      className={`w-full rounded-[18px] border border-[#d0d0d0] p-4 text-left shadow-sm transition ${
+        onClick
+          ? "bg-white hover:-translate-y-1 hover:shadow-md"
+          : "bg-[#f4f4f4]"
+      }`}
     >
       <div className="mb-5 flex items-center justify-between">
         <p className="text-lg font-black text-[#444]">Leg {leg.number}</p>
@@ -381,14 +440,16 @@ function StatusPill({ status }: { status: LegStatus }) {
     status === "Completed"
       ? "bg-[#d9f7e5] text-[#067a35] border-[#067a35]"
       : status === "In Progress"
-      ? "bg-[#fff4d6] text-[#9a6500] border-[#d89b00]"
+      ? "bg-[#ffe0d4] text-[#a23a00] border-[#e9581f]"
       : "bg-[#bde8ff] text-[#125a7c] border-[#2290c5]";
+
+  const label = status === "Completed" ? "Done" : status;
 
   return (
     <span
       className={`rounded-full border-2 px-5 py-2 text-base font-black ${classes}`}
     >
-      {status}
+      {label}
     </span>
   );
 }
@@ -462,12 +523,14 @@ function OriginTasksScreen({
   vehicleNumber,
   legStatus,
   onBack,
+  onTaskSelected,
   onReset,
 }: {
   todayText: string;
   vehicleNumber: string;
   legStatus: LegStatus;
   onBack: () => void;
+  onTaskSelected: () => void;
   onReset: () => void;
 }) {
   return (
@@ -475,36 +538,12 @@ function OriginTasksScreen({
       <AppHeader title="Origin Tasks" left="Back" onBack={onBack} />
 
       <section className="bg-white px-5 py-5">
-        <div className="rounded-lg bg-[#f0f0f0] px-4 py-3 text-sm font-black text-[#444]">
-          Vehicle registration / trailer number: {vehicleNumber}
-        </div>
+        <VehicleNumberBanner vehicleNumber={vehicleNumber} />
 
         <p className="mt-6 text-lg font-bold text-[#333]">{todayText}</p>
 
-        <div className="mt-3 rounded-[12px] border border-[#d0d0d0] bg-white p-4 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-base font-black text-[#444]">Leg 1</p>
-            <StatusPill status={legStatus} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 text-sm font-bold text-[#666]">
-            <p>ETD: {dutyLeg.etd}</p>
-            <p className="text-right">ETA: {dutyLeg.eta}</p>
-          </div>
-
-          <div className="mt-5 grid grid-cols-[1fr_50px_1fr] items-center gap-2">
-            <p className="text-sm font-black uppercase leading-tight text-[#333]">
-              {dutyLeg.from}
-            </p>
-
-            <div className="flex items-center justify-center text-2xl font-black text-[#d6d6d6]">
-              →
-            </div>
-
-            <p className="text-right text-sm font-black uppercase leading-tight text-[#333]">
-              {dutyLeg.to}
-            </p>
-          </div>
+        <div className="mt-3">
+          <LegCard leg={dutyLeg} status={legStatus} />
         </div>
 
         <h2 className="mt-7 text-xl font-black text-[#222]">
@@ -516,7 +555,8 @@ function OriginTasksScreen({
             <button
               key={task}
               type="button"
-              className="flex w-full items-center justify-between rounded-lg border border-[#d9d9d9] border-l-4 border-l-[#d6001c] bg-white px-4 py-4 text-left text-sm font-black text-[#222] shadow-sm"
+              onClick={task === "Flex / As Directed" ? onTaskSelected : undefined}
+              className="flex w-full items-center justify-between rounded-lg border border-[#d9d9d9] border-l-4 border-l-[#d6001c] bg-white px-4 py-4 text-left text-sm font-black text-[#222] shadow-sm transition hover:-translate-y-1 hover:shadow-md"
             >
               <span>{task}</span>
               <span className="text-2xl font-black text-[#d6001c]">›</span>
@@ -524,15 +564,168 @@ function OriginTasksScreen({
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={onReset}
-          className="mt-7 w-full rounded-[18px] bg-[#222] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white"
-        >
-          MOCKUP Reset
-        </button>
+        <MockResetButton onReset={onReset} />
       </section>
     </>
+  );
+}
+
+function DepartDepotModal({
+  onCancel,
+  onDepart,
+}: {
+  onCancel: () => void;
+  onDepart: () => void;
+}) {
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-5">
+      <section className="w-full max-w-[430px] rounded-sm bg-white p-7 shadow-2xl">
+        <h2 className="text-3xl font-black text-[#111]">Alert</h2>
+
+        <p className="mt-5 text-xl font-bold leading-8 text-[#222]">
+          Are you sure you are taking an empty vehicle and ready to depart from
+          depot?
+        </p>
+
+        <div className="mt-7 grid grid-cols-2 gap-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-full border-2 border-[#333] bg-white px-5 py-4 text-base font-black text-[#333]"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={onDepart}
+            className="rounded-full bg-[#d6001c] px-5 py-4 text-base font-black text-white"
+          >
+            Depart Depot
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function DutyInProgressScreen({
+  todayText,
+  vehicleNumber,
+  legStatus,
+  onBack,
+  onCompleteDuty,
+  onReset,
+}: {
+  todayText: string;
+  vehicleNumber: string;
+  legStatus: LegStatus;
+  onBack: () => void;
+  onCompleteDuty: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <>
+      <AppHeader title="Destination Tasks" left="Back" onBack={onBack} />
+
+      <section className="bg-white px-5 py-5">
+        <VehicleNumberBanner vehicleNumber={vehicleNumber} />
+
+        <p className="mt-6 text-lg font-bold text-[#333]">{todayText}</p>
+
+        <div className="mt-3">
+          <LegCard leg={dutyLeg} status={legStatus} />
+        </div>
+
+        <h2 className="mt-8 text-2xl font-black text-[#222]">
+          Duty in progress
+        </h2>
+
+        <section className="mt-4 rounded-[18px] bg-[#f0f0f0] p-5">
+          <p className="text-base font-bold leading-7 text-[#333]">
+            Your duty is now active. Please keep the app open until the end of
+            your shift so the duty can remain visible and available.
+          </p>
+        </section>
+
+        <button
+          type="button"
+          onClick={onCompleteDuty}
+          className="mt-6 w-full rounded-[18px] bg-[#d6001c] px-5 py-5 text-sm font-black uppercase tracking-[0.12em] text-white"
+        >
+          Completed Duty, End of Shift
+        </button>
+
+        <MockResetButton onReset={onReset} />
+      </section>
+    </>
+  );
+}
+
+function DutyCompletedScreen({
+  todayText,
+  vehicleNumber,
+  legStatus,
+  onReset,
+}: {
+  todayText: string;
+  vehicleNumber: string;
+  legStatus: LegStatus;
+  onReset: () => void;
+}) {
+  return (
+    <>
+      <AppHeader title="Haulier Mock Up" />
+
+      <section className="bg-white px-5 py-6">
+        <OverviewCard />
+
+        <h2 className="mt-10 text-2xl font-black text-[#222]">
+          Duty details
+        </h2>
+
+        <p className="mt-8 text-xl font-bold text-[#333]">{todayText}</p>
+
+        <div className="mt-4">
+          <LegCard leg={dutyLeg} status={legStatus} />
+        </div>
+
+        <VehicleNumberBanner vehicleNumber={vehicleNumber} />
+
+        <section className="mt-6 rounded-[18px] bg-[#d9f7e5] p-5">
+          <h2 className="text-2xl font-black text-[#067a35]">
+            Duty completed
+          </h2>
+
+          <p className="mt-3 text-base font-bold leading-7 text-[#18243a]">
+            Your duty has been completed. It is now OK to close the app
+            completely.
+          </p>
+        </section>
+
+        <MockResetButton onReset={onReset} />
+      </section>
+    </>
+  );
+}
+
+function VehicleNumberBanner({ vehicleNumber }: { vehicleNumber: string }) {
+  return (
+    <div className="rounded-lg bg-[#f0f0f0] px-4 py-3 text-sm font-black text-[#444]">
+      Vehicle registration number: {vehicleNumber}
+    </div>
+  );
+}
+
+function MockResetButton({ onReset }: { onReset: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onReset}
+      className="mt-7 w-full rounded-[18px] bg-[#222] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white"
+    >
+      MOCKUP Reset
+    </button>
   );
 }
 
