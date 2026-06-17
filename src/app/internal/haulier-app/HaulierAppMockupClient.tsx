@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 type LegStatus = "To do" | "In Progress" | "Completed";
-type ScreenView = "duty-details" | "origin-tasks";
+type ScreenView = "mockup-menu" | "duty-details" | "origin-tasks";
 
 type DutyLeg = {
   number: number;
@@ -11,6 +11,13 @@ type DutyLeg = {
   eta: string;
   from: string;
   to: string;
+};
+
+type MockupOption = {
+  title: string;
+  text: string;
+  icon: string;
+  active: boolean;
 };
 
 const dutyLeg: DutyLeg = {
@@ -21,6 +28,33 @@ const dutyLeg: DutyLeg = {
   to: "NORTH WEST HUB",
 };
 
+const mockupOptions: MockupOption[] = [
+  {
+    title: "Flex Mock Up",
+    text: "Open the flex duty journey mock-up.",
+    icon: "1",
+    active: true,
+  },
+  {
+    title: "Standard Duty Mock Up",
+    text: "Future mock-up option.",
+    icon: "2",
+    active: false,
+  },
+  {
+    title: "Collection Mock Up",
+    text: "Future mock-up option.",
+    icon: "3",
+    active: false,
+  },
+  {
+    title: "Breakdown Mock Up",
+    text: "Future mock-up option.",
+    icon: "4",
+    active: false,
+  },
+];
+
 const originTaskButtons = [
   "Empty",
   "Repat / Pre-Loaded",
@@ -30,13 +64,17 @@ const originTaskButtons = [
 ];
 
 export default function HaulierAppMockupClient() {
-  const [screenView, setScreenView] = useState<ScreenView>("duty-details");
+  const [screenView, setScreenView] = useState<ScreenView>("mockup-menu");
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [vehicleInput, setVehicleInput] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [legStatus, setLegStatus] = useState<LegStatus>("To do");
 
   const todayText = useMemo(() => getTodayDateText(), []);
+
+  function openFlexMockup() {
+    setScreenView("duty-details");
+  }
 
   function openLegOne() {
     setShowVehicleModal(true);
@@ -59,7 +97,7 @@ export default function HaulierAppMockupClient() {
   }
 
   function resetMockup() {
-    setScreenView("duty-details");
+    setScreenView("mockup-menu");
     setShowVehicleModal(false);
     setVehicleInput("");
     setVehicleNumber("");
@@ -68,17 +106,24 @@ export default function HaulierAppMockupClient() {
 
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#222]">
-      <div className="mx-auto min-h-screen w-full max-w-[520px] bg-white shadow-2xl sm:my-6 sm:min-h-[900px] sm:overflow-hidden sm:rounded-[34px]">
+      <div className="relative mx-auto min-h-screen w-full max-w-[520px] bg-white shadow-2xl sm:my-6 sm:min-h-[900px] sm:overflow-hidden sm:rounded-[34px]">
         <PhoneStatusBar />
 
-        {screenView === "duty-details" ? (
+        {screenView === "mockup-menu" && (
+          <MockupMenuScreen onOpenFlexMockup={openFlexMockup} />
+        )}
+
+        {screenView === "duty-details" && (
           <DutyDetailsScreen
             todayText={todayText}
             legStatus={legStatus}
             onOpenLeg={openLegOne}
+            onBack={() => setScreenView("mockup-menu")}
             onReset={resetMockup}
           />
-        ) : (
+        )}
+
+        {screenView === "origin-tasks" && (
           <OriginTasksScreen
             todayText={todayText}
             vehicleNumber={vehicleNumber}
@@ -151,20 +196,107 @@ function AppHeader({
   );
 }
 
+function MockupMenuScreen({
+  onOpenFlexMockup,
+}: {
+  onOpenFlexMockup: () => void;
+}) {
+  return (
+    <>
+      <AppHeader title="Haulier Mock Up" />
+
+      <section className="bg-white px-5 py-6">
+        <section className="rounded-[18px] bg-[#f0f0f0] p-5">
+          <h2 className="text-2xl font-black text-[#222]">Overview</h2>
+
+          <p className="mt-5 text-base font-bold leading-6 text-[#333]">
+            Select which haulier mock-up journey you want to run.
+          </p>
+        </section>
+
+        <h2 className="mt-10 text-2xl font-black text-[#222]">
+          Mock-up options
+        </h2>
+
+        <div className="mt-5 space-y-4">
+          {mockupOptions.map((option) => (
+            <MockupOptionButton
+              key={option.title}
+              option={option}
+              onClick={
+                option.title === "Flex Mock Up" ? onOpenFlexMockup : undefined
+              }
+            />
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
+function MockupOptionButton({
+  option,
+  onClick,
+}: {
+  option: MockupOption;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={!option.active}
+      onClick={onClick}
+      className={`flex w-full items-center gap-4 rounded-[18px] border p-4 text-left shadow-sm transition ${
+        option.active
+          ? "border-[#d0d0d0] bg-white hover:-translate-y-1 hover:shadow-md"
+          : "border-transparent bg-[#f0f0f0] opacity-60"
+      }`}
+    >
+      <div
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-lg font-black text-white ${
+          option.active ? "bg-[#d6001c]" : "bg-[#999]"
+        }`}
+      >
+        {option.icon}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <h3 className="text-lg font-black leading-tight text-[#222]">
+          {option.title}
+        </h3>
+
+        <p className="mt-1 text-sm font-bold leading-5 text-[#666]">
+          {option.text}
+        </p>
+      </div>
+
+      <div
+        className={`text-3xl font-black ${
+          option.active ? "text-[#d6001c]" : "text-[#aaa]"
+        }`}
+      >
+        ›
+      </div>
+    </button>
+  );
+}
+
 function DutyDetailsScreen({
   todayText,
   legStatus,
   onOpenLeg,
+  onBack,
   onReset,
 }: {
   todayText: string;
   legStatus: LegStatus;
   onOpenLeg: () => void;
+  onBack: () => void;
   onReset: () => void;
 }) {
   return (
     <>
-      <AppHeader title="Haulier Mock Up" />
+      <AppHeader title="Haulier Mock Up" left="Back" onBack={onBack} />
 
       <section className="bg-white px-5 py-6">
         <section className="rounded-[18px] bg-[#f0f0f0] p-5">
