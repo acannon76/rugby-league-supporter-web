@@ -36,19 +36,19 @@ const mockupOptions: MockupOption[] = [
     active: true,
   },
   {
-    title: "Standard Duty Mock Up",
+    title: "Mockup 2",
     text: "Future mock-up option.",
     icon: "2",
     active: false,
   },
   {
-    title: "Collection Mock Up",
+    title: "Mockup 3",
     text: "Future mock-up option.",
     icon: "3",
     active: false,
   },
   {
-    title: "Breakdown Mock Up",
+    title: "Mockup 4",
     text: "Future mock-up option.",
     icon: "4",
     active: false,
