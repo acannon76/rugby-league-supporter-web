@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 
 type LegStatus = "To do" | "In Progress" | "Completed";
+type MockupType = "flex" | "mockup2";
+
 type ScreenView =
   | "mockup-menu"
   | "duty-details"
@@ -23,15 +25,63 @@ type MockupOption = {
   text: string;
   icon: string;
   active: boolean;
+  mockupType?: MockupType;
 };
 
-const dutyLeg: DutyLeg = {
-  number: 1,
-  etd: "20:00",
-  eta: "06:00",
-  from: "NORTH WEST HUB",
-  to: "NORTH WEST HUB",
-};
+const flexDutyLegs: DutyLeg[] = [
+  {
+    number: 1,
+    etd: "20:00",
+    eta: "06:00",
+    from: "NORTH WEST HUB",
+    to: "NORTH WEST HUB",
+  },
+];
+
+const mockup2DutyLegs: DutyLeg[] = [
+  {
+    number: 1,
+    etd: "20:00",
+    eta: "20:50",
+    from: "NORTH WEST HUB",
+    to: "MANCHESTER MAIL CENTRE",
+  },
+  {
+    number: 2,
+    etd: "21:20",
+    eta: "22:00",
+    from: "MANCHESTER MAIL CENTRE",
+    to: "NORTH WEST HUB",
+  },
+  {
+    number: 3,
+    etd: "23:00",
+    eta: "23:50",
+    from: "NORTH WEST HUB",
+    to: "CHESTER MAIL CENTRE",
+  },
+  {
+    number: 4,
+    etd: "00:50",
+    eta: "01:40",
+    from: "CHESTER MAIL CENTRE",
+    to: "NORTH WEST HUB",
+  },
+  {
+    number: 5,
+    etd: "03:30",
+    eta: "04:20",
+    from: "NORTH WEST HUB",
+    to: "PRESTON MAIL CENTRE",
+  },
+  {
+    number: 6,
+    etd: "05:00",
+    eta: "05:45",
+    from: "PRESTON MAIL CENTRE",
+    to: "NORTH WEST HUB",
+  },
+];
 
 const mockupOptions: MockupOption[] = [
   {
@@ -39,12 +89,14 @@ const mockupOptions: MockupOption[] = [
     text: "Open the flex duty journey mock-up.",
     icon: "1",
     active: true,
+    mockupType: "flex",
   },
   {
     title: "Mockup 2",
-    text: "Future mock-up option.",
+    text: "Open a six-leg duty completed in order.",
     icon: "2",
-    active: false,
+    active: true,
+    mockupType: "mockup2",
   },
   {
     title: "Mockup 3",
@@ -70,19 +122,72 @@ const originTaskButtons = [
 
 export default function HaulierAppMockupClient() {
   const [screenView, setScreenView] = useState<ScreenView>("mockup-menu");
+  const [selectedMockup, setSelectedMockup] = useState<MockupType>("flex");
+  const [selectedLegNumber, setSelectedLegNumber] = useState(1);
+
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [showDepartModal, setShowDepartModal] = useState(false);
+
   const [vehicleInput, setVehicleInput] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
-  const [legStatus, setLegStatus] = useState<LegStatus>("To do");
+
+  const [legStatuses, setLegStatuses] = useState<Record<number, LegStatus>>({
+    1: "To do",
+  });
 
   const todayText = useMemo(() => getTodayDateText(), []);
 
-  function openFlexMockup() {
+  const activeLegs =
+    selectedMockup === "mockup2" ? mockup2DutyLegs : flexDutyLegs;
+
+  const selectedLeg =
+    activeLegs.find((leg) => leg.number === selectedLegNumber) || activeLegs[0];
+
+  function openMockup(mockupType: MockupType) {
+    setSelectedMockup(mockupType);
+    setSelectedLegNumber(1);
+    setVehicleInput("");
+    setVehicleNumber("");
+    setShowVehicleModal(false);
+    setShowDepartModal(false);
     setScreenView("duty-details");
+
+    const startingStatuses: Record<number, LegStatus> = {};
+    const legs = mockupType === "mockup2" ? mockup2DutyLegs : flexDutyLegs;
+
+    for (const leg of legs) {
+      startingStatuses[leg.number] = "To do";
+    }
+
+    setLegStatuses(startingStatuses);
   }
 
-  function openLegOne() {
+  function getLegStatus(legNumber: number) {
+    return legStatuses[legNumber] || "To do";
+  }
+
+  function getFirstAvailableLegNumber() {
+    const firstNotCompleted = activeLegs.find(
+      (leg) => getLegStatus(leg.number) !== "Completed"
+    );
+
+    return firstNotCompleted?.number || activeLegs[activeLegs.length - 1].number;
+  }
+
+  function canOpenLeg(legNumber: number) {
+    return (
+      legNumber === getFirstAvailableLegNumber() &&
+      getLegStatus(legNumber) !== "Completed"
+    );
+  }
+
+  function openLeg(legNumber: number) {
+    if (!canOpenLeg(legNumber)) {
+      return;
+    }
+
+    setSelectedLegNumber(legNumber);
+    setVehicleInput(vehicleNumber);
     setShowVehicleModal(true);
   }
 
@@ -97,7 +202,6 @@ export default function HaulierAppMockupClient() {
     }
 
     setVehicleNumber(vehicleInput.trim());
-    setLegStatus("To do");
     setShowVehicleModal(false);
     setScreenView("origin-tasks");
   }
@@ -112,38 +216,64 @@ export default function HaulierAppMockupClient() {
 
   function departDepot() {
     setShowDepartModal(false);
-    setLegStatus("In Progress");
+
+    setLegStatuses((current) => ({
+      ...current,
+      [selectedLegNumber]: "In Progress",
+    }));
+
     setScreenView("duty-in-progress");
   }
 
-  function completeDuty() {
-    setLegStatus("Completed");
-    setScreenView("duty-completed");
+  function completeCurrentLeg() {
+    const isFinalLeg =
+      selectedLegNumber === activeLegs[activeLegs.length - 1].number;
+
+    setLegStatuses((current) => ({
+      ...current,
+      [selectedLegNumber]: "Completed",
+    }));
+
+    if (isFinalLeg) {
+      setScreenView("duty-completed");
+      return;
+    }
+
+    setScreenView("duty-details");
   }
 
   function resetMockup() {
     setScreenView("mockup-menu");
+    setSelectedMockup("flex");
+    setSelectedLegNumber(1);
     setShowVehicleModal(false);
     setShowDepartModal(false);
     setVehicleInput("");
     setVehicleNumber("");
-    setLegStatus("To do");
+    setLegStatuses({
+      1: "To do",
+    });
   }
 
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#222]">
-      <div className="relative mx-auto min-h-screen w-full max-w-[520px] bg-white shadow-2xl sm:my-6 sm:min-h-[900px] sm:overflow-hidden sm:rounded-[34px]">
+      <div className="relative mx-auto min-h-screen w-full max-w-[520px] bg-white shadow-2xl sm:my-6 sm:min-h-[900px] sm:rounded-[34px]">
         <PhoneStatusBar />
 
         {screenView === "mockup-menu" && (
-          <MockupMenuScreen onOpenFlexMockup={openFlexMockup} />
+          <MockupMenuScreen onOpenMockup={openMockup} />
         )}
 
         {screenView === "duty-details" && (
           <DutyDetailsScreen
             todayText={todayText}
-            legStatus={legStatus}
-            onOpenLeg={openLegOne}
+            mockupTitle={
+              selectedMockup === "mockup2" ? "Mockup 2" : "Flex Mock Up"
+            }
+            legs={activeLegs}
+            getLegStatus={getLegStatus}
+            canOpenLeg={canOpenLeg}
+            onOpenLeg={openLeg}
             onBack={() => setScreenView("mockup-menu")}
             onReset={resetMockup}
           />
@@ -153,7 +283,8 @@ export default function HaulierAppMockupClient() {
           <OriginTasksScreen
             todayText={todayText}
             vehicleNumber={vehicleNumber}
-            legStatus={legStatus}
+            leg={selectedLeg}
+            legStatus={getLegStatus(selectedLegNumber)}
             onBack={() => setScreenView("duty-details")}
             onTaskSelected={openDepartConfirmation}
             onReset={resetMockup}
@@ -164,9 +295,13 @@ export default function HaulierAppMockupClient() {
           <DutyInProgressScreen
             todayText={todayText}
             vehicleNumber={vehicleNumber}
-            legStatus={legStatus}
+            leg={selectedLeg}
+            legStatus={getLegStatus(selectedLegNumber)}
+            hasMoreLegs={
+              selectedLegNumber !== activeLegs[activeLegs.length - 1].number
+            }
             onBack={() => setScreenView("origin-tasks")}
-            onCompleteDuty={completeDuty}
+            onCompleteLeg={completeCurrentLeg}
             onReset={resetMockup}
           />
         )}
@@ -175,7 +310,8 @@ export default function HaulierAppMockupClient() {
           <DutyCompletedScreen
             todayText={todayText}
             vehicleNumber={vehicleNumber}
-            legStatus={legStatus}
+            leg={selectedLeg}
+            legStatus="Completed"
             onReset={resetMockup}
           />
         )}
@@ -202,7 +338,7 @@ export default function HaulierAppMockupClient() {
 
 function PhoneStatusBar() {
   return (
-    <div className="flex h-[54px] items-center justify-between bg-[#d6001c] px-7 text-white">
+    <div className="flex h-[54px] items-center justify-between bg-[#d6001c] px-7 text-white sm:rounded-t-[34px]">
       <div className="rounded-full bg-white/20 px-5 py-1 text-lg font-black">
         {getCurrentTimeText()}
       </div>
@@ -251,9 +387,9 @@ function AppHeader({
 }
 
 function MockupMenuScreen({
-  onOpenFlexMockup,
+  onOpenMockup,
 }: {
-  onOpenFlexMockup: () => void;
+  onOpenMockup: (mockupType: MockupType) => void;
 }) {
   return (
     <>
@@ -277,9 +413,15 @@ function MockupMenuScreen({
             <MockupOptionButton
               key={option.title}
               option={option}
-              onClick={
-                option.title === "Flex Mock Up" ? onOpenFlexMockup : undefined
-              }
+              
+onClick={
+  option.active && option.mockupType
+    ? () => onOpenMockup(option.mockupType as MockupType)
+    : undefined
+}
+
+
+
             />
           ))}
         </div>
@@ -337,14 +479,20 @@ function MockupOptionButton({
 
 function DutyDetailsScreen({
   todayText,
-  legStatus,
+  mockupTitle,
+  legs,
+  getLegStatus,
+  canOpenLeg,
   onOpenLeg,
   onBack,
   onReset,
 }: {
   todayText: string;
-  legStatus: LegStatus;
-  onOpenLeg: () => void;
+  mockupTitle: string;
+  legs: DutyLeg[];
+  getLegStatus: (legNumber: number) => LegStatus;
+  canOpenLeg: (legNumber: number) => boolean;
+  onOpenLeg: (legNumber: number) => void;
   onBack: () => void;
   onReset: () => void;
 }) {
@@ -359,10 +507,22 @@ function DutyDetailsScreen({
           Duty details
         </h2>
 
-        <p className="mt-8 text-xl font-bold text-[#333]">{todayText}</p>
+        <p className="mt-2 text-sm font-black uppercase tracking-[0.14em] text-[#d6001c]">
+          {mockupTitle}
+        </p>
 
-        <div className="mt-4">
-          <LegCard leg={dutyLeg} status={legStatus} onClick={onOpenLeg} />
+        <p className="mt-6 text-xl font-bold text-[#333]">{todayText}</p>
+
+        <div className="mt-4 space-y-4">
+          {legs.map((leg) => (
+            <LegCard
+              key={leg.number}
+              leg={leg}
+              status={getLegStatus(leg.number)}
+              canOpen={canOpenLeg(leg.number)}
+              onClick={() => onOpenLeg(leg.number)}
+            />
+          ))}
         </div>
 
         <MockResetButton onReset={onReset} />
@@ -390,21 +550,27 @@ function OverviewCard() {
 function LegCard({
   leg,
   status,
+  canOpen,
   onClick,
 }: {
   leg: DutyLeg;
   status: LegStatus;
+  canOpen?: boolean;
   onClick?: () => void;
 }) {
+  const isLocked = !canOpen && status !== "Completed";
+
   return (
     <button
       type="button"
-      onClick={onClick}
-      disabled={!onClick}
+      onClick={canOpen ? onClick : undefined}
+      disabled={!canOpen}
       className={`w-full rounded-[18px] border border-[#d0d0d0] p-4 text-left shadow-sm transition ${
-        onClick
+        canOpen
           ? "bg-white hover:-translate-y-1 hover:shadow-md"
-          : "bg-[#f4f4f4]"
+          : status === "Completed"
+          ? "bg-[#f0f0f0]"
+          : "bg-[#f4f4f4] opacity-55"
       }`}
     >
       <div className="mb-5 flex items-center justify-between">
@@ -418,19 +584,25 @@ function LegCard({
         <p className="text-right">ETA: {leg.eta}</p>
       </div>
 
-      <div className="mt-6 grid grid-cols-[1fr_60px_1fr] items-center gap-3">
-        <p className="text-lg font-black uppercase leading-tight text-[#333]">
+      <div className="mt-6 grid grid-cols-[1fr_42px_1fr] items-center gap-2">
+        <p className="text-base font-black uppercase leading-tight text-[#333] sm:text-lg">
           {leg.from}
         </p>
 
-        <div className="flex items-center justify-center text-3xl font-black text-[#d6d6d6]">
+        <div className="flex items-center justify-center text-2xl font-black text-[#d6d6d6] sm:text-3xl">
           →
         </div>
 
-        <p className="text-right text-lg font-black uppercase leading-tight text-[#333]">
+        <p className="text-right text-base font-black uppercase leading-tight text-[#333] sm:text-lg">
           {leg.to}
         </p>
       </div>
+
+      {isLocked && (
+        <p className="mt-4 text-xs font-black uppercase tracking-[0.12em] text-[#999]">
+          Complete previous leg first
+        </p>
+      )}
     </button>
   );
 }
@@ -521,6 +693,7 @@ function VehicleNumberModal({
 function OriginTasksScreen({
   todayText,
   vehicleNumber,
+  leg,
   legStatus,
   onBack,
   onTaskSelected,
@@ -528,6 +701,7 @@ function OriginTasksScreen({
 }: {
   todayText: string;
   vehicleNumber: string;
+  leg: DutyLeg;
   legStatus: LegStatus;
   onBack: () => void;
   onTaskSelected: () => void;
@@ -543,7 +717,7 @@ function OriginTasksScreen({
         <p className="mt-6 text-lg font-bold text-[#333]">{todayText}</p>
 
         <div className="mt-3">
-          <LegCard leg={dutyLeg} status={legStatus} />
+          <LegCard leg={leg} status={legStatus} />
         </div>
 
         <h2 className="mt-7 text-xl font-black text-[#222]">
@@ -555,7 +729,7 @@ function OriginTasksScreen({
             <button
               key={task}
               type="button"
-              onClick={task === "Flex / As Directed" ? onTaskSelected : undefined}
+              onClick={onTaskSelected}
               className="flex w-full items-center justify-between rounded-lg border border-[#d9d9d9] border-l-4 border-l-[#d6001c] bg-white px-4 py-4 text-left text-sm font-black text-[#222] shadow-sm transition hover:-translate-y-1 hover:shadow-md"
             >
               <span>{task}</span>
@@ -583,8 +757,7 @@ function DepartDepotModal({
         <h2 className="text-3xl font-black text-[#111]">Alert</h2>
 
         <p className="mt-5 text-xl font-bold leading-8 text-[#222]">
-          Are you sure you are taking an empty vehicle and ready to depart from
-          depot?
+          Are you ready to depart from depot and begin this leg?
         </p>
 
         <div className="mt-7 grid grid-cols-2 gap-4">
@@ -612,16 +785,20 @@ function DepartDepotModal({
 function DutyInProgressScreen({
   todayText,
   vehicleNumber,
+  leg,
   legStatus,
+  hasMoreLegs,
   onBack,
-  onCompleteDuty,
+  onCompleteLeg,
   onReset,
 }: {
   todayText: string;
   vehicleNumber: string;
+  leg: DutyLeg;
   legStatus: LegStatus;
+  hasMoreLegs: boolean;
   onBack: () => void;
-  onCompleteDuty: () => void;
+  onCompleteLeg: () => void;
   onReset: () => void;
 }) {
   return (
@@ -634,14 +811,22 @@ function DutyInProgressScreen({
         <p className="mt-6 text-lg font-bold text-[#333]">{todayText}</p>
 
         <div className="mt-3">
-          <LegCard leg={dutyLeg} status={legStatus} />
+          <LegCard leg={leg} status={legStatus} />
         </div>
 
         <h2 className="mt-8 text-2xl font-black text-[#222]">
-          Duty in progress
+          Destination task details
         </h2>
 
-        <section className="mt-4 rounded-[18px] bg-[#f0f0f0] p-5">
+        <button
+          type="button"
+          className="mt-4 flex w-full items-center justify-between rounded-lg border border-[#d9d9d9] border-l-4 border-l-[#d6001c] bg-white px-4 py-4 text-left text-sm font-black text-[#222] shadow-sm"
+        >
+          <span>Arrive into depot</span>
+          <span className="text-2xl font-black text-[#d6001c]">›</span>
+        </button>
+
+        <section className="mt-6 rounded-[18px] bg-[#f0f0f0] p-5">
           <p className="text-base font-bold leading-7 text-[#333]">
             Your duty is now active. Please keep the app open until the end of
             your shift so the duty can remain visible and available.
@@ -650,10 +835,10 @@ function DutyInProgressScreen({
 
         <button
           type="button"
-          onClick={onCompleteDuty}
+          onClick={onCompleteLeg}
           className="mt-6 w-full rounded-[18px] bg-[#d6001c] px-5 py-5 text-sm font-black uppercase tracking-[0.12em] text-white"
         >
-          Completed Duty, End of Shift
+          {hasMoreLegs ? "Complete Leg" : "Completed Duty, End of Shift"}
         </button>
 
         <MockResetButton onReset={onReset} />
@@ -665,11 +850,13 @@ function DutyInProgressScreen({
 function DutyCompletedScreen({
   todayText,
   vehicleNumber,
+  leg,
   legStatus,
   onReset,
 }: {
   todayText: string;
   vehicleNumber: string;
+  leg: DutyLeg;
   legStatus: LegStatus;
   onReset: () => void;
 }) {
@@ -687,7 +874,7 @@ function DutyCompletedScreen({
         <p className="mt-8 text-xl font-bold text-[#333]">{todayText}</p>
 
         <div className="mt-4">
-          <LegCard leg={dutyLeg} status={legStatus} />
+          <LegCard leg={leg} status={legStatus} />
         </div>
 
         <VehicleNumberBanner vehicleNumber={vehicleNumber} />
