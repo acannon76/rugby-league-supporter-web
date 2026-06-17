@@ -1183,12 +1183,16 @@ function DestinationTasksScreen({
           <span className="text-2xl font-black text-[#d6001c]">›</span>
         </button>
 
-        <section className="mt-6 rounded-[18px] bg-[#f0f0f0] p-5">
-          <p className="text-base font-bold leading-7 text-[#333]">
-            Please keep the app open until the end of the shift so duty
-            progress remains visible.
-          </p>
-        </section>
+        <section className="mt-6 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
+  <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
+    Important
+  </p>
+
+  <p className="mt-3 text-base font-black leading-7 text-[#222]">
+    It is important that you keep the app open until the end of your shift.
+    Closing the app may stop duty progress from remaining visible.
+  </p>
+</section>
 
         <MockResetButton onReset={onReset} />
       </section>
