@@ -1431,7 +1431,7 @@ function IssueModal({
         />
 
         <label className="mt-4 block text-sm font-black text-[#222]">
-          Different location / route change
+          Different location / route change or N/A
         </label>
 
         <input
@@ -1442,7 +1442,7 @@ function IssueModal({
         />
 
         <label className="mt-4 block text-sm font-black text-[#222]">
-          Manager authorising change
+          Manager authorising change or N/A
         </label>
 
         <input
