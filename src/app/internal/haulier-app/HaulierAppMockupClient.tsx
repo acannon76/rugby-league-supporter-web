@@ -1230,8 +1230,7 @@ function DestinationScreen({
 
           <p className="mt-3 text-base font-black leading-7 text-[#222]">
             It is important that you keep the app open until the end of your
-            shift. Closing the app may stop duty progress from remaining
-            visible.
+            shift. Closing the app early will result in app non-compliance being recorded for this duty.
           </p>
         </section>
 
@@ -1503,10 +1502,12 @@ function DepartModal({
   onCancel: () => void;
   onDepart: () => void;
 }) {
-  const message =
-    taskType === "empty" || taskType === "flex"
-      ? "Are you sure you are taking an empty vehicle and ready to depart from depot?"
-      : `Are you sure you have added all ${containerCount} containers and are ready to depart from depot?`;
+ const message =
+  taskType === "flex"
+    ? "Are you sure you are performing a Flex or As Directed leg? If so, please add as much detail as possible regarding your leg in the Report issue / delay section."
+    : taskType === "empty"
+    ? "Are you sure you are taking an empty vehicle and ready to depart from depot?"
+    : `Are you sure you have added all ${containerCount} containers and are ready to depart from depot?`;
 
   return (
     <AlertShell
