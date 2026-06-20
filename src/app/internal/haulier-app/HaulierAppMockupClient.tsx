@@ -8,6 +8,7 @@ type TaskType = "empty" | "repat" | "load" | "skip" | "flex";
 type IssueMode = "delay" | "skip";
 
 type Screen =
+  | "no-duty"
   | "menu"
   | "duty"
   | "origin"
@@ -140,7 +141,7 @@ const mockContainers = [
 ];
 
 export default function HaulierAppMockupClient() {
-  const [screen, setScreen] = useState<Screen>("menu");
+  const [screen, setScreen] = useState<Screen>("no-duty");
   const [mockup, setMockup] = useState<MockupType>("flex");
   const [selectedLeg, setSelectedLeg] = useState(1);
   const [selectedTask, setSelectedTask] = useState<TaskType>("empty");
@@ -165,6 +166,7 @@ export default function HaulierAppMockupClient() {
   const [legStatuses, setLegStatuses] = useState<Record<number, LegStatus>>({
     1: "To do",
   });
+
   const [issueReports, setIssueReports] = useState<Record<number, string>>({});
 
   const today = useMemo(() => getTodayDateText(), []);
@@ -211,7 +213,10 @@ export default function HaulierAppMockupClient() {
   }
 
   function canOpenLeg(legNumber: number) {
-    return legNumber === firstAvailableLeg() && legStatus(legNumber) !== "Completed";
+    return (
+      legNumber === firstAvailableLeg() &&
+      legStatus(legNumber) !== "Completed"
+    );
   }
 
   function openLeg(legNumber: number) {
@@ -284,7 +289,9 @@ export default function HaulierAppMockupClient() {
   }
 
   function removeContainer(containerNumber: string) {
-    setContainers((current) => current.filter((item) => item !== containerNumber));
+    setContainers((current) =>
+      current.filter((item) => item !== containerNumber)
+    );
   }
 
   function continueRepat() {
@@ -344,7 +351,9 @@ export default function HaulierAppMockupClient() {
       `Leg ${selectedLeg}`,
       `Type: ${issueMode === "skip" ? "Skipped leg" : "Delay / route change"}`,
       issueDetails.trim() ? `Details: ${issueDetails.trim()}` : "",
-      issueLocation.trim() ? `Location / route change: ${issueLocation.trim()}` : "",
+      issueLocation.trim()
+        ? `Location / route change: ${issueLocation.trim()}`
+        : "",
       issueManager.trim() ? `Authorised by: ${issueManager.trim()}` : "",
     ].filter(Boolean);
 
@@ -381,10 +390,22 @@ export default function HaulierAppMockupClient() {
     closeAllModals();
   }
 
+  function openMockupMenu() {
+    resetMockup();
+    setScreen("menu");
+  }
+
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#222]">
       <div className="relative mx-auto min-h-screen w-full max-w-[520px] bg-white shadow-2xl sm:my-6 sm:min-h-[900px] sm:rounded-[34px]">
         <PhoneStatusBar />
+
+        {screen === "no-duty" && (
+          <NoDutyScreen
+            onContinue={openMockupMenu}
+            onMockupMenu={openMockupMenu}
+          />
+        )}
 
         {screen === "menu" && <MenuScreen onOpenMockup={startMockup} />}
 
@@ -594,6 +615,58 @@ function AppHeader({
   );
 }
 
+function NoDutyScreen({
+  onContinue,
+  onMockupMenu,
+}: {
+  onContinue: () => void;
+  onMockupMenu: () => void;
+}) {
+  return (
+    <>
+      <AppHeader title="Haulier Mock Up" />
+
+      <section className="bg-white px-5 py-6">
+        <OverviewCard dutyId="" />
+
+        <h2 className="mt-10 text-2xl font-black text-[#222]">
+          Duty details
+        </h2>
+
+        <section className="mt-6 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
+            No duty available
+          </p>
+
+          <p className="mt-4 text-base font-black leading-7 text-[#222]">
+            No duty available. Please ensure that your haulier has added your
+            correct email address to the Transport Office Haulier Connect System
+            and then manually close the app.
+          </p>
+        </section>
+
+        <div className="mt-8 space-y-3">
+          <button
+            type="button"
+            onClick={onContinue}
+            className="w-full rounded-[18px] bg-[#d6001c] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white"
+          >
+            Continue
+          </button>
+
+          <button
+            type="button"
+            onClick={onMockupMenu}
+            className="w-full rounded-[18px] bg-[#222] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white"
+          >
+            Mock-up menu
+          </button>
+        </div>
+      </section>
+    </>
+  );
+}
+
 function MenuScreen({
   onOpenMockup,
 }: {
@@ -735,7 +808,7 @@ function DutyScreen({
   );
 }
 
-function OverviewCard() {
+function OverviewCard({ dutyId = "NWH254" }: { dutyId?: string }) {
   return (
     <section className="rounded-[18px] bg-[#f0f0f0] p-5">
       <h2 className="text-2xl font-black text-[#222]">Overview</h2>
@@ -745,7 +818,7 @@ function OverviewCard() {
       </p>
 
       <p className="mt-4 text-lg font-bold text-[#333]">
-        <span className="font-black">Duty ID:</span> NWH254
+        <span className="font-black">Duty ID:</span> {dutyId}
       </p>
     </section>
   );
@@ -1029,7 +1102,10 @@ function LoadScreen({
           </button>
         )}
 
-        <ContainerList containers={containers} onRemoveContainer={onRemoveContainer} />
+        <ContainerList
+          containers={containers}
+          onRemoveContainer={onRemoveContainer}
+        />
 
         {containers.length > 0 && (
           <button
@@ -1075,7 +1151,10 @@ function ScanScreen({
           Scanned {containers.length} Container (s)
         </h2>
 
-        <ContainerList containers={containers} onRemoveContainer={onRemoveContainer} />
+        <ContainerList
+          containers={containers}
+          onRemoveContainer={onRemoveContainer}
+        />
 
         <button
           type="button"
@@ -1247,7 +1326,8 @@ function DestinationScreen({
 
           <p className="mt-3 text-base font-black leading-7 text-[#222]">
             It is important that you keep the app open until the end of your
-            shift. Closing the app early will result in app non-compliance being recorded for this duty.
+            shift. Closing the app early will result in app non-compliance being
+            recorded for this duty.
           </p>
         </section>
 
@@ -1519,12 +1599,12 @@ function DepartModal({
   onCancel: () => void;
   onDepart: () => void;
 }) {
- const message =
-  taskType === "flex"
-    ? "Are you sure you are performing a Flex or As Directed leg? If so, please add as much detail as possible regarding your leg in the Report issue / delay section."
-    : taskType === "empty"
-    ? "Are you sure you are taking an empty vehicle and ready to depart from depot?"
-    : `Are you sure you have added all ${containerCount} containers and are ready to depart from depot?`;
+  const message =
+    taskType === "flex"
+      ? "Are you sure you are performing a Flex or As Directed leg? If so, please add as much detail as possible regarding your leg in the Report issue / delay section."
+      : taskType === "empty"
+      ? "Are you sure you are taking an empty vehicle and ready to depart from depot?"
+      : `Are you sure you have added all ${containerCount} containers and are ready to depart from depot?`;
 
   return (
     <AlertShell
