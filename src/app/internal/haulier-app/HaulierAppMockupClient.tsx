@@ -449,20 +449,21 @@ export default function HaulierAppMockupClient() {
             onReset={resetMockup}
           />
         )}
-
-        {screen === "destination" && (
-          <DestinationScreen
-            today={today}
-            vehicleNumber={vehicleNumber}
-            leg={currentLeg}
-            status={legStatus(selectedLeg)}
-            issueReport={issueReports[selectedLeg]}
-            onBack={() => setScreen("origin")}
-            onArriveIntoDepot={arriveIntoDepot}
-            onOpenIssue={() => openIssueModal("delay")}
-            onReset={resetMockup}
-          />
-        )}
+{screen === "destination" && (
+  <DestinationScreen
+    today={today}
+    vehicleNumber={vehicleNumber}
+    leg={currentLeg}
+    status={legStatus(selectedLeg)}
+    selectedTask={selectedTask}
+    issueReport={issueReports[selectedLeg]}
+    onBack={() => setScreen("origin")}
+    onArriveIntoDepot={arriveIntoDepot}
+    onOpenIssue={() => openIssueModal("delay")}
+    onReset={resetMockup}
+  />
+)}
+        
 
         {screen === "unload" && (
           <UnloadScreen
@@ -1170,6 +1171,7 @@ function DestinationScreen({
   vehicleNumber,
   leg,
   status,
+  selectedTask,
   issueReport,
   onBack,
   onArriveIntoDepot,
@@ -1180,6 +1182,7 @@ function DestinationScreen({
   vehicleNumber: string;
   leg: DutyLeg;
   status: LegStatus;
+  selectedTask: TaskType;
   issueReport?: string;
   onBack: () => void;
   onArriveIntoDepot: () => void;
@@ -1208,7 +1211,11 @@ function DestinationScreen({
           onClick={onArriveIntoDepot}
           className="mt-4 flex w-full items-center justify-between rounded-lg border border-[#d9d9d9] border-l-4 border-l-[#d6001c] bg-white px-4 py-4 text-left text-sm font-black text-[#222] shadow-sm"
         >
-          <span>Arrive into depot</span>
+          <span>
+  {selectedTask === "flex"
+    ? "Returned from & completed Flex / As Directed leg"
+    : "Arrive into depot"}
+</span>
           <span className="text-2xl font-black text-[#d6001c]">›</span>
         </button>
 
