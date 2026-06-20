@@ -6,6 +6,11 @@ type LegStatus = "To do" | "In Progress" | "Completed";
 type MockupType = "flex" | "mockup2";
 type TaskType = "empty" | "repat" | "load" | "skip" | "flex";
 type IssueMode = "departure" | "arrival" | "skip";
+type PendingIssueAction =
+  | "departure-to-destination"
+  | "arrival-complete"
+  | "arrival-unload"
+  | null;
 
 type Screen =
   | "no-duty"
@@ -129,8 +134,8 @@ const originTasks: { label: string; type: TaskType }[] = [
   { label: "Empty", type: "empty" },
   { label: "Repat / Pre-Loaded", type: "repat" },
   { label: "Load", type: "load" },
-  { label: "Skip Leg", type: "skip" },
   { label: "Flex / As Directed", type: "flex" },
+  { label: "Skip Leg", type: "skip" },
 ];
 
 const mockContainers = [
@@ -159,6 +164,9 @@ export default function HaulierAppMockupClient() {
   const [issueModalOpen, setIssueModalOpen] = useState(false);
 
   const [issueMode, setIssueMode] = useState<IssueMode>("departure");
+  const [pendingIssueAction, setPendingIssueAction] =
+    useState<PendingIssueAction>(null);
+
   const [issueDetails, setIssueDetails] = useState("");
   const [issueLocation, setIssueLocation] = useState("");
   const [issueManager, setIssueManager] = useState("");
@@ -251,7 +259,7 @@ export default function HaulierAppMockupClient() {
     setSelectedTask(task);
 
     if (task === "skip") {
-      openIssueModal("skip");
+      openIssueModal("skip", null);
       return;
     }
 
@@ -273,11 +281,13 @@ export default function HaulierAppMockupClient() {
 
   function confirmDepartDepot() {
     setDepartModalOpen(false);
+
     setLegStatuses((current) => ({
       ...current,
       [selectedLeg]: "In Progress",
     }));
-    setScreen("destination");
+
+    openIssueModal("departure", "departure-to-destination");
   }
 
   function addManualContainer() {
@@ -312,20 +322,22 @@ export default function HaulierAppMockupClient() {
 
   function confirmLoadDepart() {
     setLoadModalOpen(false);
+
     setLegStatuses((current) => ({
       ...current,
       [selectedLeg]: "In Progress",
     }));
-    setScreen("destination");
+
+    openIssueModal("departure", "departure-to-destination");
   }
 
   function arriveIntoDepot() {
     if (selectedTask === "empty" || selectedTask === "flex") {
-      completeLeg();
+      openIssueModal("arrival", "arrival-complete");
       return;
     }
 
-    setScreen("unload");
+    openIssueModal("arrival", "arrival-unload");
   }
 
   function completeLeg() {
@@ -337,6 +349,7 @@ export default function HaulierAppMockupClient() {
     }));
 
     closeAllModals();
+    setPendingIssueAction(null);
 
     if (finalLeg) {
       setScreen("complete");
@@ -346,8 +359,9 @@ export default function HaulierAppMockupClient() {
     setScreen("duty");
   }
 
-  function openIssueModal(mode: IssueMode) {
+  function openIssueModal(mode: IssueMode, action: PendingIssueAction) {
     setIssueMode(mode);
+    setPendingIssueAction(action);
     setIssueDetails("");
     setIssueLocation("");
     setIssueManager("");
@@ -383,6 +397,36 @@ export default function HaulierAppMockupClient() {
 
     if (issueMode === "skip") {
       completeLeg();
+      return;
+    }
+
+    finishPendingIssueAction();
+  }
+
+  function continueWithoutIssue() {
+    setIssueDetails("");
+    setIssueLocation("");
+    setIssueManager("");
+    setIssueModalOpen(false);
+    finishPendingIssueAction();
+  }
+
+  function finishPendingIssueAction() {
+    const action = pendingIssueAction;
+    setPendingIssueAction(null);
+
+    if (action === "departure-to-destination") {
+      setScreen("destination");
+      return;
+    }
+
+    if (action === "arrival-complete") {
+      completeLeg();
+      return;
+    }
+
+    if (action === "arrival-unload") {
+      setScreen("unload");
     }
   }
 
@@ -401,6 +445,7 @@ export default function HaulierAppMockupClient() {
     setIssueDetails("");
     setIssueLocation("");
     setIssueManager("");
+    setPendingIssueAction(null);
     closeAllModals();
   }
 
@@ -448,7 +493,6 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("duty")}
             onTask={selectTask}
-            onOpenDepartureIssue={() => openIssueModal("departure")}
             onReset={resetMockup}
           />
         )}
@@ -499,7 +543,6 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("origin")}
             onArriveIntoDepot={arriveIntoDepot}
-            onOpenArrivalIssue={() => openIssueModal("arrival")}
             onReset={resetMockup}
           />
         )}
@@ -513,7 +556,6 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("destination")}
             onUnloadAll={() => setUnloadModalOpen(true)}
-            onOpenArrivalIssue={() => openIssueModal("arrival")}
             onReset={resetMockup}
           />
         )}
@@ -576,6 +618,7 @@ export default function HaulierAppMockupClient() {
             onManagerChange={setIssueManager}
             onCancel={() => setIssueModalOpen(false)}
             onSave={saveIssueDetails}
+            onNoIssue={continueWithoutIssue}
           />
         )}
       </div>
@@ -844,7 +887,8 @@ function LegCard({
   canOpen?: boolean;
   onClick?: () => void;
 }) {
-  const isInteractive = typeof canOpen === "boolean" && typeof onClick === "function";
+  const isInteractive =
+    typeof canOpen === "boolean" && typeof onClick === "function";
   const isLocked = isInteractive && !canOpen && status !== "Completed";
   const isFlexAsDirectedLeg =
     normaliseLocationName(leg.from) === normaliseLocationName(leg.to);
@@ -1040,7 +1084,6 @@ function OriginScreen({
   issueReport,
   onBack,
   onTask,
-  onOpenDepartureIssue,
   onReset,
 }: {
   today: string;
@@ -1050,7 +1093,6 @@ function OriginScreen({
   issueReport?: LegIssueReport;
   onBack: () => void;
   onTask: (task: TaskType) => void;
-  onOpenDepartureIssue: () => void;
   onReset: () => void;
 }) {
   return (
@@ -1082,15 +1124,6 @@ function OriginScreen({
               <span className="text-2xl font-black text-[#d6001c]">›</span>
             </button>
           ))}
-
-          <button
-            type="button"
-            onClick={onOpenDepartureIssue}
-            className="flex w-full items-center justify-between rounded-lg border border-[#f59e0b] border-l-4 border-l-[#f59e0b] bg-[#fff7ed] px-4 py-4 text-left text-sm font-black text-[#7c2d12] shadow-sm"
-          >
-            <span>Report departure issue / delay</span>
-            <span className="text-2xl font-black text-[#f59e0b]">!</span>
-          </button>
         </div>
 
         {issueReport && hasAnyIssue(issueReport) && (
@@ -1332,7 +1365,6 @@ function DestinationScreen({
   issueReport,
   onBack,
   onArriveIntoDepot,
-  onOpenArrivalIssue,
   onReset,
 }: {
   today: string;
@@ -1343,7 +1375,6 @@ function DestinationScreen({
   issueReport?: LegIssueReport;
   onBack: () => void;
   onArriveIntoDepot: () => void;
-  onOpenArrivalIssue: () => void;
   onReset: () => void;
 }) {
   return (
@@ -1376,15 +1407,6 @@ function DestinationScreen({
           <span className="text-2xl font-black text-[#d6001c]">›</span>
         </button>
 
-        <button
-          type="button"
-          onClick={onOpenArrivalIssue}
-          className="mt-3 flex w-full items-center justify-between rounded-lg border border-[#f59e0b] border-l-4 border-l-[#f59e0b] bg-[#fff7ed] px-4 py-4 text-left text-sm font-black text-[#7c2d12] shadow-sm"
-        >
-          <span>Report arrival issue / delay</span>
-          <span className="text-2xl font-black text-[#f59e0b]">!</span>
-        </button>
-
         {issueReport && hasAnyIssue(issueReport) && (
           <IssueRecordedBox legNumber={leg.number} issueReport={issueReport} />
         )}
@@ -1415,7 +1437,6 @@ function UnloadScreen({
   issueReport,
   onBack,
   onUnloadAll,
-  onOpenArrivalIssue,
   onReset,
 }: {
   today: string;
@@ -1425,7 +1446,6 @@ function UnloadScreen({
   issueReport?: LegIssueReport;
   onBack: () => void;
   onUnloadAll: () => void;
-  onOpenArrivalIssue: () => void;
   onReset: () => void;
 }) {
   return (
@@ -1461,15 +1481,6 @@ function UnloadScreen({
           >
             <span>Unload all</span>
             <span className="text-2xl font-black text-[#d6001c]">›</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onOpenArrivalIssue}
-            className="flex w-full items-center justify-between rounded-lg border border-[#f59e0b] border-l-4 border-l-[#f59e0b] bg-[#fff7ed] px-4 py-4 text-left text-sm font-black text-[#7c2d12] shadow-sm"
-          >
-            <span>Report arrival issue / delay</span>
-            <span className="text-2xl font-black text-[#f59e0b]">!</span>
           </button>
         </div>
 
@@ -1548,6 +1559,7 @@ function IssueModal({
   onManagerChange,
   onCancel,
   onSave,
+  onNoIssue,
 }: {
   mode: IssueMode;
   details: string;
@@ -1558,6 +1570,7 @@ function IssueModal({
   onManagerChange: (value: string) => void;
   onCancel: () => void;
   onSave: () => void;
+  onNoIssue: () => void;
 }) {
   const isSkip = mode === "skip";
   const isDeparture = mode === "departure";
@@ -1577,8 +1590,8 @@ function IssueModal({
   const helperText = isSkip
     ? "Record why this leg is being skipped and which manager authorised the change."
     : isDeparture
-    ? "Record any issue that could delay departure, or explain if the duty is leaving from a different location than planned."
-    : "Record any issue that could delay arrival, or explain if the duty arrived at a different location than planned.";
+    ? "Please record any issue that delayed departure, caused a route change, or meant the duty departed from a different location. If there was no departure issue, select No Issue."
+    : "Please record any issue that delayed arrival, caused a route change, or meant the duty arrived at a different location. If there was no arrival issue, select No Issue.";
 
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-5">
@@ -1639,26 +1652,49 @@ function IssueModal({
           </p>
         )}
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-full border-2 border-[#333] bg-white px-5 py-3 text-sm font-black text-[#333]"
-          >
-            Cancel
-          </button>
+        {isSkip ? (
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="rounded-full border-2 border-[#333] bg-white px-5 py-3 text-sm font-black text-[#333]"
+            >
+              Cancel
+            </button>
 
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={!canSave}
-            className={`rounded-full px-5 py-3 text-sm font-black text-white ${
-              canSave ? "bg-[#d6001c]" : "bg-[#cccccc]"
-            }`}
-          >
-            {isSkip ? "Save & Skip Leg" : "Save Details"}
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={!canSave}
+              className={`rounded-full px-5 py-3 text-sm font-black text-white ${
+                canSave ? "bg-[#d6001c]" : "bg-[#cccccc]"
+              }`}
+            >
+              Save & Skip Leg
+            </button>
+          </div>
+        ) : (
+          <div className="mt-5 space-y-3">
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={!canSave}
+              className={`w-full rounded-full px-5 py-3 text-sm font-black text-white ${
+                canSave ? "bg-[#d6001c]" : "bg-[#cccccc]"
+              }`}
+            >
+              Save Details & Continue
+            </button>
+
+            <button
+              type="button"
+              onClick={onNoIssue}
+              className="w-full rounded-full border-2 border-[#333] bg-white px-5 py-3 text-sm font-black text-[#333]"
+            >
+              No Issue
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );
@@ -1716,7 +1752,7 @@ function DepartModal({
 }) {
   const message =
     taskType === "flex"
-      ? "Are you sure you are performing a Flex or As Directed leg? If so, please add as much detail as possible regarding your leg in the Report departure issue / delay and Report arrival issue / delay sections."
+      ? "Are you sure you are performing a Flex or As Directed leg? If so, please add as much detail as possible in the departure and arrival issue screens."
       : taskType === "empty"
       ? "Are you sure you are taking an empty vehicle and ready to depart from depot?"
       : `Are you sure you have added all ${containerCount} containers and are ready to depart from depot?`;
