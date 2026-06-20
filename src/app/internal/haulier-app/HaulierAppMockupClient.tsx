@@ -449,21 +449,21 @@ export default function HaulierAppMockupClient() {
             onReset={resetMockup}
           />
         )}
-{screen === "destination" && (
-  <DestinationScreen
-    today={today}
-    vehicleNumber={vehicleNumber}
-    leg={currentLeg}
-    status={legStatus(selectedLeg)}
-    selectedTask={selectedTask}
-    issueReport={issueReports[selectedLeg]}
-    onBack={() => setScreen("origin")}
-    onArriveIntoDepot={arriveIntoDepot}
-    onOpenIssue={() => openIssueModal("delay")}
-    onReset={resetMockup}
-  />
-)}
-        
+
+        {screen === "destination" && (
+          <DestinationScreen
+            today={today}
+            vehicleNumber={vehicleNumber}
+            leg={currentLeg}
+            status={legStatus(selectedLeg)}
+            selectedTask={selectedTask}
+            issueReport={issueReports[selectedLeg]}
+            onBack={() => setScreen("origin")}
+            onArriveIntoDepot={arriveIntoDepot}
+            onOpenIssue={() => openIssueModal("delay")}
+            onReset={resetMockup}
+          />
+        )}
 
         {screen === "unload" && (
           <UnloadScreen
@@ -763,6 +763,8 @@ function LegCard({
   onClick?: () => void;
 }) {
   const isLocked = !canOpen && status !== "Completed";
+  const isFlexAsDirectedLeg =
+    normaliseLocationName(leg.from) === normaliseLocationName(leg.to);
 
   return (
     <button
@@ -777,8 +779,16 @@ function LegCard({
           : "bg-[#f4f4f4] opacity-55"
       }`}
     >
-      <div className="mb-5 flex items-center justify-between">
-        <p className="text-lg font-black text-[#444]">Leg {leg.number}</p>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-lg font-black text-[#444]">Leg {leg.number}</p>
+
+          {isFlexAsDirectedLeg && (
+            <span className="rounded-full bg-[#fff0f2] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#d6001c]">
+              Flex / As Directed
+            </span>
+          )}
+        </div>
 
         <StatusPill status={status} />
       </div>
@@ -1212,10 +1222,10 @@ function DestinationScreen({
           className="mt-4 flex w-full items-center justify-between rounded-lg border border-[#d9d9d9] border-l-4 border-l-[#d6001c] bg-white px-4 py-4 text-left text-sm font-black text-[#222] shadow-sm"
         >
           <span>
-  {selectedTask === "flex"
-    ? "Returned from & completed Flex / As Directed leg"
-    : "Arrive into depot"}
-</span>
+            {selectedTask === "flex"
+              ? "Returned from & completed Flex / As Directed leg"
+              : "Arrive into depot"}
+          </span>
           <span className="text-2xl font-black text-[#d6001c]">›</span>
         </button>
 
@@ -1627,6 +1637,10 @@ function MockResetButton({ onReset }: { onReset: () => void }) {
       MOCKUP Reset
     </button>
   );
+}
+
+function normaliseLocationName(value: string) {
+  return value.trim().toLowerCase();
 }
 
 function getTodayDateText() {
