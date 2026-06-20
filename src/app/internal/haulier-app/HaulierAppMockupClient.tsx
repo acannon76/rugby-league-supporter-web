@@ -401,10 +401,7 @@ export default function HaulierAppMockupClient() {
         <PhoneStatusBar />
 
         {screen === "no-duty" && (
-          <NoDutyScreen
-            onContinue={openMockupMenu}
-            onMockupMenu={openMockupMenu}
-          />
+          <NoDutyScreen onContinue={openMockupMenu} />
         )}
 
         {screen === "menu" && <MenuScreen onOpenMockup={startMockup} />}
@@ -615,13 +612,7 @@ function AppHeader({
   );
 }
 
-function NoDutyScreen({
-  onContinue,
-  onMockupMenu,
-}: {
-  onContinue: () => void;
-  onMockupMenu: () => void;
-}) {
+function NoDutyScreen({ onContinue }: { onContinue: () => void }) {
   return (
     <>
       <AppHeader title="Haulier Mock Up" />
@@ -635,33 +626,23 @@ function NoDutyScreen({
 
         <section className="mt-6 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
-            No duty currently showing
+            No duty available
           </p>
 
           <p className="mt-4 text-base font-black leading-7 text-[#222]">
-            To load the duty, please ensure that your haulier has added your
+            No duty available. Please ensure that your haulier has added your
             correct email address to the Transport Office Haulier Connect System
-            and then manually close the app to reload.
+            and then manually close the app.
           </p>
         </section>
 
-        <div className="mt-8 space-y-3">
-          <button
-            type="button"
-            onClick={onContinue}
-            className="w-full rounded-[18px] bg-[#d6001c] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white"
-          >
-            Continue
-          </button>
-
-          <button
-            type="button"
-            onClick={onMockupMenu}
-            className="w-full rounded-[18px] bg-[#222] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white"
-          >
-            Mock-up menu
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onContinue}
+          className="mt-8 w-full rounded-[18px] bg-[#d6001c] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white"
+        >
+          Continue
+        </button>
       </section>
     </>
   );
