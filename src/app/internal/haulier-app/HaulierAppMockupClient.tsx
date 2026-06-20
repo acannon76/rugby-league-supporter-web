@@ -4,18 +4,19 @@ import { useMemo, useState } from "react";
 
 type LegStatus = "To do" | "In Progress" | "Completed";
 type MockupType = "flex" | "mockup2";
-type OriginTaskType = "empty" | "repat" | "load" | "skip" | "flex";
+type TaskType = "empty" | "repat" | "load" | "skip" | "flex";
+type IssueMode = "delay" | "skip";
 
-type ScreenView =
-  | "mockup-menu"
-  | "duty-details"
-  | "origin-tasks"
-  | "load-screen"
-  | "scan-container"
-  | "repat-count"
-  | "destination-tasks"
-  | "unload-options"
-  | "duty-completed";
+type Screen =
+  | "menu"
+  | "duty"
+  | "origin"
+  | "load"
+  | "scan"
+  | "repat"
+  | "destination"
+  | "unload"
+  | "complete";
 
 type DutyLeg = {
   number: number;
@@ -33,7 +34,7 @@ type MockupOption = {
   mockupType?: MockupType;
 };
 
-const flexDutyLegs: DutyLeg[] = [
+const flexLegs: DutyLeg[] = [
   {
     number: 1,
     etd: "20:00",
@@ -43,7 +44,7 @@ const flexDutyLegs: DutyLeg[] = [
   },
 ];
 
-const mockup2DutyLegs: DutyLeg[] = [
+const mockup2Legs: DutyLeg[] = [
   {
     number: 1,
     etd: "20:00",
@@ -117,7 +118,7 @@ const mockupOptions: MockupOption[] = [
   },
 ];
 
-const originTaskButtons: { label: string; type: OriginTaskType }[] = [
+const originTasks: { label: string; type: TaskType }[] = [
   { label: "Empty", type: "empty" },
   { label: "Repat / Pre-Loaded", type: "repat" },
   { label: "Load", type: "load" },
@@ -125,7 +126,7 @@ const originTaskButtons: { label: string; type: OriginTaskType }[] = [
   { label: "Flex / As Directed", type: "flex" },
 ];
 
-const mockContainerNumbers = [
+const mockContainers = [
   "YT12345678GB",
   "YT23456789GB",
   "YT34567890GB",
@@ -139,15 +140,21 @@ const mockContainerNumbers = [
 ];
 
 export default function HaulierAppMockupClient() {
-  const [screenView, setScreenView] = useState<ScreenView>("mockup-menu");
-  const [selectedMockup, setSelectedMockup] = useState<MockupType>("flex");
-  const [selectedLegNumber, setSelectedLegNumber] = useState(1);
-  const [selectedTask, setSelectedTask] = useState<OriginTaskType>("empty");
+  const [screen, setScreen] = useState<Screen>("menu");
+  const [mockup, setMockup] = useState<MockupType>("flex");
+  const [selectedLeg, setSelectedLeg] = useState(1);
+  const [selectedTask, setSelectedTask] = useState<TaskType>("empty");
 
-  const [showVehicleModal, setShowVehicleModal] = useState(false);
-  const [showDepartModal, setShowDepartModal] = useState(false);
-  const [showLoadCompleteModal, setShowLoadCompleteModal] = useState(false);
-  const [showUnloadAllModal, setShowUnloadAllModal] = useState(false);
+  const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
+  const [departModalOpen, setDepartModalOpen] = useState(false);
+  const [loadModalOpen, setLoadModalOpen] = useState(false);
+  const [unloadModalOpen, setUnloadModalOpen] = useState(false);
+  const [issueModalOpen, setIssueModalOpen] = useState(false);
+
+  const [issueMode, setIssueMode] = useState<IssueMode>("delay");
+  const [issueDetails, setIssueDetails] = useState("");
+  const [issueLocation, setIssueLocation] = useState("");
+  const [issueManager, setIssueManager] = useState("");
 
   const [vehicleInput, setVehicleInput] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
@@ -158,56 +165,53 @@ export default function HaulierAppMockupClient() {
   const [legStatuses, setLegStatuses] = useState<Record<number, LegStatus>>({
     1: "To do",
   });
+  const [issueReports, setIssueReports] = useState<Record<number, string>>({});
 
-  const todayText = useMemo(() => getTodayDateText(), []);
+  const today = useMemo(() => getTodayDateText(), []);
+  const legs = mockup === "mockup2" ? mockup2Legs : flexLegs;
+  const currentLeg = legs.find((leg) => leg.number === selectedLeg) || legs[0];
 
-  const activeLegs =
-    selectedMockup === "mockup2" ? mockup2DutyLegs : flexDutyLegs;
+  function startMockup(nextMockup: MockupType) {
+    const nextLegs = nextMockup === "mockup2" ? mockup2Legs : flexLegs;
+    const nextStatuses: Record<number, LegStatus> = {};
 
-  const selectedLeg =
-    activeLegs.find((leg) => leg.number === selectedLegNumber) || activeLegs[0];
+    nextLegs.forEach((leg) => {
+      nextStatuses[leg.number] = "To do";
+    });
 
-  function openMockup(mockupType: MockupType) {
-    const legs = mockupType === "mockup2" ? mockup2DutyLegs : flexDutyLegs;
-    const startingStatuses: Record<number, LegStatus> = {};
-
-    for (const leg of legs) {
-      startingStatuses[leg.number] = "To do";
-    }
-
-    setSelectedMockup(mockupType);
-    setSelectedLegNumber(1);
+    setMockup(nextMockup);
+    setSelectedLeg(1);
     setSelectedTask("empty");
     setVehicleInput("");
     setVehicleNumber("");
     setManualContainer("");
     setRepatCount("");
     setContainers([]);
-    setShowVehicleModal(false);
-    setShowDepartModal(false);
-    setShowLoadCompleteModal(false);
-    setShowUnloadAllModal(false);
-    setLegStatuses(startingStatuses);
-    setScreenView("duty-details");
+    setLegStatuses(nextStatuses);
+    setIssueReports({});
+    closeAllModals();
+    setScreen("duty");
   }
 
-  function getLegStatus(legNumber: number) {
+  function closeAllModals() {
+    setVehicleModalOpen(false);
+    setDepartModalOpen(false);
+    setLoadModalOpen(false);
+    setUnloadModalOpen(false);
+    setIssueModalOpen(false);
+  }
+
+  function legStatus(legNumber: number) {
     return legStatuses[legNumber] || "To do";
   }
 
-  function getFirstAvailableLegNumber() {
-    const firstNotCompleted = activeLegs.find(
-      (leg) => getLegStatus(leg.number) !== "Completed"
-    );
-
-    return firstNotCompleted?.number || activeLegs[activeLegs.length - 1].number;
+  function firstAvailableLeg() {
+    const firstOpen = legs.find((leg) => legStatus(leg.number) !== "Completed");
+    return firstOpen?.number || legs[legs.length - 1].number;
   }
 
   function canOpenLeg(legNumber: number) {
-    return (
-      legNumber === getFirstAvailableLegNumber() &&
-      getLegStatus(legNumber) !== "Completed"
-    );
+    return legNumber === firstAvailableLeg() && legStatus(legNumber) !== "Completed";
   }
 
   function openLeg(legNumber: number) {
@@ -215,14 +219,9 @@ export default function HaulierAppMockupClient() {
       return;
     }
 
-    setSelectedLegNumber(legNumber);
+    setSelectedLeg(legNumber);
     setVehicleInput(vehicleNumber);
-    setShowVehicleModal(true);
-  }
-
-  function cancelVehicleModal() {
-    setVehicleInput("");
-    setShowVehicleModal(false);
+    setVehicleModalOpen(true);
   }
 
   function confirmVehicleNumber() {
@@ -231,146 +230,155 @@ export default function HaulierAppMockupClient() {
     }
 
     setVehicleNumber(vehicleInput.trim());
-    setShowVehicleModal(false);
-    setScreenView("origin-tasks");
+    setVehicleModalOpen(false);
+    setScreen("origin");
   }
 
-  function selectOriginTask(taskType: OriginTaskType) {
-    setSelectedTask(taskType);
+  function selectTask(task: TaskType) {
+    setSelectedTask(task);
 
-    if (taskType === "skip") {
-      completeCurrentLeg();
+    if (task === "skip") {
+      openIssueModal("skip");
       return;
     }
 
-    if (taskType === "load") {
+    if (task === "load") {
       setContainers([]);
       setManualContainer("");
-      setScreenView("load-screen");
+      setScreen("load");
       return;
     }
 
-    if (taskType === "repat") {
+    if (task === "repat") {
       setRepatCount("");
-      setScreenView("repat-count");
+      setScreen("repat");
       return;
     }
 
-    setShowDepartModal(true);
+    setDepartModalOpen(true);
   }
 
   function confirmDepartDepot() {
-    setShowDepartModal(false);
-
+    setDepartModalOpen(false);
     setLegStatuses((current) => ({
       ...current,
-      [selectedLegNumber]: "In Progress",
+      [selectedLeg]: "In Progress",
     }));
-
-    setScreenView("destination-tasks");
-  }
-
-  function openScannerMockup() {
-    setContainers(mockContainerNumbers);
-    setScreenView("scan-container");
+    setScreen("destination");
   }
 
   function addManualContainer() {
-    const value = manualContainer.trim().toUpperCase();
+    const containerNumber = manualContainer.trim().toUpperCase();
 
-    if (!value) {
+    if (!containerNumber) {
       return;
     }
 
-    setContainers((current) => [...current, value]);
+    setContainers((current) => [...current, containerNumber]);
     setManualContainer("");
   }
 
+  function openScanner() {
+    setContainers(mockContainers);
+    setScreen("scan");
+  }
+
   function removeContainer(containerNumber: string) {
-    setContainers((current) =>
-      current.filter((container) => container !== containerNumber)
-    );
+    setContainers((current) => current.filter((item) => item !== containerNumber));
   }
 
-  function completeLoadScan() {
-    setShowLoadCompleteModal(true);
-  }
-
-  function confirmLoadDepartDepot() {
-    setShowLoadCompleteModal(false);
-
-    setLegStatuses((current) => ({
-      ...current,
-      [selectedLegNumber]: "In Progress",
-    }));
-
-    setScreenView("destination-tasks");
-  }
-
-  function continueRepatCount() {
+  function continueRepat() {
     if (!repatCount.trim()) {
       return;
     }
 
-    setShowDepartModal(true);
+    setDepartModalOpen(true);
+  }
+
+  function confirmLoadDepart() {
+    setLoadModalOpen(false);
+    setLegStatuses((current) => ({
+      ...current,
+      [selectedLeg]: "In Progress",
+    }));
+    setScreen("destination");
   }
 
   function arriveIntoDepot() {
     if (selectedTask === "empty" || selectedTask === "flex") {
-      completeCurrentLeg();
+      completeLeg();
       return;
     }
 
-    setScreenView("unload-options");
+    setScreen("unload");
   }
 
-  function confirmUnloadAll() {
-    setShowUnloadAllModal(true);
-  }
-
-  function yesUnloadAll() {
-    setShowUnloadAllModal(false);
-    completeCurrentLeg();
-  }
-
-  function completeCurrentLeg() {
-    const isFinalLeg =
-      selectedLegNumber === activeLegs[activeLegs.length - 1].number;
+  function completeLeg() {
+    const finalLeg = selectedLeg === legs[legs.length - 1].number;
 
     setLegStatuses((current) => ({
       ...current,
-      [selectedLegNumber]: "Completed",
+      [selectedLeg]: "Completed",
     }));
 
-    setShowDepartModal(false);
-    setShowLoadCompleteModal(false);
-    setShowUnloadAllModal(false);
+    closeAllModals();
 
-    if (isFinalLeg) {
-      setScreenView("duty-completed");
+    if (finalLeg) {
+      setScreen("complete");
       return;
     }
 
-    setScreenView("duty-details");
+    setScreen("duty");
+  }
+
+  function openIssueModal(mode: IssueMode) {
+    setIssueMode(mode);
+    setIssueDetails("");
+    setIssueLocation("");
+    setIssueManager("");
+    setIssueModalOpen(true);
+  }
+
+  function saveIssueDetails() {
+    const reportParts = [
+      `Leg ${selectedLeg}`,
+      `Type: ${issueMode === "skip" ? "Skipped leg" : "Delay / route change"}`,
+      issueDetails.trim() ? `Details: ${issueDetails.trim()}` : "",
+      issueLocation.trim() ? `Location / route change: ${issueLocation.trim()}` : "",
+      issueManager.trim() ? `Authorised by: ${issueManager.trim()}` : "",
+    ].filter(Boolean);
+
+    setIssueReports((current) => ({
+      ...current,
+      [selectedLeg]: reportParts.join(" | "),
+    }));
+
+    setIssueDetails("");
+    setIssueLocation("");
+    setIssueManager("");
+    setIssueModalOpen(false);
+
+    if (issueMode === "skip") {
+      completeLeg();
+    }
   }
 
   function resetMockup() {
-    setScreenView("mockup-menu");
-    setSelectedMockup("flex");
-    setSelectedLegNumber(1);
+    setScreen("menu");
+    setMockup("flex");
+    setSelectedLeg(1);
     setSelectedTask("empty");
-    setShowVehicleModal(false);
-    setShowDepartModal(false);
-    setShowLoadCompleteModal(false);
-    setShowUnloadAllModal(false);
     setVehicleInput("");
     setVehicleNumber("");
     setManualContainer("");
     setRepatCount("");
     setContainers([]);
-    setLegStatuses({
-      1: "To do",
-    });
+    setLegStatuses({ 1: "To do" });
+    setIssueReports({});
+    setIssueDetails("");
+    setIssueLocation("");
+    setIssueManager("");
+    closeAllModals();
   }
 
   return (
@@ -378,137 +386,156 @@ export default function HaulierAppMockupClient() {
       <div className="relative mx-auto min-h-screen w-full max-w-[520px] bg-white shadow-2xl sm:my-6 sm:min-h-[900px] sm:rounded-[34px]">
         <PhoneStatusBar />
 
-        {screenView === "mockup-menu" && (
-          <MockupMenuScreen onOpenMockup={openMockup} />
-        )}
+        {screen === "menu" && <MenuScreen onOpenMockup={startMockup} />}
 
-        {screenView === "duty-details" && (
-          <DutyDetailsScreen
-            todayText={todayText}
-            mockupTitle={
-              selectedMockup === "mockup2" ? "Mockup 2" : "Flex Mock Up"
-            }
-            legs={activeLegs}
-            getLegStatus={getLegStatus}
+        {screen === "duty" && (
+          <DutyScreen
+            today={today}
+            title={mockup === "mockup2" ? "Mockup 2" : "Flex Mock Up"}
+            legs={legs}
+            legStatus={legStatus}
             canOpenLeg={canOpenLeg}
             onOpenLeg={openLeg}
-            onBack={() => setScreenView("mockup-menu")}
+            onBack={() => setScreen("menu")}
             onReset={resetMockup}
           />
         )}
 
-        {screenView === "origin-tasks" && (
-          <OriginTasksScreen
-            todayText={todayText}
+        {screen === "origin" && (
+          <OriginScreen
+            today={today}
             vehicleNumber={vehicleNumber}
-            leg={selectedLeg}
-            legStatus={getLegStatus(selectedLegNumber)}
-            onBack={() => setScreenView("duty-details")}
-            onTaskSelected={selectOriginTask}
+            leg={currentLeg}
+            status={legStatus(selectedLeg)}
+            issueReport={issueReports[selectedLeg]}
+            onBack={() => setScreen("duty")}
+            onTask={selectTask}
             onReset={resetMockup}
           />
         )}
 
-        {screenView === "load-screen" && (
+        {screen === "load" && (
           <LoadScreen
             vehicleNumber={vehicleNumber}
             containers={containers}
             manualContainer={manualContainer}
             onManualContainerChange={setManualContainer}
             onAddManualContainer={addManualContainer}
-            onOpenScanner={openScannerMockup}
+            onOpenScanner={openScanner}
             onRemoveContainer={removeContainer}
-            onBack={() => setScreenView("origin-tasks")}
-            onLoadComplete={completeLoadScan}
+            onBack={() => setScreen("origin")}
+            onLoadComplete={() => setLoadModalOpen(true)}
             onReset={resetMockup}
           />
         )}
 
-        {screenView === "scan-container" && (
-          <ScanContainerScreen
+        {screen === "scan" && (
+          <ScanScreen
             containers={containers}
-            onBack={() => setScreenView("load-screen")}
+            onBack={() => setScreen("load")}
             onRemoveContainer={removeContainer}
-            onLoadComplete={completeLoadScan}
+            onLoadComplete={() => setLoadModalOpen(true)}
             onReset={resetMockup}
           />
         )}
 
-        {screenView === "repat-count" && (
-          <RepatCountScreen
+        {screen === "repat" && (
+          <RepatScreen
             vehicleNumber={vehicleNumber}
             repatCount={repatCount}
             onRepatCountChange={setRepatCount}
-            onBack={() => setScreenView("origin-tasks")}
-            onContinue={continueRepatCount}
+            onBack={() => setScreen("origin")}
+            onContinue={continueRepat}
             onReset={resetMockup}
           />
         )}
 
-        {screenView === "destination-tasks" && (
-          <DestinationTasksScreen
+        {screen === "destination" && (
+          <DestinationScreen
+            today={today}
             vehicleNumber={vehicleNumber}
-            todayText={todayText}
-            leg={selectedLeg}
-            legStatus={getLegStatus(selectedLegNumber)}
-            onBack={() => setScreenView("origin-tasks")}
+            leg={currentLeg}
+            status={legStatus(selectedLeg)}
+            issueReport={issueReports[selectedLeg]}
+            onBack={() => setScreen("origin")}
             onArriveIntoDepot={arriveIntoDepot}
+            onOpenIssue={() => openIssueModal("delay")}
             onReset={resetMockup}
           />
         )}
 
-        {screenView === "unload-options" && (
-          <UnloadOptionsScreen
+        {screen === "unload" && (
+          <UnloadScreen
+            today={today}
             vehicleNumber={vehicleNumber}
-            todayText={todayText}
-            leg={selectedLeg}
-            legStatus={getLegStatus(selectedLegNumber)}
-            onBack={() => setScreenView("destination-tasks")}
-            onUnloadAll={confirmUnloadAll}
+            leg={currentLeg}
+            status={legStatus(selectedLeg)}
+            issueReport={issueReports[selectedLeg]}
+            onBack={() => setScreen("destination")}
+            onUnloadAll={() => setUnloadModalOpen(true)}
+            onOpenIssue={() => openIssueModal("delay")}
             onReset={resetMockup}
           />
         )}
 
-        {screenView === "duty-completed" && (
-          <DutyCompletedScreen
-            todayText={todayText}
+        {screen === "complete" && (
+          <CompleteScreen
+            today={today}
             vehicleNumber={vehicleNumber}
-            leg={selectedLeg}
-            legStatus="Completed"
+            leg={currentLeg}
+            status="Completed"
+            issueReport={issueReports[selectedLeg]}
             onReset={resetMockup}
           />
         )}
 
-        {showVehicleModal && (
-          <VehicleNumberModal
+        {vehicleModalOpen && (
+          <VehicleModal
             vehicleInput={vehicleInput}
             onChange={setVehicleInput}
-            onCancel={cancelVehicleModal}
+            onCancel={() => {
+              setVehicleInput("");
+              setVehicleModalOpen(false);
+            }}
             onConfirm={confirmVehicleNumber}
           />
         )}
 
-        {showDepartModal && (
-          <DepartDepotModal
+        {departModalOpen && (
+          <DepartModal
             taskType={selectedTask}
             containerCount={repatCount || String(containers.length)}
-            onCancel={() => setShowDepartModal(false)}
+            onCancel={() => setDepartModalOpen(false)}
             onDepart={confirmDepartDepot}
           />
         )}
 
-        {showLoadCompleteModal && (
+        {loadModalOpen && (
           <LoadCompleteModal
             containerCount={containers.length}
-            onCancel={() => setShowLoadCompleteModal(false)}
-            onDepart={confirmLoadDepartDepot}
+            onCancel={() => setLoadModalOpen(false)}
+            onDepart={confirmLoadDepart}
           />
         )}
 
-        {showUnloadAllModal && (
+        {unloadModalOpen && (
           <UnloadAllModal
-            onCancel={() => setShowUnloadAllModal(false)}
-            onYes={yesUnloadAll}
+            onCancel={() => setUnloadModalOpen(false)}
+            onYes={completeLeg}
+          />
+        )}
+
+        {issueModalOpen && (
+          <IssueModal
+            mode={issueMode}
+            details={issueDetails}
+            location={issueLocation}
+            manager={issueManager}
+            onDetailsChange={setIssueDetails}
+            onLocationChange={setIssueLocation}
+            onManagerChange={setIssueManager}
+            onCancel={() => setIssueModalOpen(false)}
+            onSave={saveIssueDetails}
           />
         )}
       </div>
@@ -566,7 +593,7 @@ function AppHeader({
   );
 }
 
-function MockupMenuScreen({
+function MenuScreen({
   onOpenMockup,
 }: {
   onOpenMockup: (mockupType: MockupType) => void;
@@ -653,20 +680,20 @@ function MockupOptionButton({
   );
 }
 
-function DutyDetailsScreen({
-  todayText,
-  mockupTitle,
+function DutyScreen({
+  today,
+  title,
   legs,
-  getLegStatus,
+  legStatus,
   canOpenLeg,
   onOpenLeg,
   onBack,
   onReset,
 }: {
-  todayText: string;
-  mockupTitle: string;
+  today: string;
+  title: string;
   legs: DutyLeg[];
-  getLegStatus: (legNumber: number) => LegStatus;
+  legStatus: (legNumber: number) => LegStatus;
   canOpenLeg: (legNumber: number) => boolean;
   onOpenLeg: (legNumber: number) => void;
   onBack: () => void;
@@ -684,17 +711,17 @@ function DutyDetailsScreen({
         </h2>
 
         <p className="mt-2 text-sm font-black uppercase tracking-[0.14em] text-[#d6001c]">
-          {mockupTitle}
+          {title}
         </p>
 
-        <p className="mt-6 text-xl font-bold text-[#333]">{todayText}</p>
+        <p className="mt-6 text-xl font-bold text-[#333]">{today}</p>
 
         <div className="mt-4 space-y-4">
           {legs.map((leg) => (
             <LegCard
               key={leg.number}
               leg={leg}
-              status={getLegStatus(leg.number)}
+              status={legStatus(leg.number)}
               canOpen={canOpenLeg(leg.number)}
               onClick={() => onOpenLeg(leg.number)}
             />
@@ -802,7 +829,7 @@ function StatusPill({ status }: { status: LegStatus }) {
   );
 }
 
-function VehicleNumberModal({
+function VehicleModal({
   vehicleInput,
   onChange,
   onCancel,
@@ -866,21 +893,23 @@ function VehicleNumberModal({
   );
 }
 
-function OriginTasksScreen({
-  todayText,
+function OriginScreen({
+  today,
   vehicleNumber,
   leg,
-  legStatus,
+  status,
+  issueReport,
   onBack,
-  onTaskSelected,
+  onTask,
   onReset,
 }: {
-  todayText: string;
+  today: string;
   vehicleNumber: string;
   leg: DutyLeg;
-  legStatus: LegStatus;
+  status: LegStatus;
+  issueReport?: string;
   onBack: () => void;
-  onTaskSelected: (taskType: OriginTaskType) => void;
+  onTask: (task: TaskType) => void;
   onReset: () => void;
 }) {
   return (
@@ -890,22 +919,24 @@ function OriginTasksScreen({
       <section className="bg-white px-5 py-5">
         <VehicleNumberBanner vehicleNumber={vehicleNumber} />
 
-        <p className="mt-6 text-lg font-bold text-[#333]">{todayText}</p>
+        <p className="mt-6 text-lg font-bold text-[#333]">{today}</p>
 
         <div className="mt-3">
-          <LegCard leg={leg} status={legStatus} />
+          <LegCard leg={leg} status={status} />
         </div>
+
+        {issueReport && <IssueRecordedBox issueReport={issueReport} />}
 
         <h2 className="mt-7 text-xl font-black text-[#222]">
           Origin task details
         </h2>
 
         <div className="mt-4 space-y-3">
-          {originTaskButtons.map((task) => (
+          {originTasks.map((task) => (
             <button
               key={task.label}
               type="button"
-              onClick={() => onTaskSelected(task.type)}
+              onClick={() => onTask(task.type)}
               className="flex w-full items-center justify-between rounded-lg border border-[#d9d9d9] border-l-4 border-l-[#d6001c] bg-white px-4 py-4 text-left text-sm font-black text-[#222] shadow-sm transition hover:-translate-y-1 hover:shadow-md"
             >
               <span>{task.label}</span>
@@ -987,10 +1018,7 @@ function LoadScreen({
           </button>
         )}
 
-        <ContainerList
-          containers={containers}
-          onRemoveContainer={onRemoveContainer}
-        />
+        <ContainerList containers={containers} onRemoveContainer={onRemoveContainer} />
 
         {containers.length > 0 && (
           <button
@@ -1008,7 +1036,7 @@ function LoadScreen({
   );
 }
 
-function ScanContainerScreen({
+function ScanScreen({
   containers,
   onBack,
   onRemoveContainer,
@@ -1036,10 +1064,7 @@ function ScanContainerScreen({
           Scanned {containers.length} Container (s)
         </h2>
 
-        <ContainerList
-          containers={containers}
-          onRemoveContainer={onRemoveContainer}
-        />
+        <ContainerList containers={containers} onRemoveContainer={onRemoveContainer} />
 
         <button
           type="button"
@@ -1088,7 +1113,7 @@ function ContainerList({
   );
 }
 
-function RepatCountScreen({
+function RepatScreen({
   vehicleNumber,
   repatCount,
   onRepatCountChange,
@@ -1140,21 +1165,25 @@ function RepatCountScreen({
   );
 }
 
-function DestinationTasksScreen({
+function DestinationScreen({
+  today,
   vehicleNumber,
-  todayText,
   leg,
-  legStatus,
+  status,
+  issueReport,
   onBack,
   onArriveIntoDepot,
+  onOpenIssue,
   onReset,
 }: {
+  today: string;
   vehicleNumber: string;
-  todayText: string;
   leg: DutyLeg;
-  legStatus: LegStatus;
+  status: LegStatus;
+  issueReport?: string;
   onBack: () => void;
   onArriveIntoDepot: () => void;
+  onOpenIssue: () => void;
   onReset: () => void;
 }) {
   return (
@@ -1164,10 +1193,10 @@ function DestinationTasksScreen({
       <section className="bg-white px-5 py-5">
         <VehicleNumberBanner vehicleNumber={vehicleNumber} />
 
-        <p className="mt-6 text-lg font-bold text-[#333]">{todayText}</p>
+        <p className="mt-6 text-lg font-bold text-[#333]">{today}</p>
 
         <div className="mt-3">
-          <LegCard leg={leg} status={legStatus} />
+          <LegCard leg={leg} status={status} />
         </div>
 
         <h2 className="mt-8 text-2xl font-black text-[#222]">
@@ -1183,16 +1212,28 @@ function DestinationTasksScreen({
           <span className="text-2xl font-black text-[#d6001c]">›</span>
         </button>
 
-        <section className="mt-6 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
-  <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
-    Important
-  </p>
+        <button
+          type="button"
+          onClick={onOpenIssue}
+          className="mt-3 flex w-full items-center justify-between rounded-lg border border-[#f59e0b] border-l-4 border-l-[#f59e0b] bg-[#fff7ed] px-4 py-4 text-left text-sm font-black text-[#7c2d12] shadow-sm"
+        >
+          <span>Report issue / delay</span>
+          <span className="text-2xl font-black text-[#f59e0b]">!</span>
+        </button>
 
-  <p className="mt-3 text-base font-black leading-7 text-[#222]">
-    It is important that you keep the app open until the end of your shift.
-    Closing the app may stop duty progress from remaining visible.
-  </p>
-</section>
+        {issueReport && <IssueRecordedBox issueReport={issueReport} />}
+
+        <section className="mt-6 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
+            Important
+          </p>
+
+          <p className="mt-3 text-base font-black leading-7 text-[#222]">
+            It is important that you keep the app open until the end of your
+            shift. Closing the app may stop duty progress from remaining
+            visible.
+          </p>
+        </section>
 
         <MockResetButton onReset={onReset} />
       </section>
@@ -1200,21 +1241,25 @@ function DestinationTasksScreen({
   );
 }
 
-function UnloadOptionsScreen({
+function UnloadScreen({
+  today,
   vehicleNumber,
-  todayText,
   leg,
-  legStatus,
+  status,
+  issueReport,
   onBack,
   onUnloadAll,
+  onOpenIssue,
   onReset,
 }: {
+  today: string;
   vehicleNumber: string;
-  todayText: string;
   leg: DutyLeg;
-  legStatus: LegStatus;
+  status: LegStatus;
+  issueReport?: string;
   onBack: () => void;
   onUnloadAll: () => void;
+  onOpenIssue: () => void;
   onReset: () => void;
 }) {
   return (
@@ -1224,10 +1269,10 @@ function UnloadOptionsScreen({
       <section className="bg-white px-5 py-5">
         <VehicleNumberBanner vehicleNumber={vehicleNumber} />
 
-        <p className="mt-6 text-lg font-bold text-[#333]">{todayText}</p>
+        <p className="mt-6 text-lg font-bold text-[#333]">{today}</p>
 
         <div className="mt-3">
-          <LegCard leg={leg} status={legStatus} />
+          <LegCard leg={leg} status={status} />
         </div>
 
         <h2 className="mt-8 text-2xl font-black text-[#222]">
@@ -1251,7 +1296,18 @@ function UnloadOptionsScreen({
             <span>Unload all</span>
             <span className="text-2xl font-black text-[#d6001c]">›</span>
           </button>
+
+          <button
+            type="button"
+            onClick={onOpenIssue}
+            className="flex w-full items-center justify-between rounded-lg border border-[#f59e0b] border-l-4 border-l-[#f59e0b] bg-[#fff7ed] px-4 py-4 text-left text-sm font-black text-[#7c2d12] shadow-sm"
+          >
+            <span>Report issue / delay</span>
+            <span className="text-2xl font-black text-[#f59e0b]">!</span>
+          </button>
         </div>
+
+        {issueReport && <IssueRecordedBox issueReport={issueReport} />}
 
         <MockResetButton onReset={onReset} />
       </section>
@@ -1259,17 +1315,19 @@ function UnloadOptionsScreen({
   );
 }
 
-function DutyCompletedScreen({
-  todayText,
+function CompleteScreen({
+  today,
   vehicleNumber,
   leg,
-  legStatus,
+  status,
+  issueReport,
   onReset,
 }: {
-  todayText: string;
+  today: string;
   vehicleNumber: string;
   leg: DutyLeg;
-  legStatus: LegStatus;
+  status: LegStatus;
+  issueReport?: string;
   onReset: () => void;
 }) {
   return (
@@ -1283,13 +1341,15 @@ function DutyCompletedScreen({
           Duty details
         </h2>
 
-        <p className="mt-8 text-xl font-bold text-[#333]">{todayText}</p>
+        <p className="mt-8 text-xl font-bold text-[#333]">{today}</p>
 
         <div className="mt-4">
-          <LegCard leg={leg} status={legStatus} />
+          <LegCard leg={leg} status={status} />
         </div>
 
         <VehicleNumberBanner vehicleNumber={vehicleNumber} />
+
+        {issueReport && <IssueRecordedBox issueReport={issueReport} />}
 
         <section className="mt-6 rounded-[18px] bg-[#d9f7e5] p-5">
           <h2 className="text-2xl font-black text-[#067a35]">
@@ -1308,13 +1368,137 @@ function DutyCompletedScreen({
   );
 }
 
-function DepartDepotModal({
+function IssueModal({
+  mode,
+  details,
+  location,
+  manager,
+  onDetailsChange,
+  onLocationChange,
+  onManagerChange,
+  onCancel,
+  onSave,
+}: {
+  mode: IssueMode;
+  details: string;
+  location: string;
+  manager: string;
+  onDetailsChange: (value: string) => void;
+  onLocationChange: (value: string) => void;
+  onManagerChange: (value: string) => void;
+  onCancel: () => void;
+  onSave: () => void;
+}) {
+  const isSkip = mode === "skip";
+  const canSave = isSkip
+    ? details.trim().length > 0 && manager.trim().length > 0
+    : details.trim().length > 0 ||
+      location.trim().length > 0 ||
+      manager.trim().length > 0;
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-5">
+      <section className="max-h-[88vh] w-full max-w-[430px] overflow-y-auto rounded-sm bg-white p-6 shadow-2xl">
+        <h2 className="text-2xl font-black text-[#111]">
+          {isSkip ? "Skip Leg Reason" : "Issue / Delay Details"}
+        </h2>
+
+        <p className="mt-3 text-sm font-bold leading-6 text-[#444]">
+          {isSkip
+            ? "Record why this leg is being skipped and which manager authorised the change."
+            : "Record any issue that could delay departure or arrival, or explain if the duty is going to a different location than planned."}
+        </p>
+
+        <label className="mt-5 block text-sm font-black text-[#222]">
+          Details
+        </label>
+
+        <textarea
+          value={details}
+          onChange={(event) => onDetailsChange(event.target.value)}
+          placeholder={
+            isSkip
+              ? "Example: Leg skipped due to operational change..."
+              : "Example: delayed leaving site, waiting for load, traffic issue..."
+          }
+          className="mt-2 min-h-[110px] w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
+        />
+
+        <label className="mt-4 block text-sm font-black text-[#222]">
+          Different location / route change
+        </label>
+
+        <input
+          value={location}
+          onChange={(event) => onLocationChange(event.target.value)}
+          placeholder="Add different location if applicable"
+          className="mt-2 w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
+        />
+
+        <label className="mt-4 block text-sm font-black text-[#222]">
+          Manager authorising change
+        </label>
+
+        <input
+          value={manager}
+          onChange={(event) => onManagerChange(event.target.value)}
+          placeholder="Manager name"
+          className="mt-2 w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
+        />
+
+        {isSkip && (
+          <p className="mt-3 rounded-lg bg-[#fff7ed] p-3 text-xs font-black leading-5 text-[#7c2d12]">
+            For skipped legs, a reason and authorising manager should be added
+            before continuing.
+          </p>
+        )}
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-full border-2 border-[#333] bg-white px-5 py-3 text-sm font-black text-[#333]"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={!canSave}
+            className={`rounded-full px-5 py-3 text-sm font-black text-white ${
+              canSave ? "bg-[#d6001c]" : "bg-[#cccccc]"
+            }`}
+          >
+            {isSkip ? "Save & Skip Leg" : "Save Details"}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function IssueRecordedBox({ issueReport }: { issueReport: string }) {
+  return (
+    <section className="mt-4 rounded-[16px] border-2 border-[#f59e0b] bg-[#fff7ed] p-4">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-[#b45309]">
+        Issue details recorded
+      </p>
+
+      <p className="mt-2 text-sm font-bold leading-6 text-[#7c2d12]">
+        {issueReport}
+      </p>
+    </section>
+  );
+}
+
+function DepartModal({
   taskType,
   containerCount,
   onCancel,
   onDepart,
 }: {
-  taskType: OriginTaskType;
+  taskType: TaskType;
   containerCount: string;
   onCancel: () => void;
   onDepart: () => void;
