@@ -412,6 +412,7 @@ export default function HaulierAppMockupClient() {
             title={mockup === "mockup2" ? "Mockup 2" : "Flex Mock Up"}
             legs={legs}
             legStatus={legStatus}
+            issueReports={issueReports}
             canOpenLeg={canOpenLeg}
             onOpenLeg={openLeg}
             onBack={() => setScreen("menu")}
@@ -626,14 +627,13 @@ function NoDutyScreen({ onContinue }: { onContinue: () => void }) {
 
         <section className="mt-6 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
-            No duty currently loaded
+            No duty currently Loaded
           </p>
 
           <p className="mt-4 text-base font-black leading-7 text-[#222]">
-            To load the duty, please ensure that your haulier has added your
-            correct email address to the Transport Office Haulier Connect System
-            and then manually close the app to reload
-                      </p>
+            To load the duty, manually close the app to reload content. If the duty still does not appear, ensure that your haulier has added your
+            correct email address to the DRiver Details in Haulier Connect           
+          </p>
         </section>
 
         <button
@@ -740,6 +740,7 @@ function DutyScreen({
   title,
   legs,
   legStatus,
+  issueReports,
   canOpenLeg,
   onOpenLeg,
   onBack,
@@ -749,6 +750,7 @@ function DutyScreen({
   title: string;
   legs: DutyLeg[];
   legStatus: (legNumber: number) => LegStatus;
+  issueReports: Record<number, string>;
   canOpenLeg: (legNumber: number) => boolean;
   onOpenLeg: (legNumber: number) => void;
   onBack: () => void;
@@ -777,6 +779,7 @@ function DutyScreen({
               key={leg.number}
               leg={leg}
               status={legStatus(leg.number)}
+              issueReport={issueReports[leg.number]}
               canOpen={canOpenLeg(leg.number)}
               onClick={() => onOpenLeg(leg.number)}
             />
@@ -808,11 +811,13 @@ function OverviewCard({ dutyId = "NWH254" }: { dutyId?: string }) {
 function LegCard({
   leg,
   status,
+  issueReport,
   canOpen,
   onClick,
 }: {
   leg: DutyLeg;
   status: LegStatus;
+  issueReport?: string;
   canOpen?: boolean;
   onClick?: () => void;
 }) {
@@ -865,6 +870,18 @@ function LegCard({
           {leg.to}
         </p>
       </div>
+
+      {issueReport && (
+        <section className="mt-4 rounded-[14px] border border-[#f59e0b] bg-[#fff7ed] p-3">
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#b45309]">
+            Issue / route change recorded
+          </p>
+
+          <p className="mt-1 line-clamp-2 text-xs font-bold leading-5 text-[#7c2d12]">
+            {issueReport}
+          </p>
+        </section>
+      )}
 
       {isLocked && (
         <p className="mt-4 text-xs font-black uppercase tracking-[0.12em] text-[#999]">
