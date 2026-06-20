@@ -398,15 +398,19 @@ export default function HaulierAppMockupClient() {
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#222]">
       <div className="relative mx-auto min-h-screen w-full max-w-[520px] bg-white shadow-2xl sm:my-6 sm:min-h-[900px] sm:rounded-[34px]">
-        <PhoneStatusBar />
+        
+<PhoneStatusBar />
 
-        {screen === "menu" && (
+{screen === "no-duty" && (
+  <NoDutyScreen onContinue={openMockupMenu} />
+)}
+
+{screen === "menu" && (
   <MenuScreen
     onOpenMockup={startMockup}
     onBack={() => setScreen("no-duty")}
   />
 )}
-
       
 
         {screen === "duty" && (
