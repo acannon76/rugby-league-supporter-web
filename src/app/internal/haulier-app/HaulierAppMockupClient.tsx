@@ -373,7 +373,7 @@ export default function HaulierAppMockupClient() {
   }
 
   function resetMockup() {
-    setScreen("menu");
+    setScreen("no-duty");
     setMockup("flex");
     setSelectedLeg(1);
     setSelectedTask("empty");
@@ -400,11 +400,14 @@ export default function HaulierAppMockupClient() {
       <div className="relative mx-auto min-h-screen w-full max-w-[520px] bg-white shadow-2xl sm:my-6 sm:min-h-[900px] sm:rounded-[34px]">
         <PhoneStatusBar />
 
-        {screen === "no-duty" && (
-          <NoDutyScreen onContinue={openMockupMenu} />
-        )}
+        {screen === "menu" && (
+  <MenuScreen
+    onOpenMockup={startMockup}
+    onBack={() => setScreen("no-duty")}
+  />
+)}
 
-        {screen === "menu" && <MenuScreen onOpenMockup={startMockup} />}
+      
 
         {screen === "duty" && (
           <DutyScreen
@@ -650,12 +653,14 @@ function NoDutyScreen({ onContinue }: { onContinue: () => void }) {
 
 function MenuScreen({
   onOpenMockup,
+  onBack,
 }: {
   onOpenMockup: (mockupType: MockupType) => void;
+  onBack: () => void;
 }) {
   return (
     <>
-      <AppHeader title="Haulier Mock Up" />
+      <AppHeader title="Haulier Mock Up" left="Back" onBack={onBack} />
 
       <section className="bg-white px-5 py-6">
         <section className="rounded-[18px] bg-[#f0f0f0] p-5">
