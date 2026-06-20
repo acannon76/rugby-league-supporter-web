@@ -639,7 +639,7 @@ function NoDutyScreen({ onContinue }: { onContinue: () => void }) {
 
           <p className="mt-4 text-base font-black leading-7 text-[#222]">
             To load the duty, manually close the app to reload content. If the duty still does not appear, ensure that your haulier has added your
-            correct email address to the DRiver Details in Haulier Connect           
+            correct email address to the Driver Details in Haulier Connect           
           </p>
         </section>
 
