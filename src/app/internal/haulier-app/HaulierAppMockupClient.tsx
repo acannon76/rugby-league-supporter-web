@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 type LegStatus = "To do" | "In Progress" | "Completed";
 type MockupType = "flex" | "mockup2";
 type TaskType = "empty" | "repat" | "load" | "skip" | "flex";
-type IssueMode = "delay" | "skip";
+type IssueMode = "departure" | "arrival" | "skip";
 
 type Screen =
   | "no-duty"
@@ -33,6 +33,12 @@ type MockupOption = {
   icon: string;
   active: boolean;
   mockupType?: MockupType;
+};
+
+type LegIssueReport = {
+  departure?: string;
+  arrival?: string;
+  skip?: string;
 };
 
 const flexLegs: DutyLeg[] = [
@@ -152,7 +158,7 @@ export default function HaulierAppMockupClient() {
   const [unloadModalOpen, setUnloadModalOpen] = useState(false);
   const [issueModalOpen, setIssueModalOpen] = useState(false);
 
-  const [issueMode, setIssueMode] = useState<IssueMode>("delay");
+  const [issueMode, setIssueMode] = useState<IssueMode>("departure");
   const [issueDetails, setIssueDetails] = useState("");
   const [issueLocation, setIssueLocation] = useState("");
   const [issueManager, setIssueManager] = useState("");
@@ -167,7 +173,9 @@ export default function HaulierAppMockupClient() {
     1: "To do",
   });
 
-  const [issueReports, setIssueReports] = useState<Record<number, string>>({});
+  const [issueReports, setIssueReports] = useState<
+    Record<number, LegIssueReport>
+  >({});
 
   const today = useMemo(() => getTodayDateText(), []);
   const legs = mockup === "mockup2" ? mockup2Legs : flexLegs;
@@ -347,20 +355,26 @@ export default function HaulierAppMockupClient() {
   }
 
   function saveIssueDetails() {
-    const reportParts = [
-      `Leg ${selectedLeg}`,
-      `Type: ${issueMode === "skip" ? "Skipped leg" : "Delay / route change"}`,
-      issueDetails.trim() ? `Details: ${issueDetails.trim()}` : "",
-      issueLocation.trim()
-        ? `Location / route change: ${issueLocation.trim()}`
-        : "",
-      issueManager.trim() ? `Authorised by: ${issueManager.trim()}` : "",
-    ].filter(Boolean);
+    const report = buildIssueReportText({
+      selectedLeg,
+      issueMode,
+      issueDetails,
+      issueLocation,
+      issueManager,
+    });
 
-    setIssueReports((current) => ({
-      ...current,
-      [selectedLeg]: reportParts.join(" | "),
-    }));
+    setIssueReports((current) => {
+      const existing = current[selectedLeg] || {};
+      const nextReport: LegIssueReport = {
+        ...existing,
+        [issueMode]: report,
+      };
+
+      return {
+        ...current,
+        [selectedLeg]: nextReport,
+      };
+    });
 
     setIssueDetails("");
     setIssueLocation("");
@@ -398,20 +412,18 @@ export default function HaulierAppMockupClient() {
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#222]">
       <div className="relative mx-auto min-h-screen w-full max-w-[520px] bg-white shadow-2xl sm:my-6 sm:min-h-[900px] sm:rounded-[34px]">
-        
-<PhoneStatusBar />
+        <PhoneStatusBar />
 
-{screen === "no-duty" && (
-  <NoDutyScreen onContinue={openMockupMenu} />
-)}
+        {screen === "no-duty" && (
+          <NoDutyScreen onContinue={openMockupMenu} />
+        )}
 
-{screen === "menu" && (
-  <MenuScreen
-    onOpenMockup={startMockup}
-    onBack={() => setScreen("no-duty")}
-  />
-)}
-      
+        {screen === "menu" && (
+          <MenuScreen
+            onOpenMockup={startMockup}
+            onBack={() => setScreen("no-duty")}
+          />
+        )}
 
         {screen === "duty" && (
           <DutyScreen
@@ -436,6 +448,7 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("duty")}
             onTask={selectTask}
+            onOpenDepartureIssue={() => openIssueModal("departure")}
             onReset={resetMockup}
           />
         )}
@@ -486,7 +499,7 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("origin")}
             onArriveIntoDepot={arriveIntoDepot}
-            onOpenIssue={() => openIssueModal("delay")}
+            onOpenArrivalIssue={() => openIssueModal("arrival")}
             onReset={resetMockup}
           />
         )}
@@ -500,7 +513,7 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("destination")}
             onUnloadAll={() => setUnloadModalOpen(true)}
-            onOpenIssue={() => openIssueModal("delay")}
+            onOpenArrivalIssue={() => openIssueModal("arrival")}
             onReset={resetMockup}
           />
         )}
@@ -634,12 +647,13 @@ function NoDutyScreen({ onContinue }: { onContinue: () => void }) {
 
         <section className="mt-6 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
-            No duty currently Loaded
+            No duty currently loaded
           </p>
 
           <p className="mt-4 text-base font-black leading-7 text-[#222]">
-            To load the duty, manually close the app to reload content. If the duty still does not appear, ensure that your haulier has added your
-            correct email address to the Driver Details in Haulier Connect           
+            To load the duty, manually close the app to reload content. If the
+            duty still does not appear, ensure that your haulier has added your
+            correct email address to the Driver Details in Haulier Connect.
           </p>
         </section>
 
@@ -759,7 +773,7 @@ function DutyScreen({
   title: string;
   legs: DutyLeg[];
   legStatus: (legNumber: number) => LegStatus;
-  issueReports: Record<number, string>;
+  issueReports: Record<number, LegIssueReport>;
   canOpenLeg: (legNumber: number) => boolean;
   onOpenLeg: (legNumber: number) => void;
   onBack: () => void;
@@ -826,25 +840,28 @@ function LegCard({
 }: {
   leg: DutyLeg;
   status: LegStatus;
-  issueReport?: string;
+  issueReport?: LegIssueReport;
   canOpen?: boolean;
   onClick?: () => void;
 }) {
-  const isLocked = !canOpen && status !== "Completed";
+  const isInteractive = typeof canOpen === "boolean" && typeof onClick === "function";
+  const isLocked = isInteractive && !canOpen && status !== "Completed";
   const isFlexAsDirectedLeg =
     normaliseLocationName(leg.from) === normaliseLocationName(leg.to);
 
   return (
     <button
       type="button"
-      onClick={canOpen ? onClick : undefined}
-      disabled={!canOpen}
+      onClick={isInteractive && canOpen ? onClick : undefined}
+      disabled={isInteractive ? !canOpen : false}
       className={`w-full rounded-[18px] border border-[#d0d0d0] p-4 text-left shadow-sm transition ${
-        canOpen
+        isInteractive && canOpen
           ? "bg-white hover:-translate-y-1 hover:shadow-md"
           : status === "Completed"
           ? "bg-[#f0f0f0]"
-          : "bg-[#f4f4f4] opacity-55"
+          : isLocked
+          ? "bg-[#f4f4f4] opacity-55"
+          : "bg-white"
       }`}
     >
       <div className="mb-5 flex items-center justify-between gap-3">
@@ -880,16 +897,8 @@ function LegCard({
         </p>
       </div>
 
-      {issueReport && (
-        <section className="mt-4 rounded-[14px] border border-[#f59e0b] bg-[#fff7ed] p-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#b45309]">
-            Issue / route change recorded
-          </p>
-
-          <p className="mt-1 line-clamp-2 text-xs font-bold leading-5 text-[#7c2d12]">
-            {issueReport}
-          </p>
-        </section>
+      {issueReport && hasAnyIssue(issueReport) && (
+        <IssueSummaryOnLeg legNumber={leg.number} issueReport={issueReport} />
       )}
 
       {isLocked && (
@@ -898,6 +907,45 @@ function LegCard({
         </p>
       )}
     </button>
+  );
+}
+
+function IssueSummaryOnLeg({
+  legNumber,
+  issueReport,
+}: {
+  legNumber: number;
+  issueReport: LegIssueReport;
+}) {
+  return (
+    <section className="mt-4 rounded-[14px] border border-[#f59e0b] bg-[#fff7ed] p-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#b45309]">
+        Issue / route change recorded
+      </p>
+
+      <div className="mt-2 space-y-2 text-xs font-bold leading-5 text-[#7c2d12]">
+        {issueReport.departure && (
+          <p>
+            <span className="font-black">Leg {legNumber} Departure Issue:</span>{" "}
+            {issueReport.departure}
+          </p>
+        )}
+
+        {issueReport.arrival && (
+          <p>
+            <span className="font-black">Leg {legNumber} Arrival Issue:</span>{" "}
+            {issueReport.arrival}
+          </p>
+        )}
+
+        {issueReport.skip && (
+          <p>
+            <span className="font-black">Leg {legNumber} Skipped Leg Reason:</span>{" "}
+            {issueReport.skip}
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -992,15 +1040,17 @@ function OriginScreen({
   issueReport,
   onBack,
   onTask,
+  onOpenDepartureIssue,
   onReset,
 }: {
   today: string;
   vehicleNumber: string;
   leg: DutyLeg;
   status: LegStatus;
-  issueReport?: string;
+  issueReport?: LegIssueReport;
   onBack: () => void;
   onTask: (task: TaskType) => void;
+  onOpenDepartureIssue: () => void;
   onReset: () => void;
 }) {
   return (
@@ -1013,10 +1063,8 @@ function OriginScreen({
         <p className="mt-6 text-lg font-bold text-[#333]">{today}</p>
 
         <div className="mt-3">
-          <LegCard leg={leg} status={status} />
+          <LegCard leg={leg} status={status} issueReport={issueReport} />
         </div>
-
-        {issueReport && <IssueRecordedBox issueReport={issueReport} />}
 
         <h2 className="mt-7 text-xl font-black text-[#222]">
           Origin task details
@@ -1034,7 +1082,20 @@ function OriginScreen({
               <span className="text-2xl font-black text-[#d6001c]">›</span>
             </button>
           ))}
+
+          <button
+            type="button"
+            onClick={onOpenDepartureIssue}
+            className="flex w-full items-center justify-between rounded-lg border border-[#f59e0b] border-l-4 border-l-[#f59e0b] bg-[#fff7ed] px-4 py-4 text-left text-sm font-black text-[#7c2d12] shadow-sm"
+          >
+            <span>Report departure issue / delay</span>
+            <span className="text-2xl font-black text-[#f59e0b]">!</span>
+          </button>
         </div>
+
+        {issueReport && hasAnyIssue(issueReport) && (
+          <IssueRecordedBox legNumber={leg.number} issueReport={issueReport} />
+        )}
 
         <MockResetButton onReset={onReset} />
       </section>
@@ -1271,7 +1332,7 @@ function DestinationScreen({
   issueReport,
   onBack,
   onArriveIntoDepot,
-  onOpenIssue,
+  onOpenArrivalIssue,
   onReset,
 }: {
   today: string;
@@ -1279,10 +1340,10 @@ function DestinationScreen({
   leg: DutyLeg;
   status: LegStatus;
   selectedTask: TaskType;
-  issueReport?: string;
+  issueReport?: LegIssueReport;
   onBack: () => void;
   onArriveIntoDepot: () => void;
-  onOpenIssue: () => void;
+  onOpenArrivalIssue: () => void;
   onReset: () => void;
 }) {
   return (
@@ -1295,7 +1356,7 @@ function DestinationScreen({
         <p className="mt-6 text-lg font-bold text-[#333]">{today}</p>
 
         <div className="mt-3">
-          <LegCard leg={leg} status={status} />
+          <LegCard leg={leg} status={status} issueReport={issueReport} />
         </div>
 
         <h2 className="mt-8 text-2xl font-black text-[#222]">
@@ -1317,14 +1378,16 @@ function DestinationScreen({
 
         <button
           type="button"
-          onClick={onOpenIssue}
+          onClick={onOpenArrivalIssue}
           className="mt-3 flex w-full items-center justify-between rounded-lg border border-[#f59e0b] border-l-4 border-l-[#f59e0b] bg-[#fff7ed] px-4 py-4 text-left text-sm font-black text-[#7c2d12] shadow-sm"
         >
-          <span>Report issue / delay</span>
+          <span>Report arrival issue / delay</span>
           <span className="text-2xl font-black text-[#f59e0b]">!</span>
         </button>
 
-        {issueReport && <IssueRecordedBox issueReport={issueReport} />}
+        {issueReport && hasAnyIssue(issueReport) && (
+          <IssueRecordedBox legNumber={leg.number} issueReport={issueReport} />
+        )}
 
         <section className="mt-6 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
@@ -1352,17 +1415,17 @@ function UnloadScreen({
   issueReport,
   onBack,
   onUnloadAll,
-  onOpenIssue,
+  onOpenArrivalIssue,
   onReset,
 }: {
   today: string;
   vehicleNumber: string;
   leg: DutyLeg;
   status: LegStatus;
-  issueReport?: string;
+  issueReport?: LegIssueReport;
   onBack: () => void;
   onUnloadAll: () => void;
-  onOpenIssue: () => void;
+  onOpenArrivalIssue: () => void;
   onReset: () => void;
 }) {
   return (
@@ -1375,7 +1438,7 @@ function UnloadScreen({
         <p className="mt-6 text-lg font-bold text-[#333]">{today}</p>
 
         <div className="mt-3">
-          <LegCard leg={leg} status={status} />
+          <LegCard leg={leg} status={status} issueReport={issueReport} />
         </div>
 
         <h2 className="mt-8 text-2xl font-black text-[#222]">
@@ -1402,15 +1465,17 @@ function UnloadScreen({
 
           <button
             type="button"
-            onClick={onOpenIssue}
+            onClick={onOpenArrivalIssue}
             className="flex w-full items-center justify-between rounded-lg border border-[#f59e0b] border-l-4 border-l-[#f59e0b] bg-[#fff7ed] px-4 py-4 text-left text-sm font-black text-[#7c2d12] shadow-sm"
           >
-            <span>Report issue / delay</span>
+            <span>Report arrival issue / delay</span>
             <span className="text-2xl font-black text-[#f59e0b]">!</span>
           </button>
         </div>
 
-        {issueReport && <IssueRecordedBox issueReport={issueReport} />}
+        {issueReport && hasAnyIssue(issueReport) && (
+          <IssueRecordedBox legNumber={leg.number} issueReport={issueReport} />
+        )}
 
         <MockResetButton onReset={onReset} />
       </section>
@@ -1430,7 +1495,7 @@ function CompleteScreen({
   vehicleNumber: string;
   leg: DutyLeg;
   status: LegStatus;
-  issueReport?: string;
+  issueReport?: LegIssueReport;
   onReset: () => void;
 }) {
   return (
@@ -1447,12 +1512,14 @@ function CompleteScreen({
         <p className="mt-8 text-xl font-bold text-[#333]">{today}</p>
 
         <div className="mt-4">
-          <LegCard leg={leg} status={status} />
+          <LegCard leg={leg} status={status} issueReport={issueReport} />
         </div>
 
         <VehicleNumberBanner vehicleNumber={vehicleNumber} />
 
-        {issueReport && <IssueRecordedBox issueReport={issueReport} />}
+        {issueReport && hasAnyIssue(issueReport) && (
+          <IssueRecordedBox legNumber={leg.number} issueReport={issueReport} />
+        )}
 
         <section className="mt-6 rounded-[18px] bg-[#d9f7e5] p-5">
           <h2 className="text-2xl font-black text-[#067a35]">
@@ -1493,23 +1560,33 @@ function IssueModal({
   onSave: () => void;
 }) {
   const isSkip = mode === "skip";
+  const isDeparture = mode === "departure";
+
   const canSave = isSkip
     ? details.trim().length > 0 && manager.trim().length > 0
     : details.trim().length > 0 ||
       location.trim().length > 0 ||
       manager.trim().length > 0;
 
+  const title = isSkip
+    ? "Skip Leg Reason"
+    : isDeparture
+    ? "Departure Issue / Delay"
+    : "Arrival Issue / Delay";
+
+  const helperText = isSkip
+    ? "Record why this leg is being skipped and which manager authorised the change."
+    : isDeparture
+    ? "Record any issue that could delay departure, or explain if the duty is leaving from a different location than planned."
+    : "Record any issue that could delay arrival, or explain if the duty arrived at a different location than planned.";
+
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-5">
       <section className="max-h-[88vh] w-full max-w-[430px] overflow-y-auto rounded-sm bg-white p-6 shadow-2xl">
-        <h2 className="text-2xl font-black text-[#111]">
-          {isSkip ? "Skip Leg Reason" : "Issue / Delay Details"}
-        </h2>
+        <h2 className="text-2xl font-black text-[#111]">{title}</h2>
 
         <p className="mt-3 text-sm font-bold leading-6 text-[#444]">
-          {isSkip
-            ? "Record why this leg is being skipped and which manager authorised the change."
-            : "Record any issue that could delay departure or arrival, or explain if the duty is going to a different location than planned."}
+          {helperText}
         </p>
 
         <label className="mt-5 block text-sm font-black text-[#222]">
@@ -1522,7 +1599,9 @@ function IssueModal({
           placeholder={
             isSkip
               ? "Example: Leg skipped due to operational change..."
-              : "Example: delayed leaving site, waiting for load, traffic issue..."
+              : isDeparture
+              ? "Example: delayed leaving site, waiting for load, traffic issue before departure..."
+              : "Example: delayed arrival, traffic, gate queue, diverted on arrival..."
           }
           className="mt-2 min-h-[110px] w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
         />
@@ -1534,7 +1613,11 @@ function IssueModal({
         <input
           value={location}
           onChange={(event) => onLocationChange(event.target.value)}
-          placeholder="Add different location if applicable"
+          placeholder={
+            isDeparture
+              ? "Add different departure location if applicable"
+              : "Add different arrival location if applicable"
+          }
           className="mt-2 w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
         />
 
@@ -1581,16 +1664,41 @@ function IssueModal({
   );
 }
 
-function IssueRecordedBox({ issueReport }: { issueReport: string }) {
+function IssueRecordedBox({
+  legNumber,
+  issueReport,
+}: {
+  legNumber: number;
+  issueReport: LegIssueReport;
+}) {
   return (
     <section className="mt-4 rounded-[16px] border-2 border-[#f59e0b] bg-[#fff7ed] p-4">
       <p className="text-xs font-black uppercase tracking-[0.16em] text-[#b45309]">
         Issue details recorded
       </p>
 
-      <p className="mt-2 text-sm font-bold leading-6 text-[#7c2d12]">
-        {issueReport}
-      </p>
+      <div className="mt-2 space-y-2 text-sm font-bold leading-6 text-[#7c2d12]">
+        {issueReport.departure && (
+          <p>
+            <span className="font-black">Leg {legNumber} Departure Issue:</span>{" "}
+            {issueReport.departure}
+          </p>
+        )}
+
+        {issueReport.arrival && (
+          <p>
+            <span className="font-black">Leg {legNumber} Arrival Issue:</span>{" "}
+            {issueReport.arrival}
+          </p>
+        )}
+
+        {issueReport.skip && (
+          <p>
+            <span className="font-black">Leg {legNumber} Skipped Leg Reason:</span>{" "}
+            {issueReport.skip}
+          </p>
+        )}
+      </div>
     </section>
   );
 }
@@ -1608,7 +1716,7 @@ function DepartModal({
 }) {
   const message =
     taskType === "flex"
-      ? "Are you sure you are performing a Flex or As Directed leg? If so, please add as much detail as possible regarding your leg in the Report issue / delay section."
+      ? "Are you sure you are performing a Flex or As Directed leg? If so, please add as much detail as possible regarding your leg in the Report departure issue / delay and Report arrival issue / delay sections."
       : taskType === "empty"
       ? "Are you sure you are taking an empty vehicle and ready to depart from depot?"
       : `Are you sure you have added all ${containerCount} containers and are ready to depart from depot?`;
@@ -1724,6 +1832,43 @@ function MockResetButton({ onReset }: { onReset: () => void }) {
       MOCKUP Reset
     </button>
   );
+}
+
+function hasAnyIssue(issueReport: LegIssueReport) {
+  return Boolean(issueReport.departure || issueReport.arrival || issueReport.skip);
+}
+
+function buildIssueReportText({
+  selectedLeg,
+  issueMode,
+  issueDetails,
+  issueLocation,
+  issueManager,
+}: {
+  selectedLeg: number;
+  issueMode: IssueMode;
+  issueDetails: string;
+  issueLocation: string;
+  issueManager: string;
+}) {
+  const typeText =
+    issueMode === "departure"
+      ? "Departure issue / delay"
+      : issueMode === "arrival"
+      ? "Arrival issue / delay"
+      : "Skipped leg";
+
+  const reportParts = [
+    `Leg ${selectedLeg}`,
+    `Type: ${typeText}`,
+    issueDetails.trim() ? `Details: ${issueDetails.trim()}` : "",
+    issueLocation.trim()
+      ? `Location / route change: ${issueLocation.trim()}`
+      : "",
+    issueManager.trim() ? `Authorised by: ${issueManager.trim()}` : "",
+  ].filter(Boolean);
+
+  return reportParts.join(" | ");
 }
 
 function normaliseLocationName(value: string) {
