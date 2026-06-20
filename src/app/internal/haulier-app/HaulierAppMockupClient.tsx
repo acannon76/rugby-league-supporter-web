@@ -626,14 +626,14 @@ function NoDutyScreen({ onContinue }: { onContinue: () => void }) {
 
         <section className="mt-6 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
-            No duty available
+            No duty currently loaded
           </p>
 
           <p className="mt-4 text-base font-black leading-7 text-[#222]">
-            No duty available. Please ensure that your haulier has added your
+            To load the duty, please ensure that your haulier has added your
             correct email address to the Transport Office Haulier Connect System
-            and then manually close the app.
-          </p>
+            and then manually close the app to reload
+                      </p>
         </section>
 
         <button
