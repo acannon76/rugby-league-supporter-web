@@ -5,12 +5,8 @@ import { useMemo, useState } from "react";
 type LegStatus = "To do" | "In Progress" | "Completed";
 type MockupType = "flex" | "mockup2";
 type TaskType = "empty" | "repat" | "load" | "skip" | "flex";
-type IssueMode = "departure" | "arrival" | "skip";
-type PendingIssueAction =
-  | "departure-to-destination"
-  | "arrival-complete"
-  | "arrival-unload"
-  | null;
+type IssueMode = "arrival" | "skip";
+type PendingIssueAction = "arrival-complete" | null;
 
 type Screen =
   | "no-duty"
@@ -41,8 +37,7 @@ type MockupOption = {
 };
 
 type LegIssueReport = {
-  departure?: string;
-  arrival?: string;
+  issue?: string;
   skip?: string;
 };
 
@@ -163,7 +158,7 @@ export default function HaulierAppMockupClient() {
   const [unloadModalOpen, setUnloadModalOpen] = useState(false);
   const [issueModalOpen, setIssueModalOpen] = useState(false);
 
-  const [issueMode, setIssueMode] = useState<IssueMode>("departure");
+  const [issueMode, setIssueMode] = useState<IssueMode>("arrival");
   const [pendingIssueAction, setPendingIssueAction] =
     useState<PendingIssueAction>(null);
 
@@ -287,7 +282,7 @@ export default function HaulierAppMockupClient() {
       [selectedLeg]: "In Progress",
     }));
 
-    openIssueModal("departure", "departure-to-destination");
+    setScreen("destination");
   }
 
   function addManualContainer() {
@@ -328,7 +323,7 @@ export default function HaulierAppMockupClient() {
       [selectedLeg]: "In Progress",
     }));
 
-    openIssueModal("departure", "departure-to-destination");
+    setScreen("destination");
   }
 
   function arriveIntoDepot() {
@@ -337,7 +332,12 @@ export default function HaulierAppMockupClient() {
       return;
     }
 
-    openIssueModal("arrival", "arrival-unload");
+    setScreen("unload");
+  }
+
+  function confirmUnloadAll() {
+    setUnloadModalOpen(false);
+    openIssueModal("arrival", "arrival-complete");
   }
 
   function completeLeg() {
@@ -381,7 +381,7 @@ export default function HaulierAppMockupClient() {
       const existing = current[selectedLeg] || {};
       const nextReport: LegIssueReport = {
         ...existing,
-        [issueMode]: report,
+        [issueMode === "skip" ? "skip" : "issue"]: report,
       };
 
       return {
@@ -415,18 +415,8 @@ export default function HaulierAppMockupClient() {
     const action = pendingIssueAction;
     setPendingIssueAction(null);
 
-    if (action === "departure-to-destination") {
-      setScreen("destination");
-      return;
-    }
-
     if (action === "arrival-complete") {
       completeLeg();
-      return;
-    }
-
-    if (action === "arrival-unload") {
-      setScreen("unload");
     }
   }
 
@@ -603,7 +593,7 @@ export default function HaulierAppMockupClient() {
         {unloadModalOpen && (
           <UnloadAllModal
             onCancel={() => setUnloadModalOpen(false)}
-            onYes={completeLeg}
+            onYes={confirmUnloadAll}
           />
         )}
 
@@ -968,17 +958,10 @@ function IssueSummaryOnLeg({
       </p>
 
       <div className="mt-2 space-y-2 text-xs font-bold leading-5 text-[#7c2d12]">
-        {issueReport.departure && (
+        {issueReport.issue && (
           <p>
-            <span className="font-black">Leg {legNumber} Departure Issue:</span>{" "}
-            {issueReport.departure}
-          </p>
-        )}
-
-        {issueReport.arrival && (
-          <p>
-            <span className="font-black">Leg {legNumber} Arrival Issue:</span>{" "}
-            {issueReport.arrival}
+            <span className="font-black">Leg {legNumber} Issue / Route Change:</span>{" "}
+            {issueReport.issue}
           </p>
         )}
 
@@ -1026,8 +1009,8 @@ function VehicleModal({
   const canConfirm = vehicleInput.trim().length > 0;
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-5">
-      <section className="w-full max-w-[390px] bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 px-5 py-4">
+      <section className="max-h-[calc(100dvh-32px)] w-full max-w-[390px] overflow-y-auto bg-white p-6 shadow-2xl">
         <h2 className="text-2xl font-black text-[#222]">
           Information Required
         </h2>
@@ -1573,29 +1556,20 @@ function IssueModal({
   onNoIssue: () => void;
 }) {
   const isSkip = mode === "skip";
-  const isDeparture = mode === "departure";
 
   const canSave = isSkip
     ? details.trim().length > 0 && manager.trim().length > 0
-    : details.trim().length > 0 ||
-      location.trim().length > 0 ||
-      manager.trim().length > 0;
+    : details.trim().length > 0;
 
-  const title = isSkip
-    ? "Skip Leg Reason"
-    : isDeparture
-    ? "Departure Issue / Delay"
-    : "Arrival Issue / Delay";
+  const title = isSkip ? "Skip Leg Reason" : "Issue / Route Change";
 
   const helperText = isSkip
     ? "Record why this leg is being skipped and which manager authorised the change."
-    : isDeparture
-    ? "Please record any issue that delayed departure, caused a route change, or meant the duty departed from a different location. If there was no departure issue, select No Issue."
-    : "Please record any issue that delayed arrival, caused a route change, or meant the duty arrived at a different location. If there was no arrival issue, select No Issue.";
+    : "Before completing this leg, record any issue, delay, different location, route change, or other information in the box below. If there was no issue, select No Issue.";
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-5">
-      <section className="max-h-[88vh] w-full max-w-[430px] overflow-y-auto rounded-sm bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 px-5 py-4">
+      <section className="max-h-[calc(100dvh-32px)] w-full max-w-[430px] overflow-y-auto rounded-sm bg-white p-6 shadow-2xl">
         <h2 className="text-2xl font-black text-[#111]">{title}</h2>
 
         <p className="mt-3 text-sm font-bold leading-6 text-[#444]">
@@ -1603,7 +1577,7 @@ function IssueModal({
         </p>
 
         <label className="mt-5 block text-sm font-black text-[#222]">
-          Details
+          {isSkip ? "Details" : "Issue / route change details"}
         </label>
 
         <textarea
@@ -1612,44 +1586,40 @@ function IssueModal({
           placeholder={
             isSkip
               ? "Example: Leg skipped due to operational change..."
-              : isDeparture
-              ? "Example: delayed leaving site, waiting for load, traffic issue before departure..."
-              : "Example: delayed arrival, traffic, gate queue, diverted on arrival..."
+              : "Example: delayed arrival, traffic, gate queue, different location, route change, authorised by..."
           }
-          className="mt-2 min-h-[110px] w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
-        />
-
-        <label className="mt-4 block text-sm font-black text-[#222]">
-          Different location / route change or N/A
-        </label>
-
-        <input
-          value={location}
-          onChange={(event) => onLocationChange(event.target.value)}
-          placeholder={
-            isDeparture
-              ? "Add different departure location if applicable"
-              : "Add different arrival location if applicable"
-          }
-          className="mt-2 w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
-        />
-
-        <label className="mt-4 block text-sm font-black text-[#222]">
-          Manager authorising change or N/A
-        </label>
-
-        <input
-          value={manager}
-          onChange={(event) => onManagerChange(event.target.value)}
-          placeholder="Manager name"
-          className="mt-2 w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
+          className="mt-2 min-h-[130px] w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
         />
 
         {isSkip && (
-          <p className="mt-3 rounded-lg bg-[#fff7ed] p-3 text-xs font-black leading-5 text-[#7c2d12]">
-            For skipped legs, a reason and authorising manager should be added
-            before continuing.
-          </p>
+          <>
+            <label className="mt-4 block text-sm font-black text-[#222]">
+              Different location / route change or N/A
+            </label>
+
+            <input
+              value={location}
+              onChange={(event) => onLocationChange(event.target.value)}
+              placeholder="Add route change if applicable"
+              className="mt-2 w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
+            />
+
+            <label className="mt-4 block text-sm font-black text-[#222]">
+              Manager authorising change or N/A
+            </label>
+
+            <input
+              value={manager}
+              onChange={(event) => onManagerChange(event.target.value)}
+              placeholder="Manager name"
+              className="mt-2 w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
+            />
+
+            <p className="mt-3 rounded-lg bg-[#fff7ed] p-3 text-xs font-black leading-5 text-[#7c2d12]">
+              For skipped legs, a reason and authorising manager should be added
+              before continuing.
+            </p>
+          </>
         )}
 
         {isSkip ? (
@@ -1683,7 +1653,7 @@ function IssueModal({
                 canSave ? "bg-[#d6001c]" : "bg-[#cccccc]"
               }`}
             >
-              Save Details & Continue
+              Save Details & Complete Leg
             </button>
 
             <button
@@ -1714,17 +1684,10 @@ function IssueRecordedBox({
       </p>
 
       <div className="mt-2 space-y-2 text-sm font-bold leading-6 text-[#7c2d12]">
-        {issueReport.departure && (
+        {issueReport.issue && (
           <p>
-            <span className="font-black">Leg {legNumber} Departure Issue:</span>{" "}
-            {issueReport.departure}
-          </p>
-        )}
-
-        {issueReport.arrival && (
-          <p>
-            <span className="font-black">Leg {legNumber} Arrival Issue:</span>{" "}
-            {issueReport.arrival}
+            <span className="font-black">Leg {legNumber} Issue / Route Change:</span>{" "}
+            {issueReport.issue}
           </p>
         )}
 
@@ -1752,7 +1715,7 @@ function DepartModal({
 }) {
   const message =
     taskType === "flex"
-      ? "Are you sure you are performing a Flex or As Directed leg? If so, please add as much detail as possible in the departure and arrival issue screens."
+      ? "Are you sure you are performing a Flex or As Directed leg? If so, please add as much detail as possible in the issue / route change screen before completing the leg."
       : taskType === "empty"
       ? "Are you sure you are taking an empty vehicle and ready to depart from depot?"
       : `Are you sure you have added all ${containerCount} containers and are ready to depart from depot?`;
@@ -1820,8 +1783,8 @@ function AlertShell({
   onRight: () => void;
 }) {
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-5">
-      <section className="w-full max-w-[430px] rounded-sm bg-white p-7 shadow-2xl">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 px-5 py-4">
+      <section className="max-h-[calc(100dvh-32px)] w-full max-w-[430px] overflow-y-auto rounded-sm bg-white p-7 shadow-2xl">
         <h2 className="text-3xl font-black text-[#111]">Alert</h2>
 
         <p className="mt-5 text-xl font-bold leading-8 text-[#222]">
@@ -1871,7 +1834,7 @@ function MockResetButton({ onReset }: { onReset: () => void }) {
 }
 
 function hasAnyIssue(issueReport: LegIssueReport) {
-  return Boolean(issueReport.departure || issueReport.arrival || issueReport.skip);
+  return Boolean(issueReport.issue || issueReport.skip);
 }
 
 function buildIssueReportText({
@@ -1887,16 +1850,13 @@ function buildIssueReportText({
   issueLocation: string;
   issueManager: string;
 }) {
-  const typeText =
-    issueMode === "departure"
-      ? "Departure issue / delay"
-      : issueMode === "arrival"
-      ? "Arrival issue / delay"
-      : "Skipped leg";
+  if (issueMode === "arrival") {
+    return issueDetails.trim();
+  }
 
   const reportParts = [
     `Leg ${selectedLeg}`,
-    `Type: ${typeText}`,
+    "Type: Skipped leg",
     issueDetails.trim() ? `Details: ${issueDetails.trim()}` : "",
     issueLocation.trim()
       ? `Location / route change: ${issueLocation.trim()}`
