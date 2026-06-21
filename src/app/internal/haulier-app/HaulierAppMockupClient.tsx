@@ -2084,16 +2084,18 @@ function DctWebScreen({
     { key: "departureLocation", label: "Departure location", headerClass: "bg-[#f2e8c9]", widthClass: "w-[112px]", align: "center" },
     { key: "plannedDeparture", label: "Planned_Departure_Time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]", align: "center" },
     { key: "departureActual", label: "DEPARTURE actual time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]", align: "center" },
+    { key: "departureDiff", label: "Departure Diff hh:mm", headerClass: "bg-[#f2e8c9]", widthClass: "w-[92px]", align: "center" },
     { key: "dueToConvey", label: "Due To Convey", headerClass: "bg-[#f7efd8]", widthClass: "w-[108px]", align: "center" },
     { key: "departureAssets", label: "DEPARTURE assets", headerClass: "bg-[#f2e8c9]", widthClass: "w-[68px]", align: "center" },
     { key: "arrivalLocation", label: "Arrival Location", headerClass: "bg-[#d9f1d5]", widthClass: "w-[112px]", align: "center" },
     { key: "plannedArrival", label: "Planned_Arrival_Time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]", align: "center" },
     { key: "arrivalActual", label: "ARRIVAL actual time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]", align: "center" },
+    { key: "arrivalDiff", label: "Arrival Diff hh:mm", headerClass: "bg-[#d9f1d5]", widthClass: "w-[92px]", align: "center" },
     { key: "arrivalAssets", label: "ARRIVAL assets", headerClass: "bg-[#d9f1d5]", widthClass: "w-[68px]", align: "center" },
+    { key: "issues", label: "Issues", headerClass: "bg-[#fde7c7]", widthClass: "w-[180px]", align: "left" },
     { key: "gpsDeparture", label: "GPS Departure", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]", align: "center" },
     { key: "gpsArrival", label: "GPS Arrival", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]", align: "center" },
     { key: "yorkBarCodes", label: "York Bar Codes", headerClass: "bg-[#f3d9ec]", widthClass: "w-[118px]", align: "center" },
-    { key: "issues", label: "Issues", headerClass: "bg-[#fde7c7]", widthClass: "w-[180px]", align: "left" },
   ];
 
   return (
@@ -2164,7 +2166,7 @@ function DctWebScreen({
         ) : (
           <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[2250px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+              <table className="min-w-[2450px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
                   <tr>
                     {columns.map((column) => (
@@ -2198,6 +2200,9 @@ function DctWebScreen({
                       <td className={`${getTimingCellClass(row.plannedDepartureTs, row.departureActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
                         {row.departureActualTs ? formatDateTime(row.departureActualTs) : "-"}
                       </td>
+                      <td className={`${getTimingCellClass(row.plannedDepartureTs, row.departureActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
+                        {formatTimeDifference(row.plannedDepartureTs, row.departureActualTs)}
+                      </td>
                       <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.dueToConvey || "-"}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.departureAssets || "-"}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.arrivalLocation}</td>
@@ -2205,11 +2210,14 @@ function DctWebScreen({
                       <td className={`${getTimingCellClass(row.plannedArrivalTs, row.arrivalActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
                         {row.arrivalActualTs ? formatDateTime(row.arrivalActualTs) : "-"}
                       </td>
+                      <td className={`${getTimingCellClass(row.plannedArrivalTs, row.arrivalActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
+                        {formatTimeDifference(row.plannedArrivalTs, row.arrivalActualTs)}
+                      </td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.arrivalAssets || "-"}</td>
+                      <td className="border border-black px-1 py-2 font-normal break-words">{row.issues || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsDeparture || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsArrival || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.yorkBarCodes || "-"}</td>
-                      <td className="border border-black px-1 py-2 font-normal break-words">{row.issues || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -2428,6 +2436,21 @@ function combineDateAndTime(baseDate: Date, timeText: string, dayOffset: number)
   next.setDate(next.getDate() + dayOffset);
   next.setHours(hours, minutes, 0, 0);
   return next.getTime();
+}
+
+
+function formatTimeDifference(plannedTs: number, actualTs: number | null) {
+  if (!actualTs) {
+    return "-";
+  }
+
+  const diffMinutes = Math.round((actualTs - plannedTs) / 60000);
+  const sign = diffMinutes < 0 ? "-" : "";
+  const absoluteMinutes = Math.abs(diffMinutes);
+  const hours = String(Math.floor(absoluteMinutes / 60)).padStart(2, "0");
+  const minutes = String(absoluteMinutes % 60).padStart(2, "0");
+
+  return `${sign}${hours}:${minutes}`;
 }
 
 function formatDateOnly(timestamp: number) {
