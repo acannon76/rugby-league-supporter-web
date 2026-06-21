@@ -66,6 +66,7 @@ type DctRow = {
   gpsDeparture: string;
   gpsArrival: string;
   yorkBarCodes: string;
+  issueCategory: string;
   issues: string;
 };
 
@@ -178,6 +179,20 @@ const mockContainers = [
   "YT11223344GB",
 ];
 
+const issueCategoryOptions = [
+  "Delay",
+  "Route change",
+  "Different location",
+  "Trailer swap",
+  "Traffic",
+  "Site issue",
+  "Load / asset issue",
+  "Gate / access issue",
+  "Authorised change",
+  "Skipped leg",
+  "Other",
+];
+
 const locationCoordinates: Record<string, string> = {
   "NORTH WEST HUB": "53.5184035675559, -2.65341021789611",
   "MANCHESTER MAIL CENTRE": "53.4746410000000, -2.24731400000000",
@@ -216,6 +231,7 @@ export default function HaulierAppMockupClient() {
     useState<PendingIssueAction>(null);
 
   const [issueDetails, setIssueDetails] = useState("");
+  const [issueCategory, setIssueCategory] = useState("");
   const [issueLocation, setIssueLocation] = useState("");
   const [issueManager, setIssueManager] = useState("");
 
@@ -268,6 +284,7 @@ export default function HaulierAppMockupClient() {
     setContainers([]);
     setLegStatuses(nextStatuses);
     setIssueReports({});
+    setIssueCategory("");
     setDctSourceMockup(nextMockup);
     setDctDutyId(nextDutyId);
     setDctRows(buildPlannedDctRows(nextMockup, nextDutyId));
@@ -295,7 +312,9 @@ export default function HaulierAppMockupClient() {
     setContainers([]);
     setLegStatuses({ 1: "To do" });
     setIssueReports({});
+    setIssueCategory("");
     setIssueDetails("");
+    setIssueCategory("");
     setIssueLocation("");
     setIssueManager("");
     setPendingIssueAction(null);
@@ -488,6 +507,7 @@ export default function HaulierAppMockupClient() {
     setIssueMode(mode);
     setPendingIssueAction(action);
     setIssueDetails("");
+    setIssueCategory(mode === "skip" ? "Skipped leg" : "");
     setIssueLocation("");
     setIssueManager("");
     setIssueModalOpen(true);
@@ -497,6 +517,7 @@ export default function HaulierAppMockupClient() {
     const report = buildIssueReportText({
       selectedLeg,
       issueMode,
+      issueCategory,
       issueDetails,
       issueLocation,
       issueManager,
@@ -518,6 +539,7 @@ export default function HaulierAppMockupClient() {
     if (issueMode === "skip") {
       updateDctForSkip(selectedLeg, report);
       setIssueDetails("");
+      setIssueCategory("");
       setIssueLocation("");
       setIssueManager("");
       setIssueModalOpen(false);
@@ -527,6 +549,7 @@ export default function HaulierAppMockupClient() {
 
     updateDctForCompletion(selectedLeg, report);
     setIssueDetails("");
+    setIssueCategory("");
     setIssueLocation("");
     setIssueManager("");
     setIssueModalOpen(false);
@@ -539,6 +562,7 @@ export default function HaulierAppMockupClient() {
     }
 
     setIssueDetails("");
+    setIssueCategory("");
     setIssueLocation("");
     setIssueManager("");
     setIssueModalOpen(false);
@@ -568,6 +592,7 @@ export default function HaulierAppMockupClient() {
           status: "Complete",
           departureActualTs: row.departureActualTs ?? actualTimes.departureActualTs,
           arrivalActualTs: actualTimes.arrivalActualTs,
+          issueCategory: issueText ? issueCategory : "",
           issues: issueText,
         };
       })
@@ -588,6 +613,7 @@ export default function HaulierAppMockupClient() {
           departureAssets: "",
           arrivalAssets: "",
           yorkBarCodes: "",
+          issueCategory: issueCategory || "Skipped leg",
           issues: issueText,
           departureActualTs: null,
           arrivalActualTs: null,
@@ -779,9 +805,11 @@ export default function HaulierAppMockupClient() {
         {issueModalOpen && (
           <IssueModal
             mode={issueMode}
+            category={issueCategory}
             details={issueDetails}
             location={issueLocation}
             manager={issueManager}
+            onCategoryChange={setIssueCategory}
             onDetailsChange={setIssueDetails}
             onLocationChange={setIssueLocation}
             onManagerChange={setIssueManager}
@@ -1741,9 +1769,11 @@ function CompleteScreen({
 
 function IssueModal({
   mode,
+  category,
   details,
   location,
   manager,
+  onCategoryChange,
   onDetailsChange,
   onLocationChange,
   onManagerChange,
@@ -1752,9 +1782,11 @@ function IssueModal({
   onNoIssue,
 }: {
   mode: IssueMode;
+  category: string;
   details: string;
   location: string;
   manager: string;
+  onCategoryChange: (value: string) => void;
   onDetailsChange: (value: string) => void;
   onLocationChange: (value: string) => void;
   onManagerChange: (value: string) => void;
@@ -1766,7 +1798,7 @@ function IssueModal({
 
   const canSave = isSkip
     ? details.trim().length > 0 && manager.trim().length > 0
-    : details.trim().length > 0;
+    : details.trim().length > 0 && category.trim().length > 0;
 
   const title = isSkip ? "Skip Leg Reason" : "Issue / Route Change";
 
@@ -1784,6 +1816,23 @@ function IssueModal({
         </p>
 
         <label className="mt-5 block text-sm font-black text-[#222]">
+          Issue category
+        </label>
+
+        <select
+          value={category}
+          onChange={(event) => onCategoryChange(event.target.value)}
+          className="mt-2 w-full border-2 border-[#888] bg-white px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
+        >
+          <option value="">Select an issue category</option>
+          {issueCategoryOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+
+        <label className="mt-4 block text-sm font-black text-[#222]">
           {isSkip ? "Details" : "Issue / route change details"}
         </label>
 
@@ -2066,6 +2115,19 @@ function DctWebScreen({
       ? "Flex Mock Up"
       : "No mock-up selected";
 
+  const lateLegs = rows.filter((row) => rowHasLateTiming(row)).length;
+  const skippedLegs = rows.filter((row) => row.status === "Skip").length;
+  const issuesRecorded = rows.filter(
+    (row) => row.issues.trim().length > 0
+  ).length;
+  const totalDelayMinutes = rows.reduce(
+    (total, row) =>
+      total +
+      getPositiveDelayMinutes(row.plannedDepartureTs, row.departureActualTs) +
+      getPositiveDelayMinutes(row.plannedArrivalTs, row.arrivalActualTs),
+    0
+  );
+
   const columns: {
     key: string;
     label: string;
@@ -2092,6 +2154,7 @@ function DctWebScreen({
     { key: "arrivalActual", label: "ARRIVAL actual time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]", align: "center" },
     { key: "arrivalDiff", label: "Arrival Diff hh:mm", headerClass: "bg-[#d9f1d5]", widthClass: "w-[92px]", align: "center" },
     { key: "arrivalAssets", label: "ARRIVAL assets", headerClass: "bg-[#d9f1d5]", widthClass: "w-[68px]", align: "center" },
+    { key: "issueCategory", label: "Issue Category", headerClass: "bg-[#fde7c7]", widthClass: "w-[120px]", align: "center" },
     { key: "issues", label: "Issues", headerClass: "bg-[#fde7c7]", widthClass: "w-[180px]", align: "left" },
     { key: "gpsDeparture", label: "GPS Departure", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]", align: "center" },
     { key: "gpsArrival", label: "GPS Arrival", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]", align: "center" },
@@ -2138,6 +2201,13 @@ function DctWebScreen({
                 rows.filter((row) => row.status === "Complete").length
               )}
             />
+            <SummaryCard label="Late legs" value={String(lateLegs)} />
+            <SummaryCard label="Skipped legs" value={String(skippedLegs)} />
+            <SummaryCard label="Issues recorded" value={String(issuesRecorded)} />
+            <SummaryCard
+              label="Total delay"
+              value={formatDelayTotal(totalDelayMinutes)}
+            />
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]">
@@ -2166,7 +2236,7 @@ function DctWebScreen({
         ) : (
           <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[2450px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+              <table className="min-w-[2570px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
                   <tr>
                     {columns.map((column) => (
@@ -2214,6 +2284,7 @@ function DctWebScreen({
                         {formatTimeDifference(row.plannedArrivalTs, row.arrivalActualTs)}
                       </td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.arrivalAssets || "-"}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.issueCategory || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.issues || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsDeparture || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsArrival || "-"}</td>
@@ -2266,22 +2337,25 @@ function hasAnyIssue(issueReport: LegIssueReport) {
 function buildIssueReportText({
   selectedLeg,
   issueMode,
+  issueCategory,
   issueDetails,
   issueLocation,
   issueManager,
 }: {
   selectedLeg: number;
   issueMode: IssueMode;
+  issueCategory: string;
   issueDetails: string;
   issueLocation: string;
   issueManager: string;
 }) {
   if (issueMode === "arrival") {
-    return issueDetails.trim();
+    return [`Category: ${issueCategory.trim()}`, `Details: ${issueDetails.trim()}`].join(" | ");
   }
 
   const reportParts = [
     `Leg ${selectedLeg}`,
+    `Category: ${issueCategory.trim() || "Skipped leg"}`,
     "Type: Skipped leg",
     issueDetails.trim() ? `Details: ${issueDetails.trim()}` : "",
     issueLocation.trim()
@@ -2337,6 +2411,7 @@ function buildPlannedDctRows(mockupType: MockupType, dutyId: string) {
       gpsDeparture: locationCoordinates[leg.from] || "",
       gpsArrival: locationCoordinates[leg.to] || "",
       yorkBarCodes: "",
+      issueCategory: "",
       issues: "",
     };
   });
@@ -2424,6 +2499,28 @@ function getTimingCellClass(
   }
 
   return "bg-[#bbf7d0] text-[#166534]";
+}
+
+function rowHasLateTiming(row: DctRow) {
+  return (
+    getPositiveDelayMinutes(row.plannedDepartureTs, row.departureActualTs) > 0 ||
+    getPositiveDelayMinutes(row.plannedArrivalTs, row.arrivalActualTs) > 0
+  );
+}
+
+function getPositiveDelayMinutes(plannedTs: number, actualTs: number | null) {
+  if (!actualTs || actualTs <= plannedTs) {
+    return 0;
+  }
+
+  return Math.round((actualTs - plannedTs) / 60000);
+}
+
+function formatDelayTotal(totalMinutes: number) {
+  const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+  const minutes = String(totalMinutes % 60).padStart(2, "0");
+
+  return `${hours}:${minutes}`;
 }
 
 function normaliseLocationName(value: string) {
