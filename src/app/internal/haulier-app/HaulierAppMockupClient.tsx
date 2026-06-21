@@ -630,7 +630,7 @@ export default function HaulierAppMockupClient() {
             canOpenLeg={canOpenLeg}
             onOpenLeg={openLeg}
             onBack={() => setScreen("menu")}
-            onReset={handleCompleteReset}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -643,7 +643,7 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("duty")}
             onTask={selectTask}
-            onReset={handleCompleteReset}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -658,7 +658,7 @@ export default function HaulierAppMockupClient() {
             onRemoveContainer={removeContainer}
             onBack={() => setScreen("origin")}
             onLoadComplete={() => setLoadModalOpen(true)}
-            onReset={handleCompleteReset}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -668,7 +668,7 @@ export default function HaulierAppMockupClient() {
             onBack={() => setScreen("load")}
             onRemoveContainer={removeContainer}
             onLoadComplete={() => setLoadModalOpen(true)}
-            onReset={handleCompleteReset}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -679,7 +679,7 @@ export default function HaulierAppMockupClient() {
             onRepatCountChange={setRepatCount}
             onBack={() => setScreen("origin")}
             onContinue={continueRepat}
-            onReset={handleCompleteReset}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -693,7 +693,7 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("origin")}
             onArriveIntoDepot={arriveIntoDepot}
-            onReset={handleCompleteReset}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -706,7 +706,7 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("destination")}
             onUnloadAll={() => setUnloadModalOpen(true)}
-            onReset={handleCompleteReset}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -718,7 +718,7 @@ export default function HaulierAppMockupClient() {
             dutyId={getDutyIdForMockup(mockup)}
             status="Completed"
             issueReport={issueReports[selectedLeg]}
-            onReset={handleCompleteReset}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -997,7 +997,7 @@ function DutyScreen({
   canOpenLeg,
   onOpenLeg,
   onBack,
-  onReset,
+  onBackToMenu,
 }: {
   today: string;
   title: string;
@@ -1008,7 +1008,7 @@ function DutyScreen({
   canOpenLeg: (legNumber: number) => boolean;
   onOpenLeg: (legNumber: number) => void;
   onBack: () => void;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
@@ -1040,7 +1040,7 @@ function DutyScreen({
           ))}
         </div>
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -1265,7 +1265,7 @@ function OriginScreen({
   issueReport,
   onBack,
   onTask,
-  onReset,
+  onBackToMenu,
 }: {
   today: string;
   vehicleNumber: string;
@@ -1274,7 +1274,7 @@ function OriginScreen({
   issueReport?: LegIssueReport;
   onBack: () => void;
   onTask: (task: TaskType) => void;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
@@ -1311,7 +1311,7 @@ function OriginScreen({
           <IssueRecordedBox legNumber={leg.number} issueReport={issueReport} />
         )}
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -1327,7 +1327,7 @@ function LoadScreen({
   onRemoveContainer,
   onBack,
   onLoadComplete,
-  onReset,
+  onBackToMenu,
 }: {
   vehicleNumber: string;
   containers: string[];
@@ -1338,7 +1338,7 @@ function LoadScreen({
   onRemoveContainer: (containerNumber: string) => void;
   onBack: () => void;
   onLoadComplete: () => void;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
@@ -1399,7 +1399,7 @@ function LoadScreen({
           </button>
         )}
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -1410,13 +1410,13 @@ function ScanScreen({
   onBack,
   onRemoveContainer,
   onLoadComplete,
-  onReset,
+  onBackToMenu,
 }: {
   containers: string[];
   onBack: () => void;
   onRemoveContainer: (containerNumber: string) => void;
   onLoadComplete: () => void;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
@@ -1446,7 +1446,7 @@ function ScanScreen({
           Load Complete
         </button>
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -1491,14 +1491,14 @@ function RepatScreen({
   onRepatCountChange,
   onBack,
   onContinue,
-  onReset,
+  onBackToMenu,
 }: {
   vehicleNumber: string;
   repatCount: string;
   onRepatCountChange: (value: string) => void;
   onBack: () => void;
   onContinue: () => void;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
@@ -1531,7 +1531,7 @@ function RepatScreen({
           Continue
         </button>
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -1546,7 +1546,7 @@ function DestinationScreen({
   issueReport,
   onBack,
   onArriveIntoDepot,
-  onReset,
+  onBackToMenu,
 }: {
   today: string;
   vehicleNumber: string;
@@ -1556,7 +1556,7 @@ function DestinationScreen({
   issueReport?: LegIssueReport;
   onBack: () => void;
   onArriveIntoDepot: () => void;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
@@ -1604,7 +1604,7 @@ function DestinationScreen({
           </p>
         </section>
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -1618,7 +1618,7 @@ function UnloadScreen({
   issueReport,
   onBack,
   onUnloadAll,
-  onReset,
+  onBackToMenu,
 }: {
   today: string;
   vehicleNumber: string;
@@ -1627,7 +1627,7 @@ function UnloadScreen({
   issueReport?: LegIssueReport;
   onBack: () => void;
   onUnloadAll: () => void;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
@@ -1669,7 +1669,7 @@ function UnloadScreen({
           <IssueRecordedBox legNumber={leg.number} issueReport={issueReport} />
         )}
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -1682,7 +1682,7 @@ function CompleteScreen({
   dutyId,
   status,
   issueReport,
-  onReset,
+  onBackToMenu,
 }: {
   today: string;
   vehicleNumber: string;
@@ -1690,7 +1690,7 @@ function CompleteScreen({
   dutyId: string;
   status: LegStatus;
   issueReport?: LegIssueReport;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
@@ -1726,7 +1726,7 @@ function CompleteScreen({
           </p>
         </section>
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -2021,14 +2021,18 @@ function VehicleNumberBanner({ vehicleNumber }: { vehicleNumber: string }) {
   );
 }
 
-function MockResetButton({ onReset }: { onReset: () => void }) {
+function BackToMenuButton({
+  onBackToMenu,
+}: {
+  onBackToMenu: () => void;
+}) {
   return (
     <button
       type="button"
-      onClick={onReset}
-      className="mt-7 w-full rounded-[18px] bg-[#222] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white"
+      onClick={onBackToMenu}
+      className="mt-7 w-full rounded-[18px] border-2 border-[#d6001c] bg-white px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-[#d6001c]"
     >
-      MOCKUP Reset
+      Back to Mock-up Options
     </button>
   );
 }
@@ -2055,24 +2059,54 @@ function DctWebScreen({
       ? "Flex Mock Up"
       : "No mock-up selected";
 
+  const columns: {
+    key: string;
+    label: string;
+    headerClass: string;
+    widthClass: string;
+    align?: "left" | "center";
+  }[] = [
+    { key: "status", label: "Leg Status", headerClass: "bg-[#cfeefa]", widthClass: "w-[90px]", align: "left" },
+    { key: "startDate", label: "Start Date", headerClass: "bg-[#cfeefa]", widthClass: "w-[95px]", align: "center" },
+    { key: "dutyOrder", label: "Duty Order", headerClass: "bg-[#cfeefa]", widthClass: "w-[68px]", align: "center" },
+    { key: "vehicleId", label: "Vehicle Id", headerClass: "bg-[#cfeefa]", widthClass: "w-[88px]", align: "center" },
+    { key: "userId", label: "UserId", headerClass: "bg-[#cfeefa]", widthClass: "w-[140px]", align: "center" },
+    { key: "contractorCompanyName", label: "Contractor Company Name", headerClass: "bg-[#cfeefa]", widthClass: "w-[120px]", align: "center" },
+    { key: "operator", label: "Operator", headerClass: "bg-[#cfeefa]", widthClass: "w-[62px]", align: "center" },
+    { key: "dutyId", label: "DutyId", headerClass: "bg-[#cfeefa]", widthClass: "w-[82px]", align: "center" },
+    { key: "departureLocation", label: "Departure location", headerClass: "bg-[#f2e8c9]", widthClass: "w-[112px]", align: "center" },
+    { key: "plannedDeparture", label: "Planned_Departure_Time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]", align: "center" },
+    { key: "departureActual", label: "DEPARTURE actual time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]", align: "center" },
+    { key: "dueToConvey", label: "Due To Convey", headerClass: "bg-[#f7efd8]", widthClass: "w-[108px]", align: "center" },
+    { key: "departureAssets", label: "DEPARTURE assets", headerClass: "bg-[#f2e8c9]", widthClass: "w-[68px]", align: "center" },
+    { key: "arrivalLocation", label: "Arrival Location", headerClass: "bg-[#d9f1d5]", widthClass: "w-[112px]", align: "center" },
+    { key: "plannedArrival", label: "Planned_Arrival_Time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]", align: "center" },
+    { key: "arrivalActual", label: "ARRIVAL actual time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]", align: "center" },
+    { key: "arrivalAssets", label: "ARRIVAL assets", headerClass: "bg-[#d9f1d5]", widthClass: "w-[68px]", align: "center" },
+    { key: "gpsDeparture", label: "GPS Departure", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]", align: "center" },
+    { key: "gpsArrival", label: "GPS Arrival", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]", align: "center" },
+    { key: "yorkBarCodes", label: "York Bar Codes", headerClass: "bg-[#f3d9ec]", widthClass: "w-[118px]", align: "center" },
+    { key: "issues", label: "Issues", headerClass: "bg-[#fde7c7]", widthClass: "w-[180px]", align: "left" },
+  ];
+
   return (
     <>
       <AppHeader title="DCT Web Mockup" left="Back" onBack={onBack} />
 
-      <section className="bg-[#f8fafc] px-4 py-5 sm:px-6 lg:px-8">
-        <section className="rounded-[20px] border border-[#dbe4ef] bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <section className="bg-[#f8fafc] px-3 py-4 sm:px-4 lg:px-5">
+        <section className="rounded-[14px] border border-[#cfd8e3] bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d6001c]">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#d6001c]">
                 Web results mockup
               </p>
-              <h2 className="mt-2 text-3xl font-black text-[#172033]">
+              <h2 className="mt-2 text-2xl font-black text-[#172033] sm:text-3xl">
                 DCT-style output view
               </h2>
-              <p className="mt-3 max-w-[900px] text-sm font-bold leading-6 text-[#4b5563]">
-                This page shows where the journey data would appear from the app
-                into a DCT-style web results table. Planned data is always shown,
-                and actual values fill in as the mock-up is run.
+              <p className="mt-3 max-w-[980px] text-sm font-bold leading-6 text-[#4b5563]">
+                This version is styled closer to the spreadsheet view, with tighter
+                columns and Excel-style header colours. Planned values show first,
+                and the actual values populate as the mock-up is run.
               </p>
             </div>
 
@@ -2085,7 +2119,7 @@ function DctWebScreen({
             </button>
           </div>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <SummaryCard label="Last selected mock-up" value={sourceTitle} />
             <SummaryCard label="Duty ID" value={dutyId || ""} />
             <SummaryCard
@@ -2095,21 +2129,21 @@ function DctWebScreen({
             <SummaryCard label="Rows shown" value={String(rows.length)} />
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-3 text-xs font-black uppercase tracking-[0.12em]">
-            <span className="rounded-full bg-[#d9f7e5] px-3 py-2 text-[#166534]">
+          <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]">
+            <span className="rounded-full border border-[#1f7a34] bg-[#d9f7e5] px-3 py-2 text-[#166534]">
               Green = on time / early
             </span>
-            <span className="rounded-full bg-[#fee2e2] px-3 py-2 text-[#991b1b]">
+            <span className="rounded-full border border-[#c62828] bg-[#fecaca] px-3 py-2 text-[#7f1d1d]">
               Red = late
             </span>
-            <span className="rounded-full bg-[#e5e7eb] px-3 py-2 text-[#374151]">
+            <span className="rounded-full border border-[#6b7280] bg-[#e5e7eb] px-3 py-2 text-[#374151]">
               Grey = not yet populated
             </span>
           </div>
         </section>
 
         {rows.length === 0 ? (
-          <section className="mt-6 rounded-[20px] border border-[#dbe4ef] bg-white p-8 shadow-sm">
+          <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white p-8 shadow-sm">
             <p className="text-lg font-black text-[#172033]">
               No DCT mockup data is available yet.
             </p>
@@ -2119,128 +2153,54 @@ function DctWebScreen({
             </p>
           </section>
         ) : (
-          <section className="mt-6 rounded-[20px] border border-[#dbe4ef] bg-white shadow-sm">
+          <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[1800px] border-collapse text-xs text-[#111827]">
-                <thead className="sticky top-0 z-10 bg-[#d8edf8]">
+              <table className="min-w-[2250px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+                <thead className="sticky top-0 z-10">
                   <tr>
-                    {[
-                      "Leg Status",
-                      "Start Date",
-                      "Duty Order",
-                      "Vehicle Id",
-                      "UserId",
-                      "Contractor Company Name",
-                      "Operator",
-                      "DutyId",
-                      "Departure location",
-                      "Planned Departure Time",
-                      "DEPARTURE actual time",
-                      "Due To Convey",
-                      "DEPARTURE assets",
-                      "Arrival Location",
-                      "Planned Arrival Time",
-                      "ARRIVAL actual time",
-                      "ARRIVAL assets",
-                      "GPS Departure",
-                      "GPS Arrival",
-                      "York Bar Codes",
-                      "Issues",
-                    ].map((heading) => (
+                    {columns.map((column) => (
                       <th
-                        key={heading}
-                        className="border border-[#3f3f46] px-2 py-3 text-left font-black"
+                        key={column.key}
+                        className={`${column.headerClass} ${column.widthClass} border border-black px-1 py-2 align-bottom text-left font-normal text-black`}
                       >
-                        {heading}
+                        <div className="whitespace-normal break-words">
+                          {column.label}
+                        </div>
                       </th>
                     ))}
                   </tr>
                 </thead>
 
                 <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.legNumber} className="align-top">
-                      <td className="border border-[#3f3f46] px-2 py-2">
-                        <DctStatusBadge status={row.status} />
+                  {rows.map((row, index) => (
+                    <tr key={row.legNumber} className={index % 2 === 0 ? "bg-white" : "bg-[#fcfcfc]"}>
+                      <td className={`${getDctStatusCellClass(row.status)} border border-black px-1 py-2 font-normal text-black`}>
+                        {row.status}
                       </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 font-bold whitespace-nowrap">
-                        {row.startDate}
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.startDate}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal">{row.dutyOrder}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.vehicleId || ""}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.userId}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.contractorCompanyName}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal">{row.operator}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.dutyId}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.departureLocation}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{formatDateTime(row.plannedDepartureTs)}</td>
+                      <td className={`${getTimingCellClass(row.plannedDepartureTs, row.departureActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
+                        {row.departureActualTs ? formatDateTime(row.departureActualTs) : "-"}
                       </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 text-center font-black">
-                        {row.dutyOrder}
+                      <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.dueToConvey || "-"}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal">{row.departureAssets || "-"}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.arrivalLocation}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{formatDateTime(row.plannedArrivalTs)}</td>
+                      <td className={`${getTimingCellClass(row.plannedArrivalTs, row.arrivalActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
+                        {row.arrivalActualTs ? formatDateTime(row.arrivalActualTs) : "-"}
                       </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 font-bold whitespace-nowrap">
-                        {row.vehicleId || ""}
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 font-bold">
-                        {row.userId}
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 font-bold">
-                        {row.contractorCompanyName}
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 text-center font-bold">
-                        {row.operator}
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 font-bold whitespace-nowrap">
-                        {row.dutyId}
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 font-bold uppercase">
-                        {row.departureLocation}
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 font-bold whitespace-nowrap">
-                        {formatDateTime(row.plannedDepartureTs)}
-                      </td>
-                      <td
-                        className={`border border-[#3f3f46] px-2 py-2 font-black whitespace-nowrap ${getTimingCellClass(
-                          row.plannedDepartureTs,
-                          row.departureActualTs
-                        )}`}
-                      >
-                        {row.departureActualTs
-                          ? formatDateTime(row.departureActualTs)
-                          : ""}
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 font-bold uppercase">
-                        {row.dueToConvey}
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 text-center font-black">
-                        {row.departureAssets}
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 font-bold uppercase">
-                        {row.arrivalLocation}
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 font-bold whitespace-nowrap">
-                        {formatDateTime(row.plannedArrivalTs)}
-                      </td>
-                      <td
-                        className={`border border-[#3f3f46] px-2 py-2 font-black whitespace-nowrap ${getTimingCellClass(
-                          row.plannedArrivalTs,
-                          row.arrivalActualTs
-                        )}`}
-                      >
-                        {row.arrivalActualTs
-                          ? formatDateTime(row.arrivalActualTs)
-                          : ""}
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 text-center font-black">
-                        {row.arrivalAssets}
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 font-bold">
-                        {row.gpsDeparture}
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 font-bold">
-                        {row.gpsArrival}
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 font-bold">
-                        <div className="max-w-[220px] whitespace-pre-wrap break-words">
-                          {row.yorkBarCodes}
-                        </div>
-                      </td>
-                      <td className="border border-[#3f3f46] px-2 py-2 font-bold">
-                        <div className="max-w-[280px] whitespace-pre-wrap break-words">
-                          {row.issues}
-                        </div>
-                      </td>
+                      <td className="border border-black px-1 py-2 text-center font-normal">{row.arrivalAssets || "-"}</td>
+                      <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsDeparture || "-"}</td>
+                      <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsArrival || "-"}</td>
+                      <td className="border border-black px-1 py-2 font-normal break-words">{row.yorkBarCodes || "-"}</td>
+                      <td className="border border-black px-1 py-2 font-normal break-words">{row.issues || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -2255,32 +2215,31 @@ function DctWebScreen({
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[18px] bg-[#f8fafc] p-4">
-      <p className="text-xs font-black uppercase tracking-[0.16em] text-[#64748b]">
+    <div className="rounded-[12px] border border-[#d6dee8] bg-[#f8fafc] p-4">
+      <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#64748b]">
         {label}
       </p>
-      <p className="mt-3 text-lg font-black text-[#172033]">
+      <p className="mt-2 text-lg font-black text-[#172033]">
         {value || "-"}
       </p>
     </div>
   );
 }
 
-function DctStatusBadge({ status }: { status: DctStatus }) {
-  const classes =
-    status === "Complete"
-      ? "bg-[#d9f7e5] text-[#166534]"
-      : status === "In Progress"
-      ? "bg-[#ffedd5] text-[#9a3412]"
-      : status === "Skip"
-      ? "bg-[#e5e7eb] text-[#374151]"
-      : "bg-[#dbeafe] text-[#1d4ed8]";
+function getDctStatusCellClass(status: DctStatus) {
+  if (status === "Complete") {
+    return "bg-[#d9f7e5]";
+  }
 
-  return (
-    <span className={`rounded-full px-3 py-1 font-black uppercase ${classes}`}>
-      {status}
-    </span>
-  );
+  if (status === "In Progress") {
+    return "bg-[#ffe9c8]";
+  }
+
+  if (status === "Skip") {
+    return "bg-[#d1d5db]";
+  }
+
+  return "bg-[#dbeafe]";
 }
 
 function hasAnyIssue(issueReport: LegIssueReport) {
