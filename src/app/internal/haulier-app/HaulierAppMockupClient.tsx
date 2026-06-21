@@ -330,8 +330,11 @@ export default function HaulierAppMockupClient() {
       return;
     }
 
+    const existingVehicleForLeg =
+      dctRows.find((row) => row.legNumber === legNumber)?.vehicleId || "";
+
     setSelectedLeg(legNumber);
-    setVehicleInput(vehicleNumber);
+    setVehicleInput(existingVehicleForLeg || vehicleNumber);
     setVehicleModalOpen(true);
   }
 
@@ -343,10 +346,14 @@ export default function HaulierAppMockupClient() {
     const nextVehicle = vehicleInput.trim();
     setVehicleNumber(nextVehicle);
     setDctRows((current) =>
-      current.map((row) => ({
-        ...row,
-        vehicleId: nextVehicle,
-      }))
+      current.map((row) =>
+        row.legNumber === selectedLeg
+          ? {
+              ...row,
+              vehicleId: nextVehicle,
+            }
+          : row
+      )
     );
     setVehicleModalOpen(false);
     setScreen("origin");
@@ -2122,11 +2129,13 @@ function DctWebScreen({
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <SummaryCard label="Last selected mock-up" value={sourceTitle} />
             <SummaryCard label="Duty ID" value={dutyId || ""} />
-            <SummaryCard
-              label="Vehicle / trailer number"
-              value={vehicleNumber || ""}
-            />
             <SummaryCard label="Rows shown" value={String(rows.length)} />
+            <SummaryCard
+              label="Leg status completed"
+              value={String(
+                rows.filter((row) => row.status === "Complete").length
+              )}
+            />
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]">
@@ -2304,8 +2313,8 @@ function buildPlannedDctRows(mockupType: MockupType, dutyId: string) {
       startDate: formatDateOnly(baseDate.getTime()),
       dutyOrder: leg.number,
       vehicleId: "",
-      userId: "acannon76@live.co.uk",
-      contractorCompanyName: "Contoso",
+      userId: "andrew.cannon1@royalmail.com",
+      contractorCompanyName: "Pie Haulage",
       operator: "NWH",
       dutyId,
       departureLocation: leg.from,
