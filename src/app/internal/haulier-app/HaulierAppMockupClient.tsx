@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type LegStatus = "To do" | "In Progress" | "Completed";
 type MockupType = "flex" | "mockup2";
 type TaskType = "empty" | "repat" | "load" | "skip" | "flex";
 type IssueMode = "arrival" | "skip";
 type PendingIssueAction = "arrival-complete" | null;
+type DctStatus = "Planned" | "In Progress" | "Complete" | "Skip";
 
 type Screen =
   | "no-duty"
@@ -18,7 +19,8 @@ type Screen =
   | "repat"
   | "destination"
   | "unload"
-  | "complete";
+  | "complete"
+  | "dct";
 
 type DutyLeg = {
   number: number;
@@ -33,12 +35,38 @@ type MockupOption = {
   text: string;
   icon: string;
   active: boolean;
+  kind: "mockup" | "dct" | "reset";
   mockupType?: MockupType;
 };
 
 type LegIssueReport = {
   issue?: string;
   skip?: string;
+};
+
+type DctRow = {
+  legNumber: number;
+  status: DctStatus;
+  startDate: string;
+  dutyOrder: number;
+  vehicleId: string;
+  userId: string;
+  contractorCompanyName: string;
+  operator: string;
+  dutyId: string;
+  departureLocation: string;
+  plannedDepartureTs: number;
+  departureActualTs: number | null;
+  dueToConvey: string;
+  departureAssets: string;
+  arrivalLocation: string;
+  plannedArrivalTs: number;
+  arrivalActualTs: number | null;
+  arrivalAssets: string;
+  gpsDeparture: string;
+  gpsArrival: string;
+  yorkBarCodes: string;
+  issues: string;
 };
 
 const flexLegs: DutyLeg[] = [
@@ -102,6 +130,7 @@ const mockupOptions: MockupOption[] = [
     text: "Open the flex duty journey mock-up.",
     icon: "1",
     active: true,
+    kind: "mockup",
     mockupType: "flex",
   },
   {
@@ -109,19 +138,22 @@ const mockupOptions: MockupOption[] = [
     text: "Open a six-leg duty completed in order.",
     icon: "2",
     active: true,
+    kind: "mockup",
     mockupType: "mockup2",
   },
   {
-    title: "Mockup 3",
-    text: "Future mock-up option.",
+    title: "DCT Web Mockup",
+    text: "Open the DCT-style results page for the last selected mock-up.",
     icon: "3",
-    active: false,
+    active: true,
+    kind: "dct",
   },
   {
-    title: "Mockup 4",
-    text: "Future mock-up option.",
+    title: "Complete Reset",
+    text: "Clear the journey mock-up and remove all DCT mockup data.",
     icon: "4",
-    active: false,
+    active: true,
+    kind: "reset",
   },
 ];
 
@@ -145,6 +177,27 @@ const mockContainers = [
   "YT90123456GB",
   "YT11223344GB",
 ];
+
+const locationCoordinates: Record<string, string> = {
+  "NORTH WEST HUB": "53.5184035675559, -2.65341021789611",
+  "MANCHESTER MAIL CENTRE": "53.4746410000000, -2.24731400000000",
+  "CHESTER MAIL CENTRE": "53.1947240000000, -2.88060500000000",
+  "PRESTON MAIL CENTRE": "53.7725160000000, -2.68920400000000",
+};
+
+const mockActualOffsets: Record<MockupType, Record<number, { dep: number; arr: number }>> = {
+  flex: {
+    1: { dep: 7, arr: 18 },
+  },
+  mockup2: {
+    1: { dep: 5, arr: 14 },
+    2: { dep: 8, arr: 13 },
+    3: { dep: 4, arr: 9 },
+    4: { dep: 6, arr: 11 },
+    5: { dep: 9, arr: 12 },
+    6: { dep: 10, arr: 16 },
+  },
+};
 
 export default function HaulierAppMockupClient() {
   const [screen, setScreen] = useState<Screen>("no-duty");
@@ -180,9 +233,20 @@ export default function HaulierAppMockupClient() {
     Record<number, LegIssueReport>
   >({});
 
+  const [dctRows, setDctRows] = useState<DctRow[]>([]);
+  const [dctSourceMockup, setDctSourceMockup] = useState<MockupType | null>(null);
+  const [dctDutyId, setDctDutyId] = useState("");
+
   const today = useMemo(() => getTodayDateText(), []);
   const legs = mockup === "mockup2" ? mockup2Legs : flexLegs;
   const currentLeg = legs.find((leg) => leg.number === selectedLeg) || legs[0];
+  const isDctScreen = screen === "dct";
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && screen === "dct") {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
+  }, [screen]);
 
   function startMockup(nextMockup: MockupType) {
     const nextLegs = nextMockup === "mockup2" ? mockup2Legs : flexLegs;
@@ -191,6 +255,8 @@ export default function HaulierAppMockupClient() {
     nextLegs.forEach((leg) => {
       nextStatuses[leg.number] = "To do";
     });
+
+    const nextDutyId = getDutyIdForMockup(nextMockup);
 
     setMockup(nextMockup);
     setSelectedLeg(1);
@@ -202,6 +268,9 @@ export default function HaulierAppMockupClient() {
     setContainers([]);
     setLegStatuses(nextStatuses);
     setIssueReports({});
+    setDctSourceMockup(nextMockup);
+    setDctDutyId(nextDutyId);
+    setDctRows(buildPlannedDctRows(nextMockup, nextDutyId));
     closeAllModals();
     setScreen("duty");
   }
@@ -212,6 +281,32 @@ export default function HaulierAppMockupClient() {
     setLoadModalOpen(false);
     setUnloadModalOpen(false);
     setIssueModalOpen(false);
+  }
+
+  function resetAllData() {
+    setScreen("no-duty");
+    setMockup("flex");
+    setSelectedLeg(1);
+    setSelectedTask("empty");
+    setVehicleInput("");
+    setVehicleNumber("");
+    setManualContainer("");
+    setRepatCount("");
+    setContainers([]);
+    setLegStatuses({ 1: "To do" });
+    setIssueReports({});
+    setIssueDetails("");
+    setIssueLocation("");
+    setIssueManager("");
+    setPendingIssueAction(null);
+    setDctRows([]);
+    setDctSourceMockup(null);
+    setDctDutyId("");
+    closeAllModals();
+  }
+
+  function handleCompleteReset() {
+    resetAllData();
   }
 
   function legStatus(legNumber: number) {
@@ -245,7 +340,14 @@ export default function HaulierAppMockupClient() {
       return;
     }
 
-    setVehicleNumber(vehicleInput.trim());
+    const nextVehicle = vehicleInput.trim();
+    setVehicleNumber(nextVehicle);
+    setDctRows((current) =>
+      current.map((row) => ({
+        ...row,
+        vehicleId: nextVehicle,
+      }))
+    );
     setVehicleModalOpen(false);
     setScreen("origin");
   }
@@ -281,6 +383,14 @@ export default function HaulierAppMockupClient() {
       ...current,
       [selectedLeg]: "In Progress",
     }));
+
+    updateDctForDeparture(selectedLeg, selectedTask, {
+      containers,
+      repatCount,
+      existingRows: dctRows,
+      currentMockup: mockup,
+      setRows: setDctRows,
+    });
 
     setScreen("destination");
   }
@@ -322,6 +432,14 @@ export default function HaulierAppMockupClient() {
       ...current,
       [selectedLeg]: "In Progress",
     }));
+
+    updateDctForDeparture(selectedLeg, selectedTask, {
+      containers,
+      repatCount,
+      existingRows: dctRows,
+      currentMockup: mockup,
+      setRows: setDctRows,
+    });
 
     setScreen("destination");
   }
@@ -390,20 +508,29 @@ export default function HaulierAppMockupClient() {
       };
     });
 
-    setIssueDetails("");
-    setIssueLocation("");
-    setIssueManager("");
-    setIssueModalOpen(false);
-
     if (issueMode === "skip") {
+      updateDctForSkip(selectedLeg, report);
+      setIssueDetails("");
+      setIssueLocation("");
+      setIssueManager("");
+      setIssueModalOpen(false);
       completeLeg();
       return;
     }
 
+    updateDctForCompletion(selectedLeg, report);
+    setIssueDetails("");
+    setIssueLocation("");
+    setIssueManager("");
+    setIssueModalOpen(false);
     finishPendingIssueAction();
   }
 
   function continueWithoutIssue() {
+    if (issueMode === "arrival") {
+      updateDctForCompletion(selectedLeg, "");
+    }
+
     setIssueDetails("");
     setIssueLocation("");
     setIssueManager("");
@@ -420,42 +547,74 @@ export default function HaulierAppMockupClient() {
     }
   }
 
-  function resetMockup() {
-    setScreen("no-duty");
-    setMockup("flex");
-    setSelectedLeg(1);
-    setSelectedTask("empty");
-    setVehicleInput("");
-    setVehicleNumber("");
-    setManualContainer("");
-    setRepatCount("");
-    setContainers([]);
-    setLegStatuses({ 1: "To do" });
-    setIssueReports({});
-    setIssueDetails("");
-    setIssueLocation("");
-    setIssueManager("");
-    setPendingIssueAction(null);
-    closeAllModals();
+  function updateDctForCompletion(legNumber: number, issueText: string) {
+    setDctRows((current) =>
+      current.map((row) => {
+        if (row.legNumber !== legNumber) {
+          return row;
+        }
+
+        const actualTimes = getActualTimesForRow(mockup, row);
+
+        return {
+          ...row,
+          status: "Complete",
+          departureActualTs: row.departureActualTs ?? actualTimes.departureActualTs,
+          arrivalActualTs: actualTimes.arrivalActualTs,
+          issues: issueText,
+        };
+      })
+    );
   }
 
-  function openMockupMenu() {
-    resetMockup();
-    setScreen("menu");
+  function updateDctForSkip(legNumber: number, issueText: string) {
+    setDctRows((current) =>
+      current.map((row) => {
+        if (row.legNumber !== legNumber) {
+          return row;
+        }
+
+        return {
+          ...row,
+          status: "Skip",
+          dueToConvey: "",
+          departureAssets: "",
+          arrivalAssets: "",
+          yorkBarCodes: "",
+          issues: issueText,
+          departureActualTs: null,
+          arrivalActualTs: null,
+        };
+      })
+    );
   }
+
+  const currentTitle = mockup === "mockup2" ? "Mockup 2" : "Flex Mock Up";
 
   return (
-    <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#222]">
-      <div className="relative mx-auto min-h-screen w-full max-w-[520px] bg-white shadow-2xl sm:my-6 sm:min-h-[900px] sm:rounded-[34px]">
-        <PhoneStatusBar />
+    <main
+      className={`min-h-screen font-sans text-[#222] ${
+        isDctScreen ? "bg-[#eef2f7]" : "bg-[#f4f1ec]"
+      }`}
+    >
+      <div
+        className={`relative mx-auto min-h-screen w-full bg-white shadow-2xl ${
+          isDctScreen
+            ? "max-w-[1500px]"
+            : "max-w-[520px] sm:my-6 sm:min-h-[900px] sm:rounded-[34px]"
+        }`}
+      >
+        {!isDctScreen && <PhoneStatusBar />}
 
         {screen === "no-duty" && (
-          <NoDutyScreen onContinue={openMockupMenu} />
+          <NoDutyScreen onContinue={() => setScreen("menu")} />
         )}
 
         {screen === "menu" && (
           <MenuScreen
             onOpenMockup={startMockup}
+            onOpenDct={() => setScreen("dct")}
+            onCompleteReset={handleCompleteReset}
             onBack={() => setScreen("no-duty")}
           />
         )}
@@ -463,14 +622,15 @@ export default function HaulierAppMockupClient() {
         {screen === "duty" && (
           <DutyScreen
             today={today}
-            title={mockup === "mockup2" ? "Mockup 2" : "Flex Mock Up"}
+            title={currentTitle}
+            dutyId={getDutyIdForMockup(mockup)}
             legs={legs}
             legStatus={legStatus}
             issueReports={issueReports}
             canOpenLeg={canOpenLeg}
             onOpenLeg={openLeg}
             onBack={() => setScreen("menu")}
-            onReset={resetMockup}
+            onReset={handleCompleteReset}
           />
         )}
 
@@ -483,7 +643,7 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("duty")}
             onTask={selectTask}
-            onReset={resetMockup}
+            onReset={handleCompleteReset}
           />
         )}
 
@@ -498,7 +658,7 @@ export default function HaulierAppMockupClient() {
             onRemoveContainer={removeContainer}
             onBack={() => setScreen("origin")}
             onLoadComplete={() => setLoadModalOpen(true)}
-            onReset={resetMockup}
+            onReset={handleCompleteReset}
           />
         )}
 
@@ -508,7 +668,7 @@ export default function HaulierAppMockupClient() {
             onBack={() => setScreen("load")}
             onRemoveContainer={removeContainer}
             onLoadComplete={() => setLoadModalOpen(true)}
-            onReset={resetMockup}
+            onReset={handleCompleteReset}
           />
         )}
 
@@ -519,7 +679,7 @@ export default function HaulierAppMockupClient() {
             onRepatCountChange={setRepatCount}
             onBack={() => setScreen("origin")}
             onContinue={continueRepat}
-            onReset={resetMockup}
+            onReset={handleCompleteReset}
           />
         )}
 
@@ -533,7 +693,7 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("origin")}
             onArriveIntoDepot={arriveIntoDepot}
-            onReset={resetMockup}
+            onReset={handleCompleteReset}
           />
         )}
 
@@ -546,7 +706,7 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("destination")}
             onUnloadAll={() => setUnloadModalOpen(true)}
-            onReset={resetMockup}
+            onReset={handleCompleteReset}
           />
         )}
 
@@ -555,9 +715,21 @@ export default function HaulierAppMockupClient() {
             today={today}
             vehicleNumber={vehicleNumber}
             leg={currentLeg}
+            dutyId={getDutyIdForMockup(mockup)}
             status="Completed"
             issueReport={issueReports[selectedLeg]}
-            onReset={resetMockup}
+            onReset={handleCompleteReset}
+          />
+        )}
+
+        {screen === "dct" && (
+          <DctWebScreen
+            rows={dctRows}
+            sourceMockup={dctSourceMockup}
+            dutyId={dctDutyId}
+            vehicleNumber={vehicleNumber}
+            onBack={() => setScreen("menu")}
+            onReset={handleCompleteReset}
           />
         )}
 
@@ -704,9 +876,13 @@ function NoDutyScreen({ onContinue }: { onContinue: () => void }) {
 
 function MenuScreen({
   onOpenMockup,
+  onOpenDct,
+  onCompleteReset,
   onBack,
 }: {
   onOpenMockup: (mockupType: MockupType) => void;
+  onOpenDct: () => void;
+  onCompleteReset: () => void;
   onBack: () => void;
 }) {
   return (
@@ -727,17 +903,29 @@ function MenuScreen({
         </h2>
 
         <div className="mt-5 space-y-4">
-          {mockupOptions.map((option) => (
-            <MockupOptionButton
-              key={option.title}
-              option={option}
-              onClick={
-                option.active && option.mockupType
-                  ? () => onOpenMockup(option.mockupType as MockupType)
-                  : undefined
-              }
-            />
-          ))}
+          {mockupOptions.map((option) => {
+            let onClick: (() => void) | undefined;
+
+            if (option.kind === "mockup" && option.mockupType) {
+              onClick = () => onOpenMockup(option.mockupType as MockupType);
+            }
+
+            if (option.kind === "dct") {
+              onClick = onOpenDct;
+            }
+
+            if (option.kind === "reset") {
+              onClick = onCompleteReset;
+            }
+
+            return (
+              <MockupOptionButton
+                key={option.title}
+                option={option}
+                onClick={onClick}
+              />
+            );
+          })}
         </div>
       </section>
     </>
@@ -751,6 +939,8 @@ function MockupOptionButton({
   option: MockupOption;
   onClick?: () => void;
 }) {
+  const isDanger = option.kind === "reset";
+
   return (
     <button
       type="button"
@@ -758,13 +948,19 @@ function MockupOptionButton({
       onClick={onClick}
       className={`flex w-full items-center gap-4 rounded-[18px] border p-4 text-left shadow-sm transition ${
         option.active
-          ? "border-[#d0d0d0] bg-white hover:-translate-y-1 hover:shadow-md"
+          ? isDanger
+            ? "border-[#f4b1b9] bg-[#fff1f3] hover:-translate-y-1 hover:shadow-md"
+            : "border-[#d0d0d0] bg-white hover:-translate-y-1 hover:shadow-md"
           : "border-transparent bg-[#f0f0f0] opacity-60"
       }`}
     >
       <div
         className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-lg font-black text-white ${
-          option.active ? "bg-[#d6001c]" : "bg-[#999]"
+          option.active
+            ? isDanger
+              ? "bg-[#d6001c]"
+              : "bg-[#d6001c]"
+            : "bg-[#999]"
         }`}
       >
         {option.icon}
@@ -794,6 +990,7 @@ function MockupOptionButton({
 function DutyScreen({
   today,
   title,
+  dutyId,
   legs,
   legStatus,
   issueReports,
@@ -804,6 +1001,7 @@ function DutyScreen({
 }: {
   today: string;
   title: string;
+  dutyId: string;
   legs: DutyLeg[];
   legStatus: (legNumber: number) => LegStatus;
   issueReports: Record<number, LegIssueReport>;
@@ -817,7 +1015,7 @@ function DutyScreen({
       <AppHeader title="Haulier Mock Up" left="Back" onBack={onBack} />
 
       <section className="bg-white px-5 py-6">
-        <OverviewCard />
+        <OverviewCard dutyId={dutyId} />
 
         <h2 className="mt-10 text-2xl font-black text-[#222]">
           Duty details
@@ -1010,7 +1208,7 @@ function VehicleModal({
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 px-5 py-4">
-      <section className="max-h-[calc(100dvh-32px)] w-full max-w-[390px] overflow-y-auto bg-white p-6 shadow-2xl">
+      <section className="w-full max-w-[390px] bg-white p-6 shadow-2xl">
         <h2 className="text-2xl font-black text-[#222]">
           Information Required
         </h2>
@@ -1481,6 +1679,7 @@ function CompleteScreen({
   today,
   vehicleNumber,
   leg,
+  dutyId,
   status,
   issueReport,
   onReset,
@@ -1488,6 +1687,7 @@ function CompleteScreen({
   today: string;
   vehicleNumber: string;
   leg: DutyLeg;
+  dutyId: string;
   status: LegStatus;
   issueReport?: LegIssueReport;
   onReset: () => void;
@@ -1497,7 +1697,7 @@ function CompleteScreen({
       <AppHeader title="Haulier Mock Up" />
 
       <section className="bg-white px-5 py-6">
-        <OverviewCard />
+        <OverviewCard dutyId={dutyId} />
 
         <h2 className="mt-10 text-2xl font-black text-[#222]">
           Duty details
@@ -1833,6 +2033,256 @@ function MockResetButton({ onReset }: { onReset: () => void }) {
   );
 }
 
+function DctWebScreen({
+  rows,
+  sourceMockup,
+  dutyId,
+  vehicleNumber,
+  onBack,
+  onReset,
+}: {
+  rows: DctRow[];
+  sourceMockup: MockupType | null;
+  dutyId: string;
+  vehicleNumber: string;
+  onBack: () => void;
+  onReset: () => void;
+}) {
+  const sourceTitle =
+    sourceMockup === "mockup2"
+      ? "Mockup 2"
+      : sourceMockup === "flex"
+      ? "Flex Mock Up"
+      : "No mock-up selected";
+
+  return (
+    <>
+      <AppHeader title="DCT Web Mockup" left="Back" onBack={onBack} />
+
+      <section className="bg-[#f8fafc] px-4 py-5 sm:px-6 lg:px-8">
+        <section className="rounded-[20px] border border-[#dbe4ef] bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d6001c]">
+                Web results mockup
+              </p>
+              <h2 className="mt-2 text-3xl font-black text-[#172033]">
+                DCT-style output view
+              </h2>
+              <p className="mt-3 max-w-[900px] text-sm font-bold leading-6 text-[#4b5563]">
+                This page shows where the journey data would appear from the app
+                into a DCT-style web results table. Planned data is always shown,
+                and actual values fill in as the mock-up is run.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onReset}
+              className="rounded-full bg-[#d6001c] px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-white"
+            >
+              Complete Reset
+            </button>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <SummaryCard label="Last selected mock-up" value={sourceTitle} />
+            <SummaryCard label="Duty ID" value={dutyId || ""} />
+            <SummaryCard
+              label="Vehicle / trailer number"
+              value={vehicleNumber || ""}
+            />
+            <SummaryCard label="Rows shown" value={String(rows.length)} />
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-3 text-xs font-black uppercase tracking-[0.12em]">
+            <span className="rounded-full bg-[#d9f7e5] px-3 py-2 text-[#166534]">
+              Green = on time / early
+            </span>
+            <span className="rounded-full bg-[#fee2e2] px-3 py-2 text-[#991b1b]">
+              Red = late
+            </span>
+            <span className="rounded-full bg-[#e5e7eb] px-3 py-2 text-[#374151]">
+              Grey = not yet populated
+            </span>
+          </div>
+        </section>
+
+        {rows.length === 0 ? (
+          <section className="mt-6 rounded-[20px] border border-[#dbe4ef] bg-white p-8 shadow-sm">
+            <p className="text-lg font-black text-[#172033]">
+              No DCT mockup data is available yet.
+            </p>
+            <p className="mt-3 text-sm font-bold leading-6 text-[#4b5563]">
+              Run Flex Mock Up or Mockup 2 first, then return here to view the
+              DCT-style output.
+            </p>
+          </section>
+        ) : (
+          <section className="mt-6 rounded-[20px] border border-[#dbe4ef] bg-white shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="min-w-[1800px] border-collapse text-xs text-[#111827]">
+                <thead className="sticky top-0 z-10 bg-[#d8edf8]">
+                  <tr>
+                    {[
+                      "Leg Status",
+                      "Start Date",
+                      "Duty Order",
+                      "Vehicle Id",
+                      "UserId",
+                      "Contractor Company Name",
+                      "Operator",
+                      "DutyId",
+                      "Departure location",
+                      "Planned Departure Time",
+                      "DEPARTURE actual time",
+                      "Due To Convey",
+                      "DEPARTURE assets",
+                      "Arrival Location",
+                      "Planned Arrival Time",
+                      "ARRIVAL actual time",
+                      "ARRIVAL assets",
+                      "GPS Departure",
+                      "GPS Arrival",
+                      "York Bar Codes",
+                      "Issues",
+                    ].map((heading) => (
+                      <th
+                        key={heading}
+                        className="border border-[#3f3f46] px-2 py-3 text-left font-black"
+                      >
+                        {heading}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.legNumber} className="align-top">
+                      <td className="border border-[#3f3f46] px-2 py-2">
+                        <DctStatusBadge status={row.status} />
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 font-bold whitespace-nowrap">
+                        {row.startDate}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 text-center font-black">
+                        {row.dutyOrder}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 font-bold whitespace-nowrap">
+                        {row.vehicleId || ""}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 font-bold">
+                        {row.userId}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 font-bold">
+                        {row.contractorCompanyName}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 text-center font-bold">
+                        {row.operator}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 font-bold whitespace-nowrap">
+                        {row.dutyId}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 font-bold uppercase">
+                        {row.departureLocation}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 font-bold whitespace-nowrap">
+                        {formatDateTime(row.plannedDepartureTs)}
+                      </td>
+                      <td
+                        className={`border border-[#3f3f46] px-2 py-2 font-black whitespace-nowrap ${getTimingCellClass(
+                          row.plannedDepartureTs,
+                          row.departureActualTs
+                        )}`}
+                      >
+                        {row.departureActualTs
+                          ? formatDateTime(row.departureActualTs)
+                          : ""}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 font-bold uppercase">
+                        {row.dueToConvey}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 text-center font-black">
+                        {row.departureAssets}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 font-bold uppercase">
+                        {row.arrivalLocation}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 font-bold whitespace-nowrap">
+                        {formatDateTime(row.plannedArrivalTs)}
+                      </td>
+                      <td
+                        className={`border border-[#3f3f46] px-2 py-2 font-black whitespace-nowrap ${getTimingCellClass(
+                          row.plannedArrivalTs,
+                          row.arrivalActualTs
+                        )}`}
+                      >
+                        {row.arrivalActualTs
+                          ? formatDateTime(row.arrivalActualTs)
+                          : ""}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 text-center font-black">
+                        {row.arrivalAssets}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 font-bold">
+                        {row.gpsDeparture}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 font-bold">
+                        {row.gpsArrival}
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 font-bold">
+                        <div className="max-w-[220px] whitespace-pre-wrap break-words">
+                          {row.yorkBarCodes}
+                        </div>
+                      </td>
+                      <td className="border border-[#3f3f46] px-2 py-2 font-bold">
+                        <div className="max-w-[280px] whitespace-pre-wrap break-words">
+                          {row.issues}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+      </section>
+    </>
+  );
+}
+
+function SummaryCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[18px] bg-[#f8fafc] p-4">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-[#64748b]">
+        {label}
+      </p>
+      <p className="mt-3 text-lg font-black text-[#172033]">
+        {value || "-"}
+      </p>
+    </div>
+  );
+}
+
+function DctStatusBadge({ status }: { status: DctStatus }) {
+  const classes =
+    status === "Complete"
+      ? "bg-[#d9f7e5] text-[#166534]"
+      : status === "In Progress"
+      ? "bg-[#ffedd5] text-[#9a3412]"
+      : status === "Skip"
+      ? "bg-[#e5e7eb] text-[#374151]"
+      : "bg-[#dbeafe] text-[#1d4ed8]";
+
+  return (
+    <span className={`rounded-full px-3 py-1 font-black uppercase ${classes}`}>
+      {status}
+    </span>
+  );
+}
+
 function hasAnyIssue(issueReport: LegIssueReport) {
   return Boolean(issueReport.issue || issueReport.skip);
 }
@@ -1867,8 +2317,168 @@ function buildIssueReportText({
   return reportParts.join(" | ");
 }
 
+function buildPlannedDctRows(mockupType: MockupType, dutyId: string) {
+  const sourceLegs = mockupType === "mockup2" ? mockup2Legs : flexLegs;
+  const baseDate = new Date();
+  baseDate.setHours(0, 0, 0, 0);
+
+  let previousDepartureTs: number | null = null;
+
+  return sourceLegs.map((leg) => {
+    let departureTs = combineDateAndTime(baseDate, leg.etd, 0);
+
+    while (previousDepartureTs !== null && departureTs <= previousDepartureTs) {
+      departureTs += 24 * 60 * 60 * 1000;
+    }
+
+    let arrivalTs = combineDateAndTime(new Date(departureTs), leg.eta, 0);
+
+    while (arrivalTs < departureTs) {
+      arrivalTs += 24 * 60 * 60 * 1000;
+    }
+
+    previousDepartureTs = departureTs;
+
+    return {
+      legNumber: leg.number,
+      status: "Planned" as DctStatus,
+      startDate: formatDateOnly(baseDate.getTime()),
+      dutyOrder: leg.number,
+      vehicleId: "",
+      userId: "acannon76@live.co.uk",
+      contractorCompanyName: "Contoso",
+      operator: "NWH",
+      dutyId,
+      departureLocation: leg.from,
+      plannedDepartureTs: departureTs,
+      departureActualTs: null,
+      dueToConvey: "",
+      departureAssets: "",
+      arrivalLocation: leg.to,
+      plannedArrivalTs: arrivalTs,
+      arrivalActualTs: null,
+      arrivalAssets: "",
+      gpsDeparture: locationCoordinates[leg.from] || "",
+      gpsArrival: locationCoordinates[leg.to] || "",
+      yorkBarCodes: "",
+      issues: "",
+    };
+  });
+}
+
+function updateDctForDeparture(
+  legNumber: number,
+  taskType: TaskType,
+  context: {
+    containers: string[];
+    repatCount: string;
+    existingRows: DctRow[];
+    currentMockup: MockupType;
+    setRows: (updater: (current: DctRow[]) => DctRow[]) => void;
+  }
+) {
+  const assetCount =
+    taskType === "load"
+      ? String(context.containers.length)
+      : taskType === "repat"
+      ? context.repatCount.trim()
+      : "";
+
+  const dueToConvey =
+    taskType === "load"
+      ? "SCANNED"
+      : taskType === "repat"
+      ? "REPAT / PRELOAD"
+      : taskType === "flex"
+      ? "AS DIRECTED"
+      : taskType === "empty"
+      ? "EMPTY VEHICLE"
+      : "";
+
+  const yorkBarCodes =
+    taskType === "load" ? context.containers.join(", ") : "";
+
+  context.setRows((current) =>
+    current.map((row) => {
+      if (row.legNumber !== legNumber) {
+        return row;
+      }
+
+      const actualTimes = getActualTimesForRow(context.currentMockup, row);
+
+      return {
+        ...row,
+        status: "In Progress" as DctStatus,
+        departureActualTs: actualTimes.departureActualTs,
+        dueToConvey,
+        departureAssets: assetCount,
+        arrivalAssets: assetCount,
+        yorkBarCodes,
+      };
+    })
+  );
+}
+
+function getActualTimesForRow(mockupType: MockupType, row: DctRow) {
+  const offsets = mockActualOffsets[mockupType][row.legNumber] || {
+    dep: 5,
+    arr: 10,
+  };
+
+  return {
+    departureActualTs: row.plannedDepartureTs + offsets.dep * 60 * 1000,
+    arrivalActualTs: row.plannedArrivalTs + offsets.arr * 60 * 1000,
+  };
+}
+
+function getDutyIdForMockup(mockupType: MockupType) {
+  return mockupType === "mockup2" ? "NWH254" : "NWHFLEX01";
+}
+
+function getTimingCellClass(
+  plannedTs: number,
+  actualTs: number | null
+) {
+  if (!actualTs) {
+    return "bg-[#f3f4f6] text-[#374151]";
+  }
+
+  if (actualTs > plannedTs) {
+    return "bg-[#fecaca] text-[#7f1d1d]";
+  }
+
+  return "bg-[#bbf7d0] text-[#166534]";
+}
+
 function normaliseLocationName(value: string) {
   return value.trim().toLowerCase();
+}
+
+function combineDateAndTime(baseDate: Date, timeText: string, dayOffset: number) {
+  const [hours, minutes] = timeText.split(":").map(Number);
+  const next = new Date(baseDate);
+  next.setDate(next.getDate() + dayOffset);
+  next.setHours(hours, minutes, 0, 0);
+  return next.getTime();
+}
+
+function formatDateOnly(timestamp: number) {
+  const date = new Date(timestamp);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function formatDateTime(timestamp: number) {
+  const date = new Date(timestamp);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 }
 
 function getTodayDateText() {
