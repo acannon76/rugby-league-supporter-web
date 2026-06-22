@@ -180,7 +180,7 @@ const mockContainers = [
 ];
 
 const issueCategoryOptions = [
-  "Traffic Delay",
+  "Previous Leg Delay","Traffic Delay",
   "Trailer Swap Delay",
   "Site Issue",
   "Breakdown",
