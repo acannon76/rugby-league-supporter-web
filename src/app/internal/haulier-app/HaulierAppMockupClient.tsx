@@ -1,26 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type LegStatus = "To do" | "In Progress" | "Completed";
 type MockupType = "flex" | "mockup2";
 type TaskType = "empty" | "repat" | "load" | "skip" | "flex";
-type IssueMode = "departure" | "arrival" | "skip";
-type PendingIssueAction =
-  | "departure-to-destination"
-  | "arrival-complete"
-  | "arrival-unload"
-  | null;
-
-type IssueCategory =
-  | ""
-  | "Traffic Delay"
-  | "Trailer Swap Delay"
-  | "Site Issue"
-  | "Breakdown"
-  | "Loading Delay"
-  | "Unloading Delay"
-  | "Other";
+type IssueMode = "arrival" | "skip";
+type PendingIssueAction = "arrival-complete" | null;
+type DctStatus = "Planned" | "In Progress" | "Complete" | "Skip";
 
 type Screen =
   | "no-duty"
@@ -32,7 +19,8 @@ type Screen =
   | "repat"
   | "destination"
   | "unload"
-  | "complete";
+  | "complete"
+  | "dct";
 
 type DutyLeg = {
   number: number;
@@ -47,25 +35,40 @@ type MockupOption = {
   text: string;
   icon: string;
   active: boolean;
+  kind: "mockup" | "dct" | "reset";
   mockupType?: MockupType;
 };
 
 type LegIssueReport = {
-  departure?: string;
-  arrival?: string;
+  issue?: string;
   skip?: string;
 };
 
-const issueCategories: IssueCategory[] = [
-  "",
-  "Traffic Delay",
-  "Trailer Swap Delay",
-  "Site Issue",
-  "Breakdown",
-  "Loading Delay",
-  "Unloading Delay",
-  "Other",
-];
+type DctRow = {
+  legNumber: number;
+  status: DctStatus;
+  startDate: string;
+  dutyOrder: number;
+  vehicleId: string;
+  userId: string;
+  contractorCompanyName: string;
+  operator: string;
+  dutyId: string;
+  departureLocation: string;
+  plannedDepartureTs: number;
+  departureActualTs: number | null;
+  dueToConvey: string;
+  departureAssets: string;
+  arrivalLocation: string;
+  plannedArrivalTs: number;
+  arrivalActualTs: number | null;
+  arrivalAssets: string;
+  gpsDeparture: string;
+  gpsArrival: string;
+  yorkBarCodes: string;
+  issueCategory: string;
+  issues: string;
+};
 
 const flexLegs: DutyLeg[] = [
   {
@@ -128,6 +131,7 @@ const mockupOptions: MockupOption[] = [
     text: "Open the flex duty journey mock-up.",
     icon: "1",
     active: true,
+    kind: "mockup",
     mockupType: "flex",
   },
   {
@@ -135,19 +139,22 @@ const mockupOptions: MockupOption[] = [
     text: "Open a six-leg duty completed in order.",
     icon: "2",
     active: true,
+    kind: "mockup",
     mockupType: "mockup2",
   },
   {
-    title: "Mockup 3",
-    text: "Future mock-up option.",
+    title: "DCT Web Mockup",
+    text: "Open the DCT-style results page for the last selected mock-up.",
     icon: "3",
-    active: false,
+    active: true,
+    kind: "dct",
   },
   {
-    title: "Mockup 4",
-    text: "Future mock-up option.",
+    title: "Complete Reset",
+    text: "Clear the journey mock-up and remove all DCT mockup data.",
     icon: "4",
-    active: false,
+    active: true,
+    kind: "reset",
   },
 ];
 
@@ -172,6 +179,41 @@ const mockContainers = [
   "YT11223344GB",
 ];
 
+const issueCategoryOptions = [
+  "Delay",
+  "Route change",
+  "Different location",
+  "Trailer swap",
+  "Traffic",
+  "Site issue",
+  "Load / asset issue",
+  "Gate / access issue",
+  "Authorised change",
+  "Skipped leg",
+  "Other",
+];
+
+const locationCoordinates: Record<string, string> = {
+  "NORTH WEST HUB": "53.5184035675559, -2.65341021789611",
+  "MANCHESTER MAIL CENTRE": "53.4746410000000, -2.24731400000000",
+  "CHESTER MAIL CENTRE": "53.1947240000000, -2.88060500000000",
+  "PRESTON MAIL CENTRE": "53.7725160000000, -2.68920400000000",
+};
+
+const mockActualOffsets: Record<MockupType, Record<number, { dep: number; arr: number }>> = {
+  flex: {
+    1: { dep: 7, arr: 18 },
+  },
+  mockup2: {
+    1: { dep: 5, arr: 14 },
+    2: { dep: 8, arr: 13 },
+    3: { dep: 4, arr: 9 },
+    4: { dep: 6, arr: 11 },
+    5: { dep: 9, arr: 12 },
+    6: { dep: 10, arr: 16 },
+  },
+};
+
 export default function HaulierAppMockupClient() {
   const [screen, setScreen] = useState<Screen>("no-duty");
   const [mockup, setMockup] = useState<MockupType>("flex");
@@ -184,12 +226,12 @@ export default function HaulierAppMockupClient() {
   const [unloadModalOpen, setUnloadModalOpen] = useState(false);
   const [issueModalOpen, setIssueModalOpen] = useState(false);
 
-  const [issueMode, setIssueMode] = useState<IssueMode>("departure");
+  const [issueMode, setIssueMode] = useState<IssueMode>("arrival");
   const [pendingIssueAction, setPendingIssueAction] =
     useState<PendingIssueAction>(null);
 
-  const [issueCategory, setIssueCategory] = useState<IssueCategory>("");
   const [issueDetails, setIssueDetails] = useState("");
+  const [issueCategory, setIssueCategory] = useState("");
   const [issueLocation, setIssueLocation] = useState("");
   const [issueManager, setIssueManager] = useState("");
 
@@ -207,9 +249,20 @@ export default function HaulierAppMockupClient() {
     Record<number, LegIssueReport>
   >({});
 
+  const [dctRows, setDctRows] = useState<DctRow[]>([]);
+  const [dctSourceMockup, setDctSourceMockup] = useState<MockupType | null>(null);
+  const [dctDutyId, setDctDutyId] = useState("");
+
   const today = useMemo(() => getTodayDateText(), []);
   const legs = mockup === "mockup2" ? mockup2Legs : flexLegs;
   const currentLeg = legs.find((leg) => leg.number === selectedLeg) || legs[0];
+  const isDctScreen = screen === "dct";
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && screen === "dct") {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
+  }, [screen]);
 
   function startMockup(nextMockup: MockupType) {
     const nextLegs = nextMockup === "mockup2" ? mockup2Legs : flexLegs;
@@ -218,6 +271,8 @@ export default function HaulierAppMockupClient() {
     nextLegs.forEach((leg) => {
       nextStatuses[leg.number] = "To do";
     });
+
+    const nextDutyId = getDutyIdForMockup(nextMockup);
 
     setMockup(nextMockup);
     setSelectedLeg(1);
@@ -229,6 +284,10 @@ export default function HaulierAppMockupClient() {
     setContainers([]);
     setLegStatuses(nextStatuses);
     setIssueReports({});
+    setIssueCategory("");
+    setDctSourceMockup(nextMockup);
+    setDctDutyId(nextDutyId);
+    setDctRows(buildPlannedDctRows(nextMockup, nextDutyId));
     closeAllModals();
     setScreen("duty");
   }
@@ -239,6 +298,34 @@ export default function HaulierAppMockupClient() {
     setLoadModalOpen(false);
     setUnloadModalOpen(false);
     setIssueModalOpen(false);
+  }
+
+  function resetAllData() {
+    setScreen("no-duty");
+    setMockup("flex");
+    setSelectedLeg(1);
+    setSelectedTask("empty");
+    setVehicleInput("");
+    setVehicleNumber("");
+    setManualContainer("");
+    setRepatCount("");
+    setContainers([]);
+    setLegStatuses({ 1: "To do" });
+    setIssueReports({});
+    setIssueCategory("");
+    setIssueDetails("");
+    setIssueCategory("");
+    setIssueLocation("");
+    setIssueManager("");
+    setPendingIssueAction(null);
+    setDctRows([]);
+    setDctSourceMockup(null);
+    setDctDutyId("");
+    closeAllModals();
+  }
+
+  function handleCompleteReset() {
+    resetAllData();
   }
 
   function legStatus(legNumber: number) {
@@ -262,8 +349,11 @@ export default function HaulierAppMockupClient() {
       return;
     }
 
+    const existingVehicleForLeg =
+      dctRows.find((row) => row.legNumber === legNumber)?.vehicleId || "";
+
     setSelectedLeg(legNumber);
-    setVehicleInput(vehicleNumber);
+    setVehicleInput(existingVehicleForLeg || vehicleNumber);
     setVehicleModalOpen(true);
   }
 
@@ -272,7 +362,18 @@ export default function HaulierAppMockupClient() {
       return;
     }
 
-    setVehicleNumber(vehicleInput.trim());
+    const nextVehicle = vehicleInput.trim();
+    setVehicleNumber(nextVehicle);
+    setDctRows((current) =>
+      current.map((row) =>
+        row.legNumber === selectedLeg
+          ? {
+              ...row,
+              vehicleId: nextVehicle,
+            }
+          : row
+      )
+    );
     setVehicleModalOpen(false);
     setScreen("origin");
   }
@@ -309,7 +410,15 @@ export default function HaulierAppMockupClient() {
       [selectedLeg]: "In Progress",
     }));
 
-    openIssueModal("departure", "departure-to-destination");
+    updateDctForDeparture(selectedLeg, selectedTask, {
+      containers,
+      repatCount,
+      existingRows: dctRows,
+      currentMockup: mockup,
+      setRows: setDctRows,
+    });
+
+    setScreen("destination");
   }
 
   function addManualContainer() {
@@ -350,7 +459,15 @@ export default function HaulierAppMockupClient() {
       [selectedLeg]: "In Progress",
     }));
 
-    openIssueModal("departure", "departure-to-destination");
+    updateDctForDeparture(selectedLeg, selectedTask, {
+      containers,
+      repatCount,
+      existingRows: dctRows,
+      currentMockup: mockup,
+      setRows: setDctRows,
+    });
+
+    setScreen("destination");
   }
 
   function arriveIntoDepot() {
@@ -359,7 +476,12 @@ export default function HaulierAppMockupClient() {
       return;
     }
 
-    openIssueModal("arrival", "arrival-unload");
+    setScreen("unload");
+  }
+
+  function confirmUnloadAll() {
+    setUnloadModalOpen(false);
+    openIssueModal("arrival", "arrival-complete");
   }
 
   function completeLeg() {
@@ -384,8 +506,8 @@ export default function HaulierAppMockupClient() {
   function openIssueModal(mode: IssueMode, action: PendingIssueAction) {
     setIssueMode(mode);
     setPendingIssueAction(action);
-    setIssueCategory("");
     setIssueDetails("");
+    setIssueCategory(mode === "skip" ? "Skipped leg" : "");
     setIssueLocation("");
     setIssueManager("");
     setIssueModalOpen(true);
@@ -405,7 +527,7 @@ export default function HaulierAppMockupClient() {
       const existing = current[selectedLeg] || {};
       const nextReport: LegIssueReport = {
         ...existing,
-        [issueMode]: report,
+        [issueMode === "skip" ? "skip" : "issue"]: report,
       };
 
       return {
@@ -414,23 +536,33 @@ export default function HaulierAppMockupClient() {
       };
     });
 
-    setIssueCategory("");
-    setIssueDetails("");
-    setIssueLocation("");
-    setIssueManager("");
-    setIssueModalOpen(false);
-
     if (issueMode === "skip") {
+      updateDctForSkip(selectedLeg, report);
+      setIssueDetails("");
+      setIssueCategory("");
+      setIssueLocation("");
+      setIssueManager("");
+      setIssueModalOpen(false);
       completeLeg();
       return;
     }
 
+    updateDctForCompletion(selectedLeg, report);
+    setIssueDetails("");
+    setIssueCategory("");
+    setIssueLocation("");
+    setIssueManager("");
+    setIssueModalOpen(false);
     finishPendingIssueAction();
   }
 
   function continueWithoutIssue() {
-    setIssueCategory("");
+    if (issueMode === "arrival") {
+      updateDctForCompletion(selectedLeg, "");
+    }
+
     setIssueDetails("");
+    setIssueCategory("");
     setIssueLocation("");
     setIssueManager("");
     setIssueModalOpen(false);
@@ -441,58 +573,81 @@ export default function HaulierAppMockupClient() {
     const action = pendingIssueAction;
     setPendingIssueAction(null);
 
-    if (action === "departure-to-destination") {
-      setScreen("destination");
-      return;
-    }
-
     if (action === "arrival-complete") {
       completeLeg();
-      return;
-    }
-
-    if (action === "arrival-unload") {
-      setScreen("unload");
     }
   }
 
-  function resetMockup() {
-    setScreen("no-duty");
-    setMockup("flex");
-    setSelectedLeg(1);
-    setSelectedTask("empty");
-    setVehicleInput("");
-    setVehicleNumber("");
-    setManualContainer("");
-    setRepatCount("");
-    setContainers([]);
-    setLegStatuses({ 1: "To do" });
-    setIssueReports({});
-    setIssueCategory("");
-    setIssueDetails("");
-    setIssueLocation("");
-    setIssueManager("");
-    setPendingIssueAction(null);
-    closeAllModals();
+  function updateDctForCompletion(legNumber: number, issueText: string) {
+    setDctRows((current) =>
+      current.map((row) => {
+        if (row.legNumber !== legNumber) {
+          return row;
+        }
+
+        const actualTimes = getActualTimesForRow(mockup, row);
+
+        return {
+          ...row,
+          status: "Complete",
+          departureActualTs: row.departureActualTs ?? actualTimes.departureActualTs,
+          arrivalActualTs: actualTimes.arrivalActualTs,
+          issueCategory: issueText ? issueCategory : "",
+          issues: issueText,
+        };
+      })
+    );
   }
 
-  function openMockupMenu() {
-    resetMockup();
-    setScreen("menu");
+  function updateDctForSkip(legNumber: number, issueText: string) {
+    setDctRows((current) =>
+      current.map((row) => {
+        if (row.legNumber !== legNumber) {
+          return row;
+        }
+
+        return {
+          ...row,
+          status: "Skip",
+          dueToConvey: "",
+          departureAssets: "",
+          arrivalAssets: "",
+          yorkBarCodes: "",
+          issueCategory: issueCategory || "Skipped leg",
+          issues: issueText,
+          departureActualTs: null,
+          arrivalActualTs: null,
+        };
+      })
+    );
   }
+
+  const currentTitle = mockup === "mockup2" ? "Mockup 2" : "Flex Mock Up";
 
   return (
-    <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#222]">
-      <div className="relative mx-auto min-h-screen w-full max-w-[520px] bg-white shadow-2xl sm:my-6 sm:min-h-[900px] sm:rounded-[34px]">
-        <PhoneStatusBar />
+    <main
+      className={`min-h-screen font-sans text-[#222] ${
+        isDctScreen ? "bg-[#eef2f7]" : "bg-[#f4f1ec]"
+      }`}
+    >
+      <div
+        className={`relative mx-auto min-h-screen w-full bg-white shadow-2xl ${
+          isDctScreen
+            ? "max-w-[1500px]"
+            : "max-w-[520px] sm:my-6 sm:min-h-[900px] sm:rounded-[34px]"
+        }`}
+      >
+        {!isDctScreen && <PhoneStatusBar />}
 
         {screen === "no-duty" && (
-          <NoDutyScreen onContinue={openMockupMenu} />
+          <NoDutyScreen onContinue={() => setScreen("menu")} />
         )}
 
         {screen === "menu" && (
           <MenuScreen
             onOpenMockup={startMockup}
+            onOpenDct={() => setScreen("dct")}
+            onCompleteReset={handleCompleteReset}
             onBack={() => setScreen("no-duty")}
           />
         )}
@@ -500,14 +655,15 @@ export default function HaulierAppMockupClient() {
         {screen === "duty" && (
           <DutyScreen
             today={today}
-            title={mockup === "mockup2" ? "Mockup 2" : "Flex Mock Up"}
+            title={currentTitle}
+            dutyId={getDutyIdForMockup(mockup)}
             legs={legs}
             legStatus={legStatus}
             issueReports={issueReports}
             canOpenLeg={canOpenLeg}
             onOpenLeg={openLeg}
             onBack={() => setScreen("menu")}
-            onReset={resetMockup}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -520,7 +676,7 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("duty")}
             onTask={selectTask}
-            onReset={resetMockup}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -535,7 +691,7 @@ export default function HaulierAppMockupClient() {
             onRemoveContainer={removeContainer}
             onBack={() => setScreen("origin")}
             onLoadComplete={() => setLoadModalOpen(true)}
-            onReset={resetMockup}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -545,7 +701,7 @@ export default function HaulierAppMockupClient() {
             onBack={() => setScreen("load")}
             onRemoveContainer={removeContainer}
             onLoadComplete={() => setLoadModalOpen(true)}
-            onReset={resetMockup}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -556,7 +712,7 @@ export default function HaulierAppMockupClient() {
             onRepatCountChange={setRepatCount}
             onBack={() => setScreen("origin")}
             onContinue={continueRepat}
-            onReset={resetMockup}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -570,7 +726,7 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("origin")}
             onArriveIntoDepot={arriveIntoDepot}
-            onReset={resetMockup}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -583,7 +739,7 @@ export default function HaulierAppMockupClient() {
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("destination")}
             onUnloadAll={() => setUnloadModalOpen(true)}
-            onReset={resetMockup}
+            onBackToMenu={() => setScreen("menu")}
           />
         )}
 
@@ -592,9 +748,21 @@ export default function HaulierAppMockupClient() {
             today={today}
             vehicleNumber={vehicleNumber}
             leg={currentLeg}
+            dutyId={getDutyIdForMockup(mockup)}
             status="Completed"
             issueReport={issueReports[selectedLeg]}
-            onReset={resetMockup}
+            onBackToMenu={() => setScreen("menu")}
+          />
+        )}
+
+        {screen === "dct" && (
+          <DctWebScreen
+            rows={dctRows}
+            sourceMockup={dctSourceMockup}
+            dutyId={dctDutyId}
+            vehicleNumber={vehicleNumber}
+            onBack={() => setScreen("menu")}
+            onReset={handleCompleteReset}
           />
         )}
 
@@ -630,7 +798,7 @@ export default function HaulierAppMockupClient() {
         {unloadModalOpen && (
           <UnloadAllModal
             onCancel={() => setUnloadModalOpen(false)}
-            onYes={completeLeg}
+            onYes={confirmUnloadAll}
           />
         )}
 
@@ -743,9 +911,13 @@ function NoDutyScreen({ onContinue }: { onContinue: () => void }) {
 
 function MenuScreen({
   onOpenMockup,
+  onOpenDct,
+  onCompleteReset,
   onBack,
 }: {
   onOpenMockup: (mockupType: MockupType) => void;
+  onOpenDct: () => void;
+  onCompleteReset: () => void;
   onBack: () => void;
 }) {
   return (
@@ -766,17 +938,29 @@ function MenuScreen({
         </h2>
 
         <div className="mt-5 space-y-4">
-          {mockupOptions.map((option) => (
-            <MockupOptionButton
-              key={option.title}
-              option={option}
-              onClick={
-                option.active && option.mockupType
-                  ? () => onOpenMockup(option.mockupType as MockupType)
-                  : undefined
-              }
-            />
-          ))}
+          {mockupOptions.map((option) => {
+            let onClick: (() => void) | undefined;
+
+            if (option.kind === "mockup" && option.mockupType) {
+              onClick = () => onOpenMockup(option.mockupType as MockupType);
+            }
+
+            if (option.kind === "dct") {
+              onClick = onOpenDct;
+            }
+
+            if (option.kind === "reset") {
+              onClick = onCompleteReset;
+            }
+
+            return (
+              <MockupOptionButton
+                key={option.title}
+                option={option}
+                onClick={onClick}
+              />
+            );
+          })}
         </div>
       </section>
     </>
@@ -790,6 +974,8 @@ function MockupOptionButton({
   option: MockupOption;
   onClick?: () => void;
 }) {
+  const isDanger = option.kind === "reset";
+
   return (
     <button
       type="button"
@@ -797,13 +983,19 @@ function MockupOptionButton({
       onClick={onClick}
       className={`flex w-full items-center gap-4 rounded-[18px] border p-4 text-left shadow-sm transition ${
         option.active
-          ? "border-[#d0d0d0] bg-white hover:-translate-y-1 hover:shadow-md"
+          ? isDanger
+            ? "border-[#f4b1b9] bg-[#fff1f3] hover:-translate-y-1 hover:shadow-md"
+            : "border-[#d0d0d0] bg-white hover:-translate-y-1 hover:shadow-md"
           : "border-transparent bg-[#f0f0f0] opacity-60"
       }`}
     >
       <div
         className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-lg font-black text-white ${
-          option.active ? "bg-[#d6001c]" : "bg-[#999]"
+          option.active
+            ? isDanger
+              ? "bg-[#d6001c]"
+              : "bg-[#d6001c]"
+            : "bg-[#999]"
         }`}
       >
         {option.icon}
@@ -833,30 +1025,32 @@ function MockupOptionButton({
 function DutyScreen({
   today,
   title,
+  dutyId,
   legs,
   legStatus,
   issueReports,
   canOpenLeg,
   onOpenLeg,
   onBack,
-  onReset,
+  onBackToMenu,
 }: {
   today: string;
   title: string;
+  dutyId: string;
   legs: DutyLeg[];
   legStatus: (legNumber: number) => LegStatus;
   issueReports: Record<number, LegIssueReport>;
   canOpenLeg: (legNumber: number) => boolean;
   onOpenLeg: (legNumber: number) => void;
   onBack: () => void;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
       <AppHeader title="Haulier Mock Up" left="Back" onBack={onBack} />
 
       <section className="bg-white px-5 py-6">
-        <OverviewCard />
+        <OverviewCard dutyId={dutyId} />
 
         <h2 className="mt-10 text-2xl font-black text-[#222]">
           Duty details
@@ -881,7 +1075,7 @@ function DutyScreen({
           ))}
         </div>
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -997,17 +1191,10 @@ function IssueSummaryOnLeg({
       </p>
 
       <div className="mt-2 space-y-2 text-xs font-bold leading-5 text-[#7c2d12]">
-        {issueReport.departure && (
+        {issueReport.issue && (
           <p>
-            <span className="font-black">Leg {legNumber} Departure Issue:</span>{" "}
-            {issueReport.departure}
-          </p>
-        )}
-
-        {issueReport.arrival && (
-          <p>
-            <span className="font-black">Leg {legNumber} Arrival Issue:</span>{" "}
-            {issueReport.arrival}
+            <span className="font-black">Leg {legNumber} Issue / Route Change:</span>{" "}
+            {issueReport.issue}
           </p>
         )}
 
@@ -1055,7 +1242,7 @@ function VehicleModal({
   const canConfirm = vehicleInput.trim().length > 0;
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-5">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 px-5 py-4">
       <section className="w-full max-w-[390px] bg-white p-6 shadow-2xl">
         <h2 className="text-2xl font-black text-[#222]">
           Information Required
@@ -1113,7 +1300,7 @@ function OriginScreen({
   issueReport,
   onBack,
   onTask,
-  onReset,
+  onBackToMenu,
 }: {
   today: string;
   vehicleNumber: string;
@@ -1122,7 +1309,7 @@ function OriginScreen({
   issueReport?: LegIssueReport;
   onBack: () => void;
   onTask: (task: TaskType) => void;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
@@ -1159,7 +1346,7 @@ function OriginScreen({
           <IssueRecordedBox legNumber={leg.number} issueReport={issueReport} />
         )}
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -1175,7 +1362,7 @@ function LoadScreen({
   onRemoveContainer,
   onBack,
   onLoadComplete,
-  onReset,
+  onBackToMenu,
 }: {
   vehicleNumber: string;
   containers: string[];
@@ -1186,7 +1373,7 @@ function LoadScreen({
   onRemoveContainer: (containerNumber: string) => void;
   onBack: () => void;
   onLoadComplete: () => void;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
@@ -1247,7 +1434,7 @@ function LoadScreen({
           </button>
         )}
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -1258,13 +1445,13 @@ function ScanScreen({
   onBack,
   onRemoveContainer,
   onLoadComplete,
-  onReset,
+  onBackToMenu,
 }: {
   containers: string[];
   onBack: () => void;
   onRemoveContainer: (containerNumber: string) => void;
   onLoadComplete: () => void;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
@@ -1294,7 +1481,7 @@ function ScanScreen({
           Load Complete
         </button>
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -1339,14 +1526,14 @@ function RepatScreen({
   onRepatCountChange,
   onBack,
   onContinue,
-  onReset,
+  onBackToMenu,
 }: {
   vehicleNumber: string;
   repatCount: string;
   onRepatCountChange: (value: string) => void;
   onBack: () => void;
   onContinue: () => void;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
@@ -1379,7 +1566,7 @@ function RepatScreen({
           Continue
         </button>
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -1394,7 +1581,7 @@ function DestinationScreen({
   issueReport,
   onBack,
   onArriveIntoDepot,
-  onReset,
+  onBackToMenu,
 }: {
   today: string;
   vehicleNumber: string;
@@ -1404,7 +1591,7 @@ function DestinationScreen({
   issueReport?: LegIssueReport;
   onBack: () => void;
   onArriveIntoDepot: () => void;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
@@ -1452,7 +1639,7 @@ function DestinationScreen({
           </p>
         </section>
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -1466,7 +1653,7 @@ function UnloadScreen({
   issueReport,
   onBack,
   onUnloadAll,
-  onReset,
+  onBackToMenu,
 }: {
   today: string;
   vehicleNumber: string;
@@ -1475,7 +1662,7 @@ function UnloadScreen({
   issueReport?: LegIssueReport;
   onBack: () => void;
   onUnloadAll: () => void;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
@@ -1517,7 +1704,7 @@ function UnloadScreen({
           <IssueRecordedBox legNumber={leg.number} issueReport={issueReport} />
         )}
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -1527,23 +1714,25 @@ function CompleteScreen({
   today,
   vehicleNumber,
   leg,
+  dutyId,
   status,
   issueReport,
-  onReset,
+  onBackToMenu,
 }: {
   today: string;
   vehicleNumber: string;
   leg: DutyLeg;
+  dutyId: string;
   status: LegStatus;
   issueReport?: LegIssueReport;
-  onReset: () => void;
+  onBackToMenu: () => void;
 }) {
   return (
     <>
       <AppHeader title="Haulier Mock Up" />
 
       <section className="bg-white px-5 py-6">
-        <OverviewCard />
+        <OverviewCard dutyId={dutyId} />
 
         <h2 className="mt-10 text-2xl font-black text-[#222]">
           Duty details
@@ -1572,7 +1761,7 @@ function CompleteScreen({
           </p>
         </section>
 
-        <MockResetButton onReset={onReset} />
+        <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
   );
@@ -1593,11 +1782,11 @@ function IssueModal({
   onNoIssue,
 }: {
   mode: IssueMode;
-  category: IssueCategory;
+  category: string;
   details: string;
   location: string;
   manager: string;
-  onCategoryChange: (value: IssueCategory) => void;
+  onCategoryChange: (value: string) => void;
   onDetailsChange: (value: string) => void;
   onLocationChange: (value: string) => void;
   onManagerChange: (value: string) => void;
@@ -1606,66 +1795,45 @@ function IssueModal({
   onNoIssue: () => void;
 }) {
   const isSkip = mode === "skip";
-  const isDeparture = mode === "departure";
-
-  const hasDetails =
-    details.trim().length > 0 ||
-    location.trim().length > 0 ||
-    manager.trim().length > 0;
 
   const canSave = isSkip
     ? details.trim().length > 0 && manager.trim().length > 0
-    : category !== "" && hasDetails;
+    : details.trim().length > 0 && category.trim().length > 0;
 
-  const title = isSkip
-    ? "Skip Leg Reason"
-    : isDeparture
-    ? "Departure Issue / Delay"
-    : "Arrival Issue / Delay";
+  const title = isSkip ? "Skip Leg Reason" : "Issue / Route Change";
 
   const helperText = isSkip
     ? "Record why this leg is being skipped and which manager authorised the change."
-    : isDeparture
-    ? "Please record any issue that delayed departure, caused a route change, or meant the duty departed from a different location. If there was no departure issue, select No Issue."
-    : "Please record any issue that delayed arrival, caused a route change, or meant the duty arrived at a different location. If there was no arrival issue, select No Issue.";
+    : "Before completing this leg, record any issue, delay, different location, route change, or other information in the box below. If there was no issue, select No Issue.";
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-5">
-      <section className="max-h-[88vh] w-full max-w-[430px] overflow-y-auto rounded-sm bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 px-5 py-4">
+      <section className="max-h-[calc(100dvh-32px)] w-full max-w-[430px] overflow-y-auto rounded-sm bg-white p-6 shadow-2xl">
         <h2 className="text-2xl font-black text-[#111]">{title}</h2>
 
         <p className="mt-3 text-sm font-bold leading-6 text-[#444]">
           {helperText}
         </p>
 
-        {!isSkip && (
-          <>
-            <label
-              htmlFor="issue-category"
-              className="mt-5 block text-sm font-black text-[#222]"
-            >
-              Issue category
-            </label>
-
-            <select
-              id="issue-category"
-              value={category}
-              onChange={(event) =>
-                onCategoryChange(event.target.value as IssueCategory)
-              }
-              className="mt-2 min-h-[58px] w-full border-2 border-[#888] bg-white px-4 py-3 text-base font-black text-[#222] outline-none focus:border-[#d6001c]"
-            >
-              {issueCategories.map((item) => (
-                <option key={item || "blank"} value={item}>
-                  {item || "Select an issue category"}
-                </option>
-              ))}
-            </select>
-          </>
-        )}
-
         <label className="mt-5 block text-sm font-black text-[#222]">
-          {isSkip ? "Skip reason" : "Issue / route change details"}
+          Issue category
+        </label>
+
+        <select
+          value={category}
+          onChange={(event) => onCategoryChange(event.target.value)}
+          className="mt-2 w-full border-2 border-[#888] bg-white px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
+        >
+          <option value="">Select an issue category</option>
+          {issueCategoryOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+
+        <label className="mt-4 block text-sm font-black text-[#222]">
+          {isSkip ? "Details" : "Issue / route change details"}
         </label>
 
         <textarea
@@ -1674,44 +1842,40 @@ function IssueModal({
           placeholder={
             isSkip
               ? "Example: Leg skipped due to operational change..."
-              : isDeparture
-              ? "Example: delayed departure, traffic, loading delay, different location, route change, authorised by..."
-              : "Example: delayed arrival, traffic, gate queue, unloading delay, different location, route change, authorised by..."
+              : "Example: delayed arrival, traffic, gate queue, different location, route change, authorised by..."
           }
-          className="mt-2 min-h-[110px] w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
-        />
-
-        <label className="mt-4 block text-sm font-black text-[#222]">
-          Different location / route change or N/A
-        </label>
-
-        <input
-          value={location}
-          onChange={(event) => onLocationChange(event.target.value)}
-          placeholder={
-            isDeparture
-              ? "Add different departure location if applicable"
-              : "Add different arrival location if applicable"
-          }
-          className="mt-2 w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
-        />
-
-        <label className="mt-4 block text-sm font-black text-[#222]">
-          Manager authorising change or N/A
-        </label>
-
-        <input
-          value={manager}
-          onChange={(event) => onManagerChange(event.target.value)}
-          placeholder="Manager name"
-          className="mt-2 w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
+          className="mt-2 min-h-[130px] w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
         />
 
         {isSkip && (
-          <p className="mt-3 rounded-lg bg-[#fff7ed] p-3 text-xs font-black leading-5 text-[#7c2d12]">
-            For skipped legs, a reason and authorising manager should be added
-            before continuing.
-          </p>
+          <>
+            <label className="mt-4 block text-sm font-black text-[#222]">
+              Different location / route change or N/A
+            </label>
+
+            <input
+              value={location}
+              onChange={(event) => onLocationChange(event.target.value)}
+              placeholder="Add route change if applicable"
+              className="mt-2 w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
+            />
+
+            <label className="mt-4 block text-sm font-black text-[#222]">
+              Manager authorising change or N/A
+            </label>
+
+            <input
+              value={manager}
+              onChange={(event) => onManagerChange(event.target.value)}
+              placeholder="Manager name"
+              className="mt-2 w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
+            />
+
+            <p className="mt-3 rounded-lg bg-[#fff7ed] p-3 text-xs font-black leading-5 text-[#7c2d12]">
+              For skipped legs, a reason and authorising manager should be added
+              before continuing.
+            </p>
+          </>
         )}
 
         {isSkip ? (
@@ -1745,7 +1909,7 @@ function IssueModal({
                 canSave ? "bg-[#d6001c]" : "bg-[#cccccc]"
               }`}
             >
-              Save Details & Continue
+              Save Details & Complete Leg
             </button>
 
             <button
@@ -1776,17 +1940,10 @@ function IssueRecordedBox({
       </p>
 
       <div className="mt-2 space-y-2 text-sm font-bold leading-6 text-[#7c2d12]">
-        {issueReport.departure && (
+        {issueReport.issue && (
           <p>
-            <span className="font-black">Leg {legNumber} Departure Issue:</span>{" "}
-            {issueReport.departure}
-          </p>
-        )}
-
-        {issueReport.arrival && (
-          <p>
-            <span className="font-black">Leg {legNumber} Arrival Issue:</span>{" "}
-            {issueReport.arrival}
+            <span className="font-black">Leg {legNumber} Issue / Route Change:</span>{" "}
+            {issueReport.issue}
           </p>
         )}
 
@@ -1814,7 +1971,7 @@ function DepartModal({
 }) {
   const message =
     taskType === "flex"
-      ? "Are you sure you are performing a Flex or As Directed leg? If so, please add as much detail as possible in the departure and arrival issue screens."
+      ? "Are you sure you are performing a Flex or As Directed leg? If so, please add as much detail as possible in the issue / route change screen before completing the leg."
       : taskType === "empty"
       ? "Are you sure you are taking an empty vehicle and ready to depart from depot?"
       : `Are you sure you have added all ${containerCount} containers and are ready to depart from depot?`;
@@ -1882,8 +2039,8 @@ function AlertShell({
   onRight: () => void;
 }) {
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-5">
-      <section className="w-full max-w-[430px] rounded-sm bg-white p-7 shadow-2xl">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 px-5 py-4">
+      <section className="max-h-[calc(100dvh-32px)] w-full max-w-[430px] overflow-y-auto rounded-sm bg-white p-7 shadow-2xl">
         <h2 className="text-3xl font-black text-[#111]">Alert</h2>
 
         <p className="mt-5 text-xl font-bold leading-8 text-[#222]">
@@ -1920,20 +2077,261 @@ function VehicleNumberBanner({ vehicleNumber }: { vehicleNumber: string }) {
   );
 }
 
-function MockResetButton({ onReset }: { onReset: () => void }) {
+function BackToMenuButton({
+  onBackToMenu,
+}: {
+  onBackToMenu: () => void;
+}) {
   return (
     <button
       type="button"
-      onClick={onReset}
-      className="mt-7 w-full rounded-[18px] bg-[#222] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white"
+      onClick={onBackToMenu}
+      className="mt-7 w-full rounded-[18px] border-2 border-[#d6001c] bg-white px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-[#d6001c]"
     >
-      MOCKUP Reset
+      Back to Mock-up Options
     </button>
   );
 }
 
+function DctWebScreen({
+  rows,
+  sourceMockup,
+  dutyId,
+  vehicleNumber,
+  onBack,
+  onReset,
+}: {
+  rows: DctRow[];
+  sourceMockup: MockupType | null;
+  dutyId: string;
+  vehicleNumber: string;
+  onBack: () => void;
+  onReset: () => void;
+}) {
+  const sourceTitle =
+    sourceMockup === "mockup2"
+      ? "Mockup 2"
+      : sourceMockup === "flex"
+      ? "Flex Mock Up"
+      : "No mock-up selected";
+
+  const lateLegs = rows.filter((row) => rowHasLateTiming(row)).length;
+  const skippedLegs = rows.filter((row) => row.status === "Skip").length;
+  const issuesRecorded = rows.filter(
+    (row) => row.issues.trim().length > 0
+  ).length;
+  const totalDelayMinutes = rows.reduce(
+    (total, row) =>
+      total +
+      getPositiveDelayMinutes(row.plannedDepartureTs, row.departureActualTs) +
+      getPositiveDelayMinutes(row.plannedArrivalTs, row.arrivalActualTs),
+    0
+  );
+
+  const columns: {
+    key: string;
+    label: string;
+    headerClass: string;
+    widthClass: string;
+    align?: "left" | "center";
+  }[] = [
+    { key: "status", label: "Leg Status", headerClass: "bg-[#cfeefa]", widthClass: "w-[90px]", align: "left" },
+    { key: "startDate", label: "Start Date", headerClass: "bg-[#cfeefa]", widthClass: "w-[95px]", align: "center" },
+    { key: "dutyOrder", label: "Duty Order", headerClass: "bg-[#cfeefa]", widthClass: "w-[68px]", align: "center" },
+    { key: "vehicleId", label: "Vehicle Id", headerClass: "bg-[#cfeefa]", widthClass: "w-[88px]", align: "center" },
+    { key: "userId", label: "UserId", headerClass: "bg-[#cfeefa]", widthClass: "w-[140px]", align: "center" },
+    { key: "contractorCompanyName", label: "Contractor Company Name", headerClass: "bg-[#cfeefa]", widthClass: "w-[120px]", align: "center" },
+    { key: "operator", label: "Operator", headerClass: "bg-[#cfeefa]", widthClass: "w-[62px]", align: "center" },
+    { key: "dutyId", label: "DutyId", headerClass: "bg-[#cfeefa]", widthClass: "w-[82px]", align: "center" },
+    { key: "departureLocation", label: "Departure location", headerClass: "bg-[#f2e8c9]", widthClass: "w-[112px]", align: "center" },
+    { key: "plannedDeparture", label: "Planned_Departure_Time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]", align: "center" },
+    { key: "departureActual", label: "DEPARTURE actual time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]", align: "center" },
+    { key: "departureDiff", label: "Departure Diff hh:mm", headerClass: "bg-[#f2e8c9]", widthClass: "w-[92px]", align: "center" },
+    { key: "dueToConvey", label: "Due To Convey", headerClass: "bg-[#f7efd8]", widthClass: "w-[108px]", align: "center" },
+    { key: "departureAssets", label: "DEPARTURE assets", headerClass: "bg-[#f2e8c9]", widthClass: "w-[68px]", align: "center" },
+    { key: "arrivalLocation", label: "Arrival Location", headerClass: "bg-[#d9f1d5]", widthClass: "w-[112px]", align: "center" },
+    { key: "plannedArrival", label: "Planned_Arrival_Time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]", align: "center" },
+    { key: "arrivalActual", label: "ARRIVAL actual time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]", align: "center" },
+    { key: "arrivalDiff", label: "Arrival Diff hh:mm", headerClass: "bg-[#d9f1d5]", widthClass: "w-[92px]", align: "center" },
+    { key: "arrivalAssets", label: "ARRIVAL assets", headerClass: "bg-[#d9f1d5]", widthClass: "w-[68px]", align: "center" },
+    { key: "issueCategory", label: "Issue Category", headerClass: "bg-[#fde7c7]", widthClass: "w-[120px]", align: "center" },
+    { key: "issues", label: "Issues", headerClass: "bg-[#fde7c7]", widthClass: "w-[180px]", align: "left" },
+    { key: "gpsDeparture", label: "GPS Departure", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]", align: "center" },
+    { key: "gpsArrival", label: "GPS Arrival", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]", align: "center" },
+    { key: "yorkBarCodes", label: "York Bar Codes", headerClass: "bg-[#f3d9ec]", widthClass: "w-[118px]", align: "center" },
+  ];
+
+  return (
+    <>
+      <AppHeader title="DCT Web Mockup" left="Back" onBack={onBack} />
+
+      <section className="bg-[#f8fafc] px-3 py-4 sm:px-4 lg:px-5">
+        <section className="rounded-[14px] border border-[#cfd8e3] bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#d6001c]">
+                Web results mockup
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-[#172033] sm:text-3xl">
+                DCT-style output view
+              </h2>
+              <p className="mt-3 max-w-[980px] text-sm font-bold leading-6 text-[#4b5563]">
+                This version is styled closer to the spreadsheet view, with tighter
+                columns and Excel-style header colours. Planned values show first,
+                and the actual values populate as the mock-up is run.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onReset}
+              className="rounded-full bg-[#d6001c] px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-white"
+            >
+              Complete Reset
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <SummaryCard label="Last selected mock-up" value={sourceTitle} />
+            <SummaryCard label="Duty ID" value={dutyId || ""} />
+            <SummaryCard label="Rows shown" value={String(rows.length)} />
+            <SummaryCard
+              label="Leg status completed"
+              value={String(
+                rows.filter((row) => row.status === "Complete").length
+              )}
+            />
+            <SummaryCard label="Late legs" value={String(lateLegs)} />
+            <SummaryCard label="Skipped legs" value={String(skippedLegs)} />
+            <SummaryCard label="Issues recorded" value={String(issuesRecorded)} />
+            <SummaryCard
+              label="Total delay"
+              value={formatDelayTotal(totalDelayMinutes)}
+            />
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]">
+            <span className="rounded-full border border-[#1f7a34] bg-[#d9f7e5] px-3 py-2 text-[#166534]">
+              Green = on time / early
+            </span>
+            <span className="rounded-full border border-[#c62828] bg-[#fecaca] px-3 py-2 text-[#7f1d1d]">
+              Red = late
+            </span>
+            <span className="rounded-full border border-[#6b7280] bg-[#e5e7eb] px-3 py-2 text-[#374151]">
+              Grey = not yet populated
+            </span>
+          </div>
+        </section>
+
+        {rows.length === 0 ? (
+          <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white p-8 shadow-sm">
+            <p className="text-lg font-black text-[#172033]">
+              No DCT mockup data is available yet.
+            </p>
+            <p className="mt-3 text-sm font-bold leading-6 text-[#4b5563]">
+              Run Flex Mock Up or Mockup 2 first, then return here to view the
+              DCT-style output.
+            </p>
+          </section>
+        ) : (
+          <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="min-w-[2570px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+                <thead className="sticky top-0 z-10">
+                  <tr>
+                    {columns.map((column) => (
+                      <th
+                        key={column.key}
+                        className={`${column.headerClass} ${column.widthClass} border border-black px-1 py-2 align-bottom text-left font-normal text-black`}
+                      >
+                        <div className="whitespace-normal break-words">
+                          {column.label}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {rows.map((row, index) => (
+                    <tr key={row.legNumber} className={index % 2 === 0 ? "bg-white" : "bg-[#fcfcfc]"}>
+                      <td className={`${getDctStatusCellClass(row.status)} border border-black px-1 py-2 font-normal text-black`}>
+                        {row.status}
+                      </td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.startDate}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal">{row.dutyOrder}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.vehicleId || ""}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.userId}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.contractorCompanyName}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal">{row.operator}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.dutyId}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.departureLocation}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{formatDateTime(row.plannedDepartureTs)}</td>
+                      <td className={`${getTimingCellClass(row.plannedDepartureTs, row.departureActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
+                        {row.departureActualTs ? formatDateTime(row.departureActualTs) : "-"}
+                      </td>
+                      <td className={`${getTimingCellClass(row.plannedDepartureTs, row.departureActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
+                        {formatTimeDifference(row.plannedDepartureTs, row.departureActualTs)}
+                      </td>
+                      <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.dueToConvey || "-"}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal">{row.departureAssets || "-"}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.arrivalLocation}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{formatDateTime(row.plannedArrivalTs)}</td>
+                      <td className={`${getTimingCellClass(row.plannedArrivalTs, row.arrivalActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
+                        {row.arrivalActualTs ? formatDateTime(row.arrivalActualTs) : "-"}
+                      </td>
+                      <td className={`${getTimingCellClass(row.plannedArrivalTs, row.arrivalActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
+                        {formatTimeDifference(row.plannedArrivalTs, row.arrivalActualTs)}
+                      </td>
+                      <td className="border border-black px-1 py-2 text-center font-normal">{row.arrivalAssets || "-"}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.issueCategory || "-"}</td>
+                      <td className="border border-black px-1 py-2 font-normal break-words">{row.issues || "-"}</td>
+                      <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsDeparture || "-"}</td>
+                      <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsArrival || "-"}</td>
+                      <td className="border border-black px-1 py-2 font-normal break-words">{row.yorkBarCodes || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+      </section>
+    </>
+  );
+}
+
+function SummaryCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[12px] border border-[#d6dee8] bg-[#f8fafc] p-4">
+      <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#64748b]">
+        {label}
+      </p>
+      <p className="mt-2 text-lg font-black text-[#172033]">
+        {value || "-"}
+      </p>
+    </div>
+  );
+}
+
+function getDctStatusCellClass(status: DctStatus) {
+  if (status === "Complete") {
+    return "bg-[#d9f7e5]";
+  }
+
+  if (status === "In Progress") {
+    return "bg-[#ffe9c8]";
+  }
+
+  if (status === "Skip") {
+    return "bg-[#d1d5db]";
+  }
+
+  return "bg-[#dbeafe]";
+}
+
 function hasAnyIssue(issueReport: LegIssueReport) {
-  return Boolean(issueReport.departure || issueReport.arrival || issueReport.skip);
+  return Boolean(issueReport.issue || issueReport.skip);
 }
 
 function buildIssueReportText({
@@ -1946,22 +2344,19 @@ function buildIssueReportText({
 }: {
   selectedLeg: number;
   issueMode: IssueMode;
-  issueCategory: IssueCategory;
+  issueCategory: string;
   issueDetails: string;
   issueLocation: string;
   issueManager: string;
 }) {
-  const typeText =
-    issueMode === "departure"
-      ? "Departure issue / delay"
-      : issueMode === "arrival"
-      ? "Arrival issue / delay"
-      : "Skipped leg";
+  if (issueMode === "arrival") {
+    return [`Category: ${issueCategory.trim()}`, `Details: ${issueDetails.trim()}`].join(" | ");
+  }
 
   const reportParts = [
     `Leg ${selectedLeg}`,
-    `Type: ${typeText}`,
-    issueCategory ? `Category: ${issueCategory}` : "",
+    `Category: ${issueCategory.trim() || "Skipped leg"}`,
+    "Type: Skipped leg",
     issueDetails.trim() ? `Details: ${issueDetails.trim()}` : "",
     issueLocation.trim()
       ? `Location / route change: ${issueLocation.trim()}`
@@ -1972,8 +2367,206 @@ function buildIssueReportText({
   return reportParts.join(" | ");
 }
 
+function buildPlannedDctRows(mockupType: MockupType, dutyId: string) {
+  const sourceLegs = mockupType === "mockup2" ? mockup2Legs : flexLegs;
+  const baseDate = new Date();
+  baseDate.setHours(0, 0, 0, 0);
+
+  let previousDepartureTs: number | null = null;
+
+  return sourceLegs.map((leg) => {
+    let departureTs = combineDateAndTime(baseDate, leg.etd, 0);
+
+    while (previousDepartureTs !== null && departureTs <= previousDepartureTs) {
+      departureTs += 24 * 60 * 60 * 1000;
+    }
+
+    let arrivalTs = combineDateAndTime(new Date(departureTs), leg.eta, 0);
+
+    while (arrivalTs < departureTs) {
+      arrivalTs += 24 * 60 * 60 * 1000;
+    }
+
+    previousDepartureTs = departureTs;
+
+    return {
+      legNumber: leg.number,
+      status: "Planned" as DctStatus,
+      startDate: formatDateOnly(baseDate.getTime()),
+      dutyOrder: leg.number,
+      vehicleId: "",
+      userId: "andrew.cannon1@royalmail.com",
+      contractorCompanyName: "Pie Haulage",
+      operator: "NWH",
+      dutyId,
+      departureLocation: leg.from,
+      plannedDepartureTs: departureTs,
+      departureActualTs: null,
+      dueToConvey: "",
+      departureAssets: "",
+      arrivalLocation: leg.to,
+      plannedArrivalTs: arrivalTs,
+      arrivalActualTs: null,
+      arrivalAssets: "",
+      gpsDeparture: locationCoordinates[leg.from] || "",
+      gpsArrival: locationCoordinates[leg.to] || "",
+      yorkBarCodes: "",
+      issueCategory: "",
+      issues: "",
+    };
+  });
+}
+
+function updateDctForDeparture(
+  legNumber: number,
+  taskType: TaskType,
+  context: {
+    containers: string[];
+    repatCount: string;
+    existingRows: DctRow[];
+    currentMockup: MockupType;
+    setRows: (updater: (current: DctRow[]) => DctRow[]) => void;
+  }
+) {
+  const assetCount =
+    taskType === "load"
+      ? String(context.containers.length)
+      : taskType === "repat"
+      ? context.repatCount.trim()
+      : "";
+
+  const dueToConvey =
+    taskType === "load"
+      ? "SCANNED"
+      : taskType === "repat"
+      ? "REPAT / PRELOAD"
+      : taskType === "flex"
+      ? "AS DIRECTED"
+      : taskType === "empty"
+      ? "EMPTY VEHICLE"
+      : "";
+
+  const yorkBarCodes =
+    taskType === "load" ? context.containers.join(", ") : "";
+
+  context.setRows((current) =>
+    current.map((row) => {
+      if (row.legNumber !== legNumber) {
+        return row;
+      }
+
+      const actualTimes = getActualTimesForRow(context.currentMockup, row);
+
+      return {
+        ...row,
+        status: "In Progress" as DctStatus,
+        departureActualTs: actualTimes.departureActualTs,
+        dueToConvey,
+        departureAssets: assetCount,
+        arrivalAssets: assetCount,
+        yorkBarCodes,
+      };
+    })
+  );
+}
+
+function getActualTimesForRow(mockupType: MockupType, row: DctRow) {
+  const offsets = mockActualOffsets[mockupType][row.legNumber] || {
+    dep: 5,
+    arr: 10,
+  };
+
+  return {
+    departureActualTs: row.plannedDepartureTs + offsets.dep * 60 * 1000,
+    arrivalActualTs: row.plannedArrivalTs + offsets.arr * 60 * 1000,
+  };
+}
+
+function getDutyIdForMockup(mockupType: MockupType) {
+  return mockupType === "mockup2" ? "NWH254" : "NWHFLEX01";
+}
+
+function getTimingCellClass(
+  plannedTs: number,
+  actualTs: number | null
+) {
+  if (!actualTs) {
+    return "bg-[#f3f4f6] text-[#374151]";
+  }
+
+  if (actualTs > plannedTs) {
+    return "bg-[#fecaca] text-[#7f1d1d]";
+  }
+
+  return "bg-[#bbf7d0] text-[#166534]";
+}
+
+function rowHasLateTiming(row: DctRow) {
+  return (
+    getPositiveDelayMinutes(row.plannedDepartureTs, row.departureActualTs) > 0 ||
+    getPositiveDelayMinutes(row.plannedArrivalTs, row.arrivalActualTs) > 0
+  );
+}
+
+function getPositiveDelayMinutes(plannedTs: number, actualTs: number | null) {
+  if (!actualTs || actualTs <= plannedTs) {
+    return 0;
+  }
+
+  return Math.round((actualTs - plannedTs) / 60000);
+}
+
+function formatDelayTotal(totalMinutes: number) {
+  const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+  const minutes = String(totalMinutes % 60).padStart(2, "0");
+
+  return `${hours}:${minutes}`;
+}
+
 function normaliseLocationName(value: string) {
   return value.trim().toLowerCase();
+}
+
+function combineDateAndTime(baseDate: Date, timeText: string, dayOffset: number) {
+  const [hours, minutes] = timeText.split(":").map(Number);
+  const next = new Date(baseDate);
+  next.setDate(next.getDate() + dayOffset);
+  next.setHours(hours, minutes, 0, 0);
+  return next.getTime();
+}
+
+
+function formatTimeDifference(plannedTs: number, actualTs: number | null) {
+  if (!actualTs) {
+    return "-";
+  }
+
+  const diffMinutes = Math.round((actualTs - plannedTs) / 60000);
+  const sign = diffMinutes < 0 ? "-" : "";
+  const absoluteMinutes = Math.abs(diffMinutes);
+  const hours = String(Math.floor(absoluteMinutes / 60)).padStart(2, "0");
+  const minutes = String(absoluteMinutes % 60).padStart(2, "0");
+
+  return `${sign}${hours}:${minutes}`;
+}
+
+function formatDateOnly(timestamp: number) {
+  const date = new Date(timestamp);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function formatDateTime(timestamp: number) {
+  const date = new Date(timestamp);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 }
 
 function getTodayDateText() {
