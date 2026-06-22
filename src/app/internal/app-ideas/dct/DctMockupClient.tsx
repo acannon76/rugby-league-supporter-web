@@ -1,68 +1,43 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  DctRow,
-  DctStatus,
-  STORAGE_KEY,
-  StoredManifestState,
   DUTY_ID,
+  DctRow,
   formatDateTime,
   formatDelayTotal,
   formatTimeDifference,
   getPositiveDelayMinutes,
   getTimingCellClass,
+  readStoredManifestState,
+  resetDriverPdaManifestMockup,
   rowHasLateTiming,
 } from "../driverPdaManifestData";
 
 export default function DctMockupClient() {
   const [rows, setRows] = useState<DctRow[]>([]);
-  const [dutyId, setDutyId] = useState(DUTY_ID);
   const [trailerNumber, setTrailerNumber] = useState("");
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as StoredManifestState;
-        setRows(parsed.dctRows || []);
-        setDutyId(parsed.dutyId || DUTY_ID);
-        setTrailerNumber(parsed.trailerNumber || "");
-      } catch {
-        setRows([]);
-      }
-    }
-
-    setLoaded(true);
+    const state = readStoredManifestState();
+    setRows(state.dctRows);
+    setTrailerNumber(state.trailerNumber);
   }, []);
 
   function completeReset() {
-    window.localStorage.removeItem(STORAGE_KEY);
-    setRows([]);
-    setDutyId(DUTY_ID);
-    setTrailerNumber("");
-  }
-
-  if (!loaded) {
-    return (
-      <main className="min-h-screen bg-[#eef2f7] font-sans text-[#222]">
-        <section className="mx-auto flex min-h-screen max-w-[900px] items-center justify-center px-5">
-          <p className="text-lg font-black text-[#222]">Loading DCT mockup...</p>
-        </section>
-      </main>
-    );
+    resetDriverPdaManifestMockup();
+    const nextState = readStoredManifestState();
+    setRows(nextState.dctRows);
+    setTrailerNumber(nextState.trailerNumber);
   }
 
   return (
-    <main className="min-h-screen bg-[#eef2f7] font-sans text-[#222]">
+    <main className="min-h-screen bg-[#eef2f7] font-sans text-[#172033]">
       <div className="relative mx-auto min-h-screen w-full max-w-[1500px] bg-white shadow-2xl">
         <DctWebScreen
           rows={rows}
-          dutyId={dutyId}
           trailerNumber={trailerNumber}
-          onBack={() => window.history.back()}
           onReset={completeReset}
         />
       </div>
@@ -70,56 +45,17 @@ export default function DctMockupClient() {
   );
 }
 
-function AppHeader({
-  title,
-  left,
-  onBack,
-}: {
-  title: string;
-  left?: string;
-  onBack?: () => void;
-}) {
-  return (
-    <header className="flex h-[72px] items-center justify-between border-b border-[#e5e7eb] bg-white px-5">
-      <div className="w-[120px]">
-        {left && onBack && (
-          <button
-            type="button"
-            onClick={onBack}
-            className="text-sm font-black text-[#d6001c]"
-          >
-            ‹ {left}
-          </button>
-        )}
-      </div>
-
-      <h1 className="text-xl font-black text-[#222]">{title}</h1>
-
-      <div className="w-[120px] text-right text-3xl font-black text-[#333]">
-        ⋮
-      </div>
-    </header>
-  );
-}
-
 function DctWebScreen({
   rows,
-  dutyId,
   trailerNumber,
-  onBack,
   onReset,
 }: {
   rows: DctRow[];
-  dutyId: string;
   trailerNumber: string;
-  onBack: () => void;
   onReset: () => void;
 }) {
   const lateLegs = rows.filter((row) => rowHasLateTiming(row)).length;
-  const skippedLegs = rows.filter((row) => row.status === "Skip").length;
-  const issuesRecorded = rows.filter(
-    (row) => row.issues.trim().length > 0
-  ).length;
+  const issuesRecorded = rows.filter((row) => row.issues.trim().length > 0).length;
   const totalDelayMinutes = rows.reduce(
     (total, row) =>
       total +
@@ -137,32 +73,42 @@ function DctWebScreen({
     { key: "status", label: "Leg Status", headerClass: "bg-[#cfeefa]", widthClass: "w-[90px]" },
     { key: "startDate", label: "Start Date", headerClass: "bg-[#cfeefa]", widthClass: "w-[95px]" },
     { key: "dutyOrder", label: "Duty Order", headerClass: "bg-[#cfeefa]", widthClass: "w-[68px]" },
-    { key: "vehicleId", label: "Trailer Id", headerClass: "bg-[#cfeefa]", widthClass: "w-[88px]" },
+    { key: "trailerNumber", label: "Trailer Number", headerClass: "bg-[#cfeefa]", widthClass: "w-[100px]" },
     { key: "userId", label: "UserId", headerClass: "bg-[#cfeefa]", widthClass: "w-[140px]" },
     { key: "contractorCompanyName", label: "Contractor Company Name", headerClass: "bg-[#cfeefa]", widthClass: "w-[120px]" },
     { key: "operator", label: "Operator", headerClass: "bg-[#cfeefa]", widthClass: "w-[62px]" },
     { key: "dutyId", label: "DutyId", headerClass: "bg-[#cfeefa]", widthClass: "w-[82px]" },
+    { key: "trailerType", label: "Trailer Type", headerClass: "bg-[#fde7c7]", widthClass: "w-[105px]" },
+    { key: "planzCode", label: "Planz Code", headerClass: "bg-[#fde7c7]", widthClass: "w-[105px]" },
+    { key: "dueToConvey", label: "Due To Convey", headerClass: "bg-[#fde7c7]", widthClass: "w-[115px]" },
     { key: "departureLocation", label: "Departure location", headerClass: "bg-[#f2e8c9]", widthClass: "w-[112px]" },
-    { key: "plannedDeparture", label: "Planned_Departure_Time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]" },
-    { key: "departureActual", label: "DEPARTURE actual time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]" },
+    { key: "plannedDeparture", label: "Planned Departure Time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]" },
+    { key: "departureActual", label: "Departure actual time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]" },
     { key: "departureDiff", label: "Departure Diff hh:mm", headerClass: "bg-[#f2e8c9]", widthClass: "w-[92px]" },
-    { key: "dueToConvey", label: "Due To Convey", headerClass: "bg-[#f7efd8]", widthClass: "w-[108px]" },
-    { key: "departureAssets", label: "DEPARTURE assets", headerClass: "bg-[#f2e8c9]", widthClass: "w-[68px]" },
     { key: "arrivalLocation", label: "Arrival Location", headerClass: "bg-[#d9f1d5]", widthClass: "w-[112px]" },
-    { key: "plannedArrival", label: "Planned_Arrival_Time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]" },
-    { key: "arrivalActual", label: "ARRIVAL actual time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]" },
+    { key: "plannedArrival", label: "Planned Arrival Time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]" },
+    { key: "arrivalActual", label: "Arrival actual time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]" },
     { key: "arrivalDiff", label: "Arrival Diff hh:mm", headerClass: "bg-[#d9f1d5]", widthClass: "w-[92px]" },
-    { key: "arrivalAssets", label: "ARRIVAL assets", headerClass: "bg-[#d9f1d5]", widthClass: "w-[68px]" },
     { key: "issueCategory", label: "Issue Category", headerClass: "bg-[#fde7c7]", widthClass: "w-[120px]" },
-    { key: "issues", label: "Issues", headerClass: "bg-[#fde7c7]", widthClass: "w-[180px]" },
+    { key: "issues", label: "Issues", headerClass: "bg-[#fde7c7]", widthClass: "w-[220px]" },
     { key: "gpsDeparture", label: "GPS Departure", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]" },
     { key: "gpsArrival", label: "GPS Arrival", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]" },
-    { key: "yorkBarCodes", label: "York Bar Codes", headerClass: "bg-[#f3d9ec]", widthClass: "w-[118px]" },
   ];
 
   return (
     <>
-      <AppHeader title="DCT Mockup Test" left="Back" onBack={onBack} />
+      <header className="flex h-[72px] items-center justify-between border-b border-[#e5e7eb] bg-white px-5">
+        <Link
+          href="/internal/app-ideas"
+          className="text-sm font-black text-[#d6001c] no-underline"
+        >
+          ‹ Back
+        </Link>
+
+        <h1 className="text-xl font-black text-[#222]">DCT Mockup Test</h1>
+
+        <div className="text-3xl font-black text-[#333]">⋮</div>
+      </header>
 
       <section className="bg-[#f8fafc] px-3 py-4 sm:px-4 lg:px-5">
         <section className="rounded-[14px] border border-[#cfd8e3] bg-white p-4 shadow-sm">
@@ -192,14 +138,13 @@ function DctWebScreen({
 
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <SummaryCard label="Source mock-up" value="Driver PDA Manifest" />
-            <SummaryCard label="Duty ID" value={dutyId || ""} />
+            <SummaryCard label="Duty ID" value={DUTY_ID} />
             <SummaryCard label="Rows shown" value={String(rows.length)} />
             <SummaryCard
               label="Leg status completed"
               value={String(rows.filter((row) => row.status === "Complete").length)}
             />
             <SummaryCard label="Late legs" value={String(lateLegs)} />
-            <SummaryCard label="Skipped legs" value={String(skippedLegs)} />
             <SummaryCard label="Issues recorded" value={String(issuesRecorded)} />
             <SummaryCard label="Total delay" value={formatDelayTotal(totalDelayMinutes)} />
             <SummaryCard label="Last trailer" value={trailerNumber || ""} />
@@ -231,7 +176,7 @@ function DctWebScreen({
         ) : (
           <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[2570px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+              <table className="min-w-[2500px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
                   <tr>
                     {columns.map((column) => (
@@ -251,11 +196,14 @@ function DctWebScreen({
                       <td className={`${getDctStatusCellClass(row.status)} border border-black px-1 py-2 font-normal text-black`}>{row.status}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.startDate}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.dutyOrder}</td>
-                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.vehicleId || ""}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.trailerNumber || ""}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.userId}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.contractorCompanyName}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.operator}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.dutyId}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.trailerType}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.planzCode}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.dueToConvey}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.departureLocation}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{formatDateTime(row.plannedDepartureTs)}</td>
                       <td className={`${getTimingCellClass(row.plannedDepartureTs, row.departureActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
@@ -264,8 +212,6 @@ function DctWebScreen({
                       <td className={`${getTimingCellClass(row.plannedDepartureTs, row.departureActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
                         {formatTimeDifference(row.plannedDepartureTs, row.departureActualTs)}
                       </td>
-                      <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.dueToConvey || "-"}</td>
-                      <td className="border border-black px-1 py-2 text-center font-normal">{row.departureAssets || "-"}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.arrivalLocation}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{formatDateTime(row.plannedArrivalTs)}</td>
                       <td className={`${getTimingCellClass(row.plannedArrivalTs, row.arrivalActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
@@ -274,12 +220,10 @@ function DctWebScreen({
                       <td className={`${getTimingCellClass(row.plannedArrivalTs, row.arrivalActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
                         {formatTimeDifference(row.plannedArrivalTs, row.arrivalActualTs)}
                       </td>
-                      <td className="border border-black px-1 py-2 text-center font-normal">{row.arrivalAssets || "-"}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.issueCategory || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.issues || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsDeparture || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsArrival || "-"}</td>
-                      <td className="border border-black px-1 py-2 font-normal break-words">{row.yorkBarCodes || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -303,17 +247,13 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function getDctStatusCellClass(status: DctStatus) {
+function getDctStatusCellClass(status: DctRow["status"]) {
   if (status === "Complete") {
     return "bg-[#d9f7e5]";
   }
 
   if (status === "In Progress") {
     return "bg-[#ffe9c8]";
-  }
-
-  if (status === "Skip") {
-    return "bg-[#d1d5db]";
   }
 
   return "bg-[#dbeafe]";

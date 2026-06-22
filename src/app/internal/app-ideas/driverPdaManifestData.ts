@@ -1,5 +1,5 @@
 export type LegStatus = "To do" | "In Progress" | "Completed";
-export type DctStatus = "Planned" | "In Progress" | "Complete" | "Skip";
+export type DctStatus = "Planned" | "In Progress" | "Complete";
 
 export type DutyLeg = {
   number: number;
@@ -7,10 +7,25 @@ export type DutyLeg = {
   eta: string;
   from: string;
   to: string;
+  trailerType: string;
+  planzCode: string;
+  dueToConvey: string;
 };
 
+export type IssueCategory =
+  | ""
+  | "Traffic Delay"
+  | "Trailer Swap Delay"
+  | "Site Issue"
+  | "Breakdown"
+  | "Loading Delay"
+  | "Unloading Delay"
+  | "Previous Leg Delay"
+  | "Other";
+
 export type LegIssueReport = {
-  arrival?: string;
+  category: IssueCategory;
+  details: string;
 };
 
 export type StoredManifestState = {
@@ -26,7 +41,7 @@ export type DctRow = {
   status: DctStatus;
   startDate: string;
   dutyOrder: number;
-  vehicleId: string;
+  trailerNumber: string;
   userId: string;
   contractorCompanyName: string;
   operator: string;
@@ -34,22 +49,23 @@ export type DctRow = {
   departureLocation: string;
   plannedDepartureTs: number;
   departureActualTs: number | null;
-  dueToConvey: string;
-  departureAssets: string;
+  departureDiff: string;
   arrivalLocation: string;
   plannedArrivalTs: number;
   arrivalActualTs: number | null;
-  arrivalAssets: string;
+  arrivalDiff: string;
+  trailerType: string;
+  planzCode: string;
+  dueToConvey: string;
   gpsDeparture: string;
   gpsArrival: string;
-  yorkBarCodes: string;
   issueCategory: string;
   issues: string;
 };
 
 export const DRIVER_NAME = "Andrew Cannon";
 export const DUTY_ID = "NWH254";
-export const STORAGE_KEY = "hgv-driver-pda-manifest-dct-data";
+export const STORAGE_KEY = "hgv-driver-pda-manifest-dct-data-v2";
 
 export const manifestLegs: DutyLeg[] = [
   {
@@ -58,6 +74,9 @@ export const manifestLegs: DutyLeg[] = [
     eta: "20:50",
     from: "NORTH WEST HUB",
     to: "MANCHESTER MAIL CENTRE",
+    trailerType: "49 Artic",
+    planzCode: "NWH.M.3",
+    dueToConvey: "1C 24 Mail",
   },
   {
     number: 2,
@@ -65,6 +84,9 @@ export const manifestLegs: DutyLeg[] = [
     eta: "22:00",
     from: "MANCHESTER MAIL CENTRE",
     to: "NORTH WEST HUB",
+    trailerType: "49 Artic T/L",
+    planzCode: "M.NWH.7",
+    dueToConvey: "1C 24 Mail",
   },
   {
     number: 3,
@@ -72,6 +94,9 @@ export const manifestLegs: DutyLeg[] = [
     eta: "23:50",
     from: "NORTH WEST HUB",
     to: "CHESTER MAIL CENTRE",
+    trailerType: "75 Artic DD",
+    planzCode: "NWH.CH.4",
+    dueToConvey: "1C 24 Mail",
   },
   {
     number: 4,
@@ -79,6 +104,9 @@ export const manifestLegs: DutyLeg[] = [
     eta: "01:40",
     from: "CHESTER MAIL CENTRE",
     to: "NORTH WEST HUB",
+    trailerType: "95 Artic DD",
+    planzCode: "CH.NWH.3",
+    dueToConvey: "1C 24 Mail",
   },
   {
     number: 5,
@@ -86,6 +114,9 @@ export const manifestLegs: DutyLeg[] = [
     eta: "04:20",
     from: "NORTH WEST HUB",
     to: "PRESTON MAIL CENTRE",
+    trailerType: "110 Artic DD",
+    planzCode: "NWH.EH.4a",
+    dueToConvey: "1C 24 Mail",
   },
   {
     number: 6,
@@ -93,17 +124,20 @@ export const manifestLegs: DutyLeg[] = [
     eta: "05:45",
     from: "PRESTON MAIL CENTRE",
     to: "NORTH WEST HUB",
+    trailerType: "95 Artic DD",
+    planzCode: "G.MSH.3b",
+    dueToConvey: "1C 24 Mail",
   },
 ];
 
-export const issueCategoryOptions = [
+export const issueCategoryOptions: IssueCategory[] = [
   "Traffic Delay",
-  "Previous Leg Delay",
   "Trailer Swap Delay",
   "Site Issue",
   "Breakdown",
   "Loading Delay",
   "Unloading Delay",
+  "Previous Leg Delay",
   "Other",
 ];
 
@@ -169,7 +203,7 @@ export function buildPlannedDctRows() {
       status: "Planned" as DctStatus,
       startDate: formatDateOnly(baseDate.getTime()),
       dutyOrder: leg.number,
-      vehicleId: "",
+      trailerNumber: "",
       userId: "andrew.cannon1@royalmail.com",
       contractorCompanyName: "Pie Haulage",
       operator: "NWH",
@@ -177,15 +211,16 @@ export function buildPlannedDctRows() {
       departureLocation: leg.from,
       plannedDepartureTs: departureTs,
       departureActualTs: null,
-      dueToConvey: "MANIFEST",
-      departureAssets: "",
+      departureDiff: "-",
       arrivalLocation: leg.to,
       plannedArrivalTs: arrivalTs,
       arrivalActualTs: null,
-      arrivalAssets: "",
+      arrivalDiff: "-",
+      trailerType: leg.trailerType,
+      planzCode: leg.planzCode,
+      dueToConvey: leg.dueToConvey,
       gpsDeparture: locationCoordinates[leg.from] || "",
       gpsArrival: locationCoordinates[leg.to] || "",
-      yorkBarCodes: "",
       issueCategory: "",
       issues: "",
     };
@@ -207,9 +242,9 @@ export function updateRowsForLegStart(
     return {
       ...row,
       status: "In Progress" as DctStatus,
-      vehicleId: trailerNumber,
+      trailerNumber,
       departureActualTs: actualTimes.departureActualTs,
-      dueToConvey: "MANIFEST",
+      departureDiff: formatTimeDifference(row.plannedDepartureTs, actualTimes.departureActualTs),
     };
   });
 }
@@ -231,7 +266,9 @@ export function updateRowsForLegComplete(
       ...row,
       status: "Complete" as DctStatus,
       departureActualTs: row.departureActualTs ?? actualTimes.departureActualTs,
+      departureDiff: formatTimeDifference(row.plannedDepartureTs, row.departureActualTs ?? actualTimes.departureActualTs),
       arrivalActualTs: actualTimes.arrivalActualTs,
+      arrivalDiff: formatTimeDifference(row.plannedArrivalTs, actualTimes.arrivalActualTs),
       issueCategory: issueText ? issueCategory : "",
       issues: issueText,
     };
@@ -250,10 +287,7 @@ export function getActualTimesForRow(row: DctRow) {
   };
 }
 
-export function getTimingCellClass(
-  plannedTs: number,
-  actualTs: number | null
-) {
+export function getTimingCellClass(plannedTs: number, actualTs: number | null) {
   if (!actualTs) {
     return "bg-[#f3f4f6] text-[#374151]";
   }
@@ -272,10 +306,7 @@ export function rowHasLateTiming(row: DctRow) {
   );
 }
 
-export function getPositiveDelayMinutes(
-  plannedTs: number,
-  actualTs: number | null
-) {
+export function getPositiveDelayMinutes(plannedTs: number, actualTs: number | null) {
   if (!actualTs || actualTs <= plannedTs) {
     return 0;
   }
@@ -290,11 +321,7 @@ export function formatDelayTotal(totalMinutes: number) {
   return `${hours}:${minutes}`;
 }
 
-export function combineDateAndTime(
-  baseDate: Date,
-  timeText: string,
-  dayOffset: number
-) {
+export function combineDateAndTime(baseDate: Date, timeText: string, dayOffset: number) {
   const [hours, minutes] = timeText.split(":").map(Number);
   const next = new Date(baseDate);
   next.setDate(next.getDate() + dayOffset);
@@ -302,10 +329,7 @@ export function combineDateAndTime(
   return next.getTime();
 }
 
-export function formatTimeDifference(
-  plannedTs: number,
-  actualTs: number | null
-) {
+export function formatTimeDifference(plannedTs: number, actualTs: number | null) {
   if (!actualTs) {
     return "-";
   }
@@ -352,4 +376,42 @@ export function getCurrentTimeText() {
     minute: "2-digit",
     hour12: false,
   }).format(new Date());
+}
+
+export function readStoredManifestState(): StoredManifestState {
+  if (typeof window === "undefined") {
+    return buildInitialManifestState();
+  }
+
+  const saved = window.localStorage.getItem(STORAGE_KEY);
+
+  if (!saved) {
+    const startingState = buildInitialManifestState();
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(startingState));
+    return startingState;
+  }
+
+  try {
+    return JSON.parse(saved) as StoredManifestState;
+  } catch {
+    const startingState = buildInitialManifestState();
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(startingState));
+    return startingState;
+  }
+}
+
+export function writeStoredManifestState(state: StoredManifestState) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+export function resetDriverPdaManifestMockup() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(STORAGE_KEY);
 }

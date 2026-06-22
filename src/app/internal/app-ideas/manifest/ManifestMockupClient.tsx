@@ -6,17 +6,20 @@ import {
   DRIVER_NAME,
   DUTY_ID,
   DutyLeg,
+  IssueCategory,
   LegIssueReport,
   LegStatus,
-  STORAGE_KEY,
   StoredManifestState,
   buildInitialManifestState,
   getCurrentTimeText,
   getTodayDateText,
   issueCategoryOptions,
   manifestLegs,
+  readStoredManifestState,
+  resetDriverPdaManifestMockup,
   updateRowsForLegComplete,
   updateRowsForLegStart,
+  writeStoredManifestState,
 } from "../driverPdaManifestData";
 
 type Screen = "duty" | "destination" | "complete";
@@ -28,57 +31,26 @@ export default function ManifestMockupClient() {
   const [trailerModalOpen, setTrailerModalOpen] = useState(false);
   const [issueModalOpen, setIssueModalOpen] = useState(false);
   const [trailerInput, setTrailerInput] = useState("");
-  const [trailerNumber, setTrailerNumber] = useState("");
-  const [issueCategory, setIssueCategory] = useState("");
+  const [issueCategory, setIssueCategory] = useState<IssueCategory>("");
   const [issueDetails, setIssueDetails] = useState("");
-  const [legStatuses, setLegStatuses] = useState<Record<number, LegStatus>>({});
-  const [issueReports, setIssueReports] = useState<Record<number, LegIssueReport>>({});
   const [state, setState] = useState<StoredManifestState>(buildInitialManifestState);
 
   const today = useMemo(() => getTodayDateText(), []);
   const currentLeg = manifestLegs.find((leg) => leg.number === selectedLeg) || manifestLegs[0];
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as StoredManifestState;
-        setState(parsed);
-        setTrailerNumber(parsed.trailerNumber || "");
-        setLegStatuses(parsed.legStatuses || buildInitialManifestState().legStatuses);
-        setIssueReports(parsed.issueReports || {});
-        setLoaded(true);
-        return;
-      } catch {
-        const startingState = buildInitialManifestState();
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(startingState));
-        setState(startingState);
-        setLegStatuses(startingState.legStatuses);
-        setIssueReports(startingState.issueReports);
-        setLoaded(true);
-        return;
-      }
-    }
-
-    const startingState = buildInitialManifestState();
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(startingState));
-    setState(startingState);
-    setLegStatuses(startingState.legStatuses);
-    setIssueReports(startingState.issueReports);
+    const savedState = readStoredManifestState();
+    setState(savedState);
     setLoaded(true);
   }, []);
 
   function saveNextState(nextState: StoredManifestState) {
     setState(nextState);
-    setTrailerNumber(nextState.trailerNumber);
-    setLegStatuses(nextState.legStatuses);
-    setIssueReports(nextState.issueReports);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+    writeStoredManifestState(nextState);
   }
 
   function getLegStatus(legNumber: number) {
-    return legStatuses[legNumber] || "To do";
+    return state.legStatuses[legNumber] || "To do";
   }
 
   function firstAvailableLeg() {
@@ -102,22 +74,22 @@ export default function ManifestMockupClient() {
     }
 
     const existingTrailerForLeg =
-      state.dctRows.find((row) => row.legNumber === legNumber)?.vehicleId || "";
+      state.dctRows.find((row) => row.legNumber === legNumber)?.trailerNumber || "";
 
     setSelectedLeg(legNumber);
-    setTrailerInput(existingTrailerForLeg || trailerNumber);
+    setTrailerInput(existingTrailerForLeg || state.trailerNumber);
     setTrailerModalOpen(true);
   }
 
   function confirmTrailerNumber() {
-    const nextTrailerNumber = trailerInput.trim();
+    const nextTrailerNumber = trailerInput.trim().toUpperCase();
 
     if (!nextTrailerNumber) {
       return;
     }
 
     const nextLegStatuses = {
-      ...legStatuses,
+      ...state.legStatuses,
       [selectedLeg]: "In Progress" as LegStatus,
     };
 
@@ -149,32 +121,31 @@ export default function ManifestMockupClient() {
       return;
     }
 
-    const issueText = `Category: ${issueCategory.trim()} | Details: ${issueDetails.trim()}`;
-    completeLeg(issueText, issueCategory.trim());
+    const issueText = `Leg ${selectedLeg} Arrival Issue: Category: ${issueCategory.trim()} | Details: ${issueDetails.trim()}`;
+    completeLeg(issueText, issueCategory.trim() as IssueCategory);
   }
 
   function completeWithNoIssue() {
     completeLeg("", "");
   }
 
-  function completeLeg(issueText: string, category: string) {
+  function completeLeg(issueText: string, category: IssueCategory | "") {
     const finalLeg = selectedLeg === manifestLegs[manifestLegs.length - 1].number;
 
     const nextLegStatuses = {
-      ...legStatuses,
+      ...state.legStatuses,
       [selectedLeg]: "Completed" as LegStatus,
     };
 
-    const existingIssueReport = issueReports[selectedLeg] || {};
-    const nextIssueReports = {
-      ...issueReports,
-      [selectedLeg]: issueText
-        ? {
-            ...existingIssueReport,
-            arrival: issueText,
-          }
-        : existingIssueReport,
-    };
+    const nextIssueReports = issueText
+      ? {
+          ...state.issueReports,
+          [selectedLeg]: {
+            category,
+            details: issueDetails.trim(),
+          },
+        }
+      : state.issueReports;
 
     const nextDctRows = updateRowsForLegComplete(
       state.dctRows,
@@ -199,6 +170,15 @@ export default function ManifestMockupClient() {
       return;
     }
 
+    setSelectedLeg(selectedLeg + 1);
+    setScreen("duty");
+  }
+
+  function resetMockup() {
+    resetDriverPdaManifestMockup();
+    const startingState = buildInitialManifestState();
+    saveNextState(startingState);
+    setSelectedLeg(1);
     setScreen("duty");
   }
 
@@ -214,27 +194,28 @@ export default function ManifestMockupClient() {
 
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#222]">
-      <div className="relative mx-auto min-h-screen w-full max-w-[900px] bg-white shadow-2xl sm:my-6 sm:min-h-[900px] sm:rounded-[34px]">
+      <div className="relative mx-auto min-h-screen w-full max-w-[1060px] bg-white shadow-2xl sm:my-6 sm:rounded-[34px]">
         <PhoneStatusBar />
 
         {screen === "duty" && (
           <DutyScreen
             today={today}
             legs={manifestLegs}
-            legStatuses={legStatuses}
-            issueReports={issueReports}
+            legStatuses={state.legStatuses}
+            issueReports={state.issueReports}
             canOpenLeg={canOpenLeg}
             onOpenLeg={openLeg}
+            onReset={resetMockup}
           />
         )}
 
         {screen === "destination" && (
           <DestinationScreen
             today={today}
-            trailerNumber={trailerNumber}
+            trailerNumber={state.trailerNumber}
             leg={currentLeg}
             status={getLegStatus(selectedLeg)}
-            issueReport={issueReports[selectedLeg]}
+            issueReport={state.issueReports[selectedLeg]}
             onBack={() => setScreen("duty")}
             onArriveIntoDepot={openArrivalIssueModal}
           />
@@ -243,10 +224,10 @@ export default function ManifestMockupClient() {
         {screen === "complete" && (
           <CompleteScreen
             today={today}
-            trailerNumber={trailerNumber}
-            leg={currentLeg}
-            status="Completed"
-            issueReport={issueReports[selectedLeg]}
+            trailerNumber={state.trailerNumber}
+            legStatuses={state.legStatuses}
+            issueReports={state.issueReports}
+            onReset={resetMockup}
           />
         )}
 
@@ -333,6 +314,7 @@ function DutyScreen({
   issueReports,
   canOpenLeg,
   onOpenLeg,
+  onReset,
 }: {
   today: string;
   legs: DutyLeg[];
@@ -340,19 +322,23 @@ function DutyScreen({
   issueReports: Record<number, LegIssueReport>;
   canOpenLeg: (legNumber: number) => boolean;
   onOpenLeg: (legNumber: number) => void;
+  onReset: () => void;
 }) {
   return (
     <>
       <AppHeader title="Manifest" left="Back" onBack={() => window.history.back()} />
 
       <section className="bg-white px-5 py-6 sm:px-8">
-        <OverviewCard />
+        <div className="grid gap-5 md:grid-cols-2">
+          <OverviewCard />
+          <SpecialInstructionsCard />
+        </div>
 
         <h2 className="mt-10 text-2xl font-black text-[#222]">Duty details</h2>
 
         <p className="mt-6 text-xl font-bold text-[#333]">{today}</p>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="mt-4 space-y-4">
           {legs.map((leg) => (
             <LegCard
               key={leg.number}
@@ -366,6 +352,7 @@ function DutyScreen({
         </div>
 
         <BackToDashboardButton />
+        <ResetButton onReset={onReset} />
       </section>
     </>
   );
@@ -397,7 +384,7 @@ function DestinationScreen({
 
         <p className="mt-6 text-lg font-bold text-[#333]">{today}</p>
 
-        <div className="mt-3 max-w-[720px]">
+        <div className="mt-3">
           <LegCard leg={leg} status={status} issueReport={issueReport} />
         </div>
 
@@ -408,13 +395,13 @@ function DestinationScreen({
         <button
           type="button"
           onClick={onArriveIntoDepot}
-          className="mt-4 flex w-full max-w-[720px] items-center justify-between rounded-lg border border-[#d9d9d9] border-l-4 border-l-[#d6001c] bg-white px-4 py-4 text-left text-sm font-black text-[#222] shadow-sm"
+          className="mt-4 flex w-full items-center justify-between rounded-lg border border-[#d9d9d9] border-l-4 border-l-[#d6001c] bg-white px-4 py-4 text-left text-sm font-black text-[#222] shadow-sm"
         >
           <span>Arrive into depot</span>
           <span className="text-2xl font-black text-[#d6001c]">›</span>
         </button>
 
-        {issueReport && issueReport.arrival && (
+        {issueReport && (
           <IssueRecordedBox legNumber={leg.number} issueReport={issueReport} />
         )}
 
@@ -427,43 +414,52 @@ function DestinationScreen({
 function CompleteScreen({
   today,
   trailerNumber,
-  leg,
-  status,
-  issueReport,
+  legStatuses,
+  issueReports,
+  onReset,
 }: {
   today: string;
   trailerNumber: string;
-  leg: DutyLeg;
-  status: LegStatus;
-  issueReport?: LegIssueReport;
+  legStatuses: Record<number, LegStatus>;
+  issueReports: Record<number, LegIssueReport>;
+  onReset: () => void;
 }) {
   return (
     <>
-      <AppHeader title="Manifest" />
+      <AppHeader title="Manifest Complete" />
 
       <section className="bg-white px-5 py-6 sm:px-8">
-        <OverviewCard />
+        <div className="grid gap-5 md:grid-cols-2">
+          <OverviewCard />
+          <SpecialInstructionsCard />
+        </div>
 
-        <h2 className="mt-10 text-2xl font-black text-[#222]">Duty details</h2>
+        <h2 className="mt-10 text-2xl font-black text-[#222]">Duty completed</h2>
 
         <p className="mt-8 text-xl font-bold text-[#333]">{today}</p>
 
-        <div className="mt-4 max-w-[720px]">
-          <LegCard leg={leg} status={status} issueReport={issueReport} />
-        </div>
-
         <TrailerNumberBanner trailerNumber={trailerNumber} />
 
-        <section className="mt-6 max-w-[720px] rounded-[18px] bg-[#d9f7e5] p-5">
-          <h2 className="text-2xl font-black text-[#067a35]">Duty completed</h2>
+        <div className="mt-4 space-y-4">
+          {manifestLegs.map((leg) => (
+            <LegCard
+              key={leg.number}
+              leg={leg}
+              status={legStatuses[leg.number] || "Completed"}
+              issueReport={issueReports[leg.number]}
+            />
+          ))}
+        </div>
 
+        <section className="mt-6 rounded-[18px] bg-[#d9f7e5] p-5">
+          <h2 className="text-2xl font-black text-[#067a35]">Duty completed</h2>
           <p className="mt-3 text-base font-bold leading-7 text-[#18243a]">
-            Your duty has been completed. It is now OK to close the app
-            completely.
+            Your duty has been completed. It is now OK to close the app completely.
           </p>
         </section>
 
         <BackToDashboardButton />
+        <ResetButton onReset={onReset} />
       </section>
     </>
   );
@@ -471,7 +467,7 @@ function CompleteScreen({
 
 function OverviewCard() {
   return (
-    <section className="max-w-[720px] rounded-[18px] bg-[#f0f0f0] p-5">
+    <section className="rounded-[18px] bg-[#f0f0f0] p-5">
       <h2 className="text-2xl font-black text-[#222]">Overview</h2>
 
       <p className="mt-6 text-lg font-bold text-[#333]">
@@ -481,6 +477,21 @@ function OverviewCard() {
       <p className="mt-4 text-lg font-bold text-[#333]">
         <span className="font-black">Duty ID:</span> {DUTY_ID}
       </p>
+    </section>
+  );
+}
+
+function SpecialInstructionsCard() {
+  return (
+    <section className="rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
+        Special Instructions
+      </p>
+      <ul className="mt-4 space-y-3 text-sm font-black leading-6 text-[#222]">
+        <li>Enter the trailer number before starting each leg.</li>
+        <li>Complete legs in order from Leg 1 to Leg 6.</li>
+        <li>Record any issue, route change or arrival delay before completing the leg.</li>
+      </ul>
     </section>
   );
 }
@@ -498,7 +509,8 @@ function LegCard({
   canOpen?: boolean;
   onClick?: () => void;
 }) {
-  const isInteractive = typeof canOpen === "boolean" && typeof onClick === "function";
+  const isInteractive =
+    typeof canOpen === "boolean" && typeof onClick === "function";
   const isLocked = isInteractive && !canOpen && status !== "Completed";
 
   return (
@@ -516,40 +528,49 @@ function LegCard({
           : "bg-white"
       }`}
     >
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <p className="text-lg font-black text-[#444]">Leg {leg.number}</p>
-        <StatusPill status={status} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 text-lg font-bold text-[#666]">
-        <p>ETD: {leg.etd}</p>
-        <p className="text-right">ETA: {leg.eta}</p>
-      </div>
-
-      <div className="mt-6 grid grid-cols-[1fr_42px_1fr] items-center gap-2">
-        <p className="text-base font-black uppercase leading-tight text-[#333] sm:text-lg">
-          {leg.from}
-        </p>
-
-        <div className="flex items-center justify-center text-2xl font-black text-[#d6d6d6] sm:text-3xl">
-          →
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-[120px]">
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-lg font-black text-[#444]">Leg {leg.number}</p>
+            <StatusPill status={status} />
+          </div>
         </div>
 
-        <p className="text-right text-base font-black uppercase leading-tight text-[#333] sm:text-lg">
-          {leg.to}
-        </p>
+        <div className="grid flex-1 gap-4 md:grid-cols-[1fr_80px_1fr] md:items-center">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.12em] text-[#64748b]">
+              Depart
+            </p>
+            <p className="mt-2 text-base font-black uppercase leading-tight text-[#111] sm:text-lg">
+              {leg.from}
+            </p>
+            <p className="mt-2 text-base font-bold text-[#666]">ETD: {leg.etd}</p>
+          </div>
+
+          <div className="hidden text-center text-3xl font-black text-[#d6d6d6] md:block">
+            →
+          </div>
+
+          <div className="md:text-right">
+            <p className="text-sm font-black uppercase tracking-[0.12em] text-[#64748b]">
+              Arrive
+            </p>
+            <p className="mt-2 text-base font-black uppercase leading-tight text-[#111] sm:text-lg">
+              {leg.to}
+            </p>
+            <p className="mt-2 text-base font-bold text-[#666]">ETA: {leg.eta}</p>
+          </div>
+        </div>
       </div>
 
-      {issueReport && issueReport.arrival && (
-        <section className="mt-4 rounded-[14px] border border-[#f59e0b] bg-[#fff7ed] p-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#b45309]">
-            Issue / route change recorded
-          </p>
-          <p className="mt-1 text-xs font-bold leading-5 text-[#7c2d12]">
-            <span className="font-black">Leg {leg.number} Arrival Issue:</span>{" "}
-            {issueReport.arrival}
-          </p>
-        </section>
+      <div className="mt-5 grid gap-3 border-t border-[#e5e7eb] pt-4 sm:grid-cols-3">
+        <InfoPill label="Trailer Type" value={leg.trailerType} />
+        <InfoPill label="Planz Code" value={leg.planzCode} />
+        <InfoPill label="Due to Convey" value={leg.dueToConvey} />
+      </div>
+
+      {issueReport && (
+        <IssueSummaryOnLeg legNumber={leg.number} issueReport={issueReport} />
       )}
 
       {isLocked && (
@@ -558,6 +579,17 @@ function LegCard({
         </p>
       )}
     </button>
+  );
+}
+
+function InfoPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[12px] bg-[#f8fafc] p-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#64748b]">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-black text-[#111]">{value}</p>
+    </div>
   );
 }
 
@@ -593,7 +625,7 @@ function TrailerNumberModal({
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 px-5 py-4">
-      <section className="w-full max-w-[390px] bg-white p-6 shadow-2xl">
+      <section className="w-full max-w-[430px] bg-white p-6 shadow-2xl">
         <h2 className="text-2xl font-black text-[#222]">Information Required</h2>
 
         <p className="mt-3 text-sm font-bold leading-6 text-[#444]">
@@ -646,9 +678,9 @@ function IssueModal({
   onSave,
   onNoIssue,
 }: {
-  category: string;
+  category: IssueCategory;
   details: string;
-  onCategoryChange: (value: string) => void;
+  onCategoryChange: (value: IssueCategory) => void;
   onDetailsChange: (value: string) => void;
   onCancel: () => void;
   onSave: () => void;
@@ -658,13 +690,12 @@ function IssueModal({
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 px-5 py-4">
-      <section className="max-h-[calc(100dvh-32px)] w-full max-w-[430px] overflow-y-auto rounded-sm bg-white p-6 shadow-2xl">
+      <section className="max-h-[calc(100dvh-32px)] w-full max-w-[500px] overflow-y-auto rounded-sm bg-white p-6 shadow-2xl">
         <h2 className="text-2xl font-black text-[#111]">Issue / Route Change</h2>
 
         <p className="mt-3 text-sm font-bold leading-6 text-[#444]">
           Before completing this leg, record any issue, delay, different location,
-          route change, or other information in the box below. If there was no
-          issue, select No Issue.
+          route change, or other information below. If there was no issue, select No Issue.
         </p>
 
         <label className="mt-5 block text-sm font-black text-[#222]">
@@ -673,7 +704,7 @@ function IssueModal({
 
         <select
           value={category}
-          onChange={(event) => onCategoryChange(event.target.value)}
+          onChange={(event) => onCategoryChange(event.target.value as IssueCategory)}
           className="mt-2 w-full border-2 border-[#888] bg-white px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
         >
           <option value="">Select an issue category</option>
@@ -692,7 +723,7 @@ function IssueModal({
           value={details}
           onChange={(event) => onDetailsChange(event.target.value)}
           placeholder="Example: delayed arrival, traffic, gate queue, different location, route change, authorised by..."
-          className="mt-2 min-h-[130px] w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
+          className="mt-2 min-h-[140px] w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
         />
 
         <div className="mt-5 space-y-3">
@@ -718,13 +749,42 @@ function IssueModal({
           <button
             type="button"
             onClick={onCancel}
-            className="w-full rounded-full border-2 border-[#d6001c] bg-white px-5 py-3 text-sm font-black text-[#d6001c]"
+            className="w-full rounded-full border-2 border-[#999] bg-white px-5 py-3 text-sm font-black text-[#555]"
           >
             Cancel
           </button>
         </div>
       </section>
     </div>
+  );
+}
+
+function TrailerNumberBanner({ trailerNumber }: { trailerNumber: string }) {
+  return (
+    <div className="rounded-lg bg-[#f0f0f0] px-4 py-3 text-sm font-black text-[#444]">
+      Trailer number: {trailerNumber || "-"}
+    </div>
+  );
+}
+
+function IssueSummaryOnLeg({
+  legNumber,
+  issueReport,
+}: {
+  legNumber: number;
+  issueReport: LegIssueReport;
+}) {
+  return (
+    <section className="mt-4 rounded-[14px] border border-[#f59e0b] bg-[#fff7ed] p-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#b45309]">
+        Issue / route change recorded
+      </p>
+
+      <p className="mt-1 text-xs font-bold leading-5 text-[#7c2d12]">
+        <span className="font-black">Leg {legNumber} Arrival Issue:</span>{" "}
+        Category: {issueReport.category} | Details: {issueReport.details}
+      </p>
+    </section>
   );
 }
 
@@ -736,24 +796,16 @@ function IssueRecordedBox({
   issueReport: LegIssueReport;
 }) {
   return (
-    <section className="mt-4 max-w-[720px] rounded-[16px] border-2 border-[#f59e0b] bg-[#fff7ed] p-4">
+    <section className="mt-4 rounded-[16px] border-2 border-[#f59e0b] bg-[#fff7ed] p-4">
       <p className="text-xs font-black uppercase tracking-[0.16em] text-[#b45309]">
         Issue details recorded
       </p>
 
       <p className="mt-2 text-sm font-bold leading-6 text-[#7c2d12]">
         <span className="font-black">Leg {legNumber} Arrival Issue:</span>{" "}
-        {issueReport.arrival}
+        Category: {issueReport.category} | Details: {issueReport.details}
       </p>
     </section>
-  );
-}
-
-function TrailerNumberBanner({ trailerNumber }: { trailerNumber: string }) {
-  return (
-    <div className="max-w-[720px] rounded-lg bg-[#f0f0f0] px-4 py-3 text-sm font-black text-[#444]">
-      Trailer number: {trailerNumber}
-    </div>
   );
 }
 
@@ -761,9 +813,21 @@ function BackToDashboardButton() {
   return (
     <Link
       href="/internal/app-ideas"
-      className="mt-7 block w-full max-w-[720px] rounded-[18px] border-2 border-[#d6001c] bg-white px-5 py-4 text-center text-sm font-black uppercase tracking-[0.16em] text-[#d6001c] no-underline"
+      className="mt-7 block w-full rounded-[18px] border-2 border-[#d6001c] bg-white px-5 py-4 text-center text-sm font-black uppercase tracking-[0.16em] text-[#d6001c] no-underline"
     >
       Back to Dashboard
     </Link>
+  );
+}
+
+function ResetButton({ onReset }: { onReset: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onReset}
+      className="mt-4 w-full rounded-[18px] bg-[#222] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white"
+    >
+      Mockup Reset
+    </button>
   );
 }
