@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { startVehicleCheckTimer } from "../vehicle-checks/VehicleCheckTimer";
+import VehicleCheckTimer, {
+  startVehicleCheckTimer,
+} from "../vehicle-checks/VehicleCheckTimer";
 
 type VehicleDetail = {
   label: string;
@@ -149,6 +151,8 @@ const combinedHistoryItems = [...extraHistoryItems, ...historyItems];
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <VehicleCheckTimer />
+
             <div className="rounded-2xl border border-white/30 bg-white/10 px-4 py-2">
               <p className="text-xs font-black uppercase tracking-widest text-[#ffd9df]">
                 Driver

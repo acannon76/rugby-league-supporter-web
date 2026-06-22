@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import { resetDriverPdaManifestMockup } from "./driverPdaManifestData";
+import VehicleCheckTimer, {
+  resetVehicleCheckMockup,
+  startVehicleCheckTimer,
+} from "../vehicle-checks/VehicleCheckTimer";
 
 type AppButton = {
   title: string;
@@ -83,7 +87,7 @@ export default function HgvDriverPdaMockupClient() {
   }
 
   function handleMessagingClick() {
-    setMessageActive(true);
+    setMessageActive((current) => !current);
   }
 
   return (
@@ -105,7 +109,11 @@ export default function HgvDriverPdaMockupClient() {
             </div>
           </div>
 
-          <div className="ml-auto rounded-2xl border border-white/30 bg-white/10 px-5 py-3 text-right">
+          <div className="ml-auto hidden sm:block">
+            <VehicleCheckTimer />
+          </div>
+
+          <div className="rounded-2xl border border-white/30 bg-white/10 px-5 py-3 text-right">
             <p className="text-xs font-black uppercase tracking-[0.16em]">
               Driver
             </p>
@@ -113,6 +121,12 @@ export default function HgvDriverPdaMockupClient() {
           </div>
         </div>
       </header>
+
+      <section className="bg-[#c4002f] px-4 pb-4 text-white sm:hidden">
+        <div className="mx-auto max-w-[1280px]">
+          <VehicleCheckTimer />
+        </div>
+      </section>
 
       {messageActive && (
         <section className="px-4 pt-5 sm:px-6 lg:px-10">
@@ -209,7 +223,11 @@ function ActionCard({
   }
 
   return (
-    <Link href={button.href || "#"} className={`${cardClasses} no-underline`}>
+    <Link
+      href={button.href || "#"}
+      onClick={button.title === "Vehicle Checks" ? startVehicleCheckTimer : undefined}
+      className={`${cardClasses} no-underline`}
+    >
       {content}
     </Link>
   );
@@ -217,6 +235,7 @@ function ActionCard({
 
 function resetAllDriverPdaMocks() {
   resetDriverPdaManifestMockup();
+  resetVehicleCheckMockup();
 
   if (typeof window === "undefined") {
     return;
@@ -230,6 +249,9 @@ function resetAllDriverPdaMocks() {
     "hgv-brake-system-status",
     "hgv-brake-system-descriptions",
     "hgv-brake-system-photo-names",
+    "hgv-check-timer-started-at",
+    "hgv-current-mileage-km",
+    "hgv-mock-vehicle-history-extra",
   ];
 
   exactKeysToRemove.forEach((key) => window.localStorage.removeItem(key));
