@@ -180,16 +180,12 @@ const mockContainers = [
 ];
 
 const issueCategoryOptions = [
-  "Delay",
-  "Route change",
-  "Different location",
-  "Trailer swap",
-  "Traffic",
-  "Site issue",
-  "Load / asset issue",
-  "Gate / access issue",
-  "Authorised change",
-  "Skipped leg",
+  "Traffic Delay",
+  "Trailer Swap Delay",
+  "Site Issue",
+  "Breakdown",
+  "Loading Delay",
+  "Unloading Delay",
   "Other",
 ];
 
@@ -507,7 +503,7 @@ export default function HaulierAppMockupClient() {
     setIssueMode(mode);
     setPendingIssueAction(action);
     setIssueDetails("");
-    setIssueCategory(mode === "skip" ? "Skipped leg" : "");
+    setIssueCategory("");
     setIssueLocation("");
     setIssueManager("");
     setIssueModalOpen(true);
@@ -613,7 +609,7 @@ export default function HaulierAppMockupClient() {
           departureAssets: "",
           arrivalAssets: "",
           yorkBarCodes: "",
-          issueCategory: issueCategory || "Skipped leg",
+          issueCategory: issueCategory || "Other",
           issues: issueText,
           departureActualTs: null,
           arrivalActualTs: null,
@@ -2355,7 +2351,7 @@ function buildIssueReportText({
 
   const reportParts = [
     `Leg ${selectedLeg}`,
-    `Category: ${issueCategory.trim() || "Skipped leg"}`,
+    `Category: ${issueCategory.trim() || "Other"}`,
     "Type: Skipped leg",
     issueDetails.trim() ? `Details: ${issueDetails.trim()}` : "",
     issueLocation.trim()
@@ -2534,7 +2530,6 @@ function combineDateAndTime(baseDate: Date, timeText: string, dayOffset: number)
   next.setHours(hours, minutes, 0, 0);
   return next.getTime();
 }
-
 
 function formatTimeDifference(plannedTs: number, actualTs: number | null) {
   if (!actualTs) {
