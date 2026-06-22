@@ -2,34 +2,37 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { resetDriverPdaManifestMockup } from "./driverPdaManifestData";
 import VehicleCheckTimer, {
   resetVehicleCheckMockup,
   startVehicleCheckTimer,
 } from "../vehicle-checks/VehicleCheckTimer";
+import { resetDriverPdaManifestMockup } from "./driverPdaManifestData";
 
 type AppButton = {
   title: string;
   text: string;
+  redText?: string;
   href?: string;
+  externalHref?: string;
   icon: string;
   actionText?: string;
-  isNavigation?: boolean;
+  isReset?: boolean;
   isMessaging?: boolean;
+  startsVehicleChecks?: boolean;
 };
 
 const appButtons: AppButton[] = [
   {
     title: "Navigation",
-    text: "Route guidance and journey information. Mock reset for all Driver PDA mock journeys.",
+    text: "Route guidance and journey information.",
+    externalHref: "https://www.google.com/maps",
     icon: "➤",
-    actionText: "RESET ALL MOCKS",
-    isNavigation: true,
+    actionText: "OPEN MAPS",
   },
   {
     title: "Driving Style",
     text: "Driving behaviour and safety indicators.",
-    href: "#",
+    href: "/internal/app-ideas/driving-style",
     icon: "◆",
     actionText: "OPEN",
   },
@@ -39,20 +42,22 @@ const appButtons: AppButton[] = [
     href: "/internal/vehicle-history",
     icon: "✓",
     actionText: "OPEN",
+    startsVehicleChecks: true,
   },
   {
     title: "RTC",
-    text: "Report an incident, damage or breakdown.",
-    href: "#",
+    text: "Report a road traffic collision, incident, damage or breakdown immediately.",
+    href: "/internal/app-ideas/rtc",
     icon: "!",
     actionText: "OPEN",
   },
   {
     title: "Robin",
     text: "Internal website access for driver and operational information.",
-    href: "#",
+    redText: "Mock reset for all Driver PDA mock journeys.",
     icon: "R",
-    actionText: "OPEN",
+    actionText: "RESET ALL MOCKS",
+    isReset: true,
   },
   {
     title: "Manifest",
@@ -80,7 +85,7 @@ const appButtons: AppButton[] = [
 export default function HgvDriverPdaMockupClient() {
   const [messageActive, setMessageActive] = useState(false);
 
-  function handleNavigationReset() {
+  function handleResetAllMocks() {
     resetAllDriverPdaMocks();
     setMessageActive(false);
     window.alert("All Driver PDA mock journeys have been reset.");
@@ -93,7 +98,7 @@ export default function HgvDriverPdaMockupClient() {
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#001b3a]">
       <header className="bg-[#c4002f] px-4 py-5 text-white sm:px-6 lg:px-10">
-        <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-5">
+        <div className="mx-auto flex max-w-[1280px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-white text-base font-black">
               HGV
@@ -109,24 +114,18 @@ export default function HgvDriverPdaMockupClient() {
             </div>
           </div>
 
-          <div className="ml-auto hidden sm:block">
+          <div className="flex flex-col gap-3 sm:ml-auto sm:flex-row sm:items-center">
             <VehicleCheckTimer />
-          </div>
 
-          <div className="rounded-2xl border border-white/30 bg-white/10 px-5 py-3 text-right">
-            <p className="text-xs font-black uppercase tracking-[0.16em]">
-              Driver
-            </p>
-            <p className="text-base font-black">Andrew Cannon</p>
+            <div className="rounded-2xl border border-white/30 bg-white/10 px-5 py-3 text-right">
+              <p className="text-xs font-black uppercase tracking-[0.16em]">
+                Driver
+              </p>
+              <p className="text-base font-black">Andrew Cannon</p>
+            </div>
           </div>
         </div>
       </header>
-
-      <section className="bg-[#c4002f] px-4 pb-4 text-white sm:hidden">
-        <div className="mx-auto max-w-[1280px]">
-          <VehicleCheckTimer />
-        </div>
-      </section>
 
       {messageActive && (
         <section className="px-4 pt-5 sm:px-6 lg:px-10">
@@ -148,7 +147,7 @@ export default function HgvDriverPdaMockupClient() {
               key={button.title}
               button={button}
               messageActive={messageActive}
-              onNavigationReset={handleNavigationReset}
+              onResetAllMocks={handleResetAllMocks}
               onMessagingClick={handleMessagingClick}
             />
           ))}
@@ -161,12 +160,12 @@ export default function HgvDriverPdaMockupClient() {
 function ActionCard({
   button,
   messageActive,
-  onNavigationReset,
+  onResetAllMocks,
   onMessagingClick,
 }: {
   button: AppButton;
   messageActive: boolean;
-  onNavigationReset: () => void;
+  onResetAllMocks: () => void;
   onMessagingClick: () => void;
 }) {
   const isMessagingActive = button.isMessaging && messageActive;
@@ -199,6 +198,12 @@ function ActionCard({
         {button.text}
       </p>
 
+      {button.redText && (
+        <p className="mt-3 text-sm font-black leading-6 text-[#c4002f]">
+          {button.redText}
+        </p>
+      )}
+
       <div className={actionClasses}>
         {isMessagingActive ? "MESSAGE RECEIVED" : button.actionText || "OPEN"}{" "}
         <span className="transition group-hover:translate-x-1">→</span>
@@ -206,9 +211,9 @@ function ActionCard({
     </>
   );
 
-  if (button.isNavigation) {
+  if (button.isReset) {
     return (
-      <button type="button" onClick={onNavigationReset} className={cardClasses}>
+      <button type="button" onClick={onResetAllMocks} className={cardClasses}>
         {content}
       </button>
     );
@@ -222,10 +227,23 @@ function ActionCard({
     );
   }
 
+  if (button.externalHref) {
+    return (
+      <a
+        href={button.externalHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${cardClasses} no-underline`}
+      >
+        {content}
+      </a>
+    );
+  }
+
   return (
     <Link
       href={button.href || "#"}
-      onClick={button.title === "Vehicle Checks" ? startVehicleCheckTimer : undefined}
+      onClick={button.startsVehicleChecks ? startVehicleCheckTimer : undefined}
       className={`${cardClasses} no-underline`}
     >
       {content}
@@ -235,23 +253,24 @@ function ActionCard({
 
 function resetAllDriverPdaMocks() {
   resetDriverPdaManifestMockup();
-  resetVehicleCheckMockup();
 
   if (typeof window === "undefined") {
     return;
   }
 
+  resetVehicleCheckMockup();
+
   const exactKeysToRemove = [
+    "hgv-check-timer-started-at",
     "hgv-vehicle-check-status",
+    "hgv-current-mileage-km",
     "hgv-vehicle-check-brake-status",
     "hgv-vehicle-check-brake-descriptions",
     "hgv-vehicle-check-brake-photo-names",
     "hgv-brake-system-status",
     "hgv-brake-system-descriptions",
     "hgv-brake-system-photo-names",
-    "hgv-check-timer-started-at",
-    "hgv-current-mileage-km",
-    "hgv-mock-vehicle-history-extra",
+    "driver-pda-rtc-report",
   ];
 
   exactKeysToRemove.forEach((key) => window.localStorage.removeItem(key));
