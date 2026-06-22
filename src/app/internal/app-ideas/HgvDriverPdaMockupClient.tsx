@@ -49,7 +49,7 @@ const appButtons: AppButton[] = [
   {
     title: "Manifest",
     text: "Duty details and 318 manifest information.",
-    href: "#",
+    href: "/internal/app-ideas/manifest",
     icon: "318",
   },
   {
@@ -60,8 +60,8 @@ const appButtons: AppButton[] = [
   },
   {
     title: "Contacts",
-    text: "Useful contact numbers and support details.",
-    href: "#",
+    text: "Useful contact numbers and support details. DCT Mockup test.",
+    href: "/internal/app-ideas/dct",
     icon: "☎",
   },
 ];
