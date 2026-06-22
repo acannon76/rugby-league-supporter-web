@@ -74,7 +74,7 @@ export default function VehicleCheckTimer() {
       const startedAt = window.localStorage.getItem(timerStartedAtStorageKey);
 
       if (!startedAt) {
-        setRemainingMs(null);
+        setRemainingMs(timerDurationMs);
         return;
       }
 
@@ -91,15 +91,13 @@ export default function VehicleCheckTimer() {
     return () => window.clearInterval(interval);
   }, []);
 
-  if (remainingMs === null) {
-    return null;
-  }
+  const safeRemainingMs = remainingMs ?? timerDurationMs;
 
-  const isTimedOut = remainingMs === 0;
-  const isAmber = remainingMs <= amberWarningMs && remainingMs > 0;
+  const isTimedOut = safeRemainingMs === 0;
+  const isAmber = safeRemainingMs <= amberWarningMs && safeRemainingMs > 0;
 
-  const minutes = Math.floor(remainingMs / 60000);
-  const seconds = Math.floor((remainingMs % 60000) / 1000);
+  const minutes = Math.floor(safeRemainingMs / 60000);
+  const seconds = Math.floor((safeRemainingMs % 60000) / 1000);
 
   const displayTime = `${minutes.toString().padStart(2, "0")}:${seconds
     .toString()
