@@ -487,7 +487,7 @@ function DutyDateHeader({
 
       <div className="rounded-[14px] border border-[#e5e7eb] bg-[#f8fafc] px-4 py-3 text-left sm:text-right">
         <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#64748b]">
-          Duty Start / End Time
+          Start / End Time
         </p>
         <p className="mt-1 text-base font-black text-[#222]">19:30 - 06:00</p>
       </div>
@@ -664,10 +664,15 @@ function LegCard({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 border-t border-[#e5e7eb] pt-4 sm:grid-cols-3">
-        <InfoPill label="Trailer Type" value={leg.trailerType} />
+      <div className="mt-5 grid gap-3 border-t border-[#e5e7eb] pt-4 md:grid-cols-[0.8fr_0.8fr_0.9fr_1.5fr]">
+        <InfoPill label="Vehicle Type" value={leg.trailerType} />
         <InfoPill label="Planz Code" value={leg.planzCode} />
         <InfoPill label="Due to Convey" value={leg.dueToConvey} />
+        <InfoPill
+          label="Special Instruction"
+          value={getSpecialInstruction(leg.number)}
+          emptyPlaceholder=" "
+        />
       </div>
 
       {issueReport && (
@@ -683,13 +688,33 @@ function LegCard({
   );
 }
 
-function InfoPill({ label, value }: { label: string; value: string }) {
+function getSpecialInstruction(legNumber: number) {
+  if (legNumber === 5) {
+    return "At Preston give trailer to EHVOC12";
+  }
+
+  if (legNumber === 6) {
+    return "Take trailer from EHVOC12 & Give to NWH456 at NWH";
+  }
+
+  return "";
+}
+
+function InfoPill({
+  label,
+  value,
+  emptyPlaceholder = "-",
+}: {
+  label: string;
+  value: string;
+  emptyPlaceholder?: string;
+}) {
   return (
     <div className="rounded-[12px] border border-[#fde2e7] bg-white p-3">
       <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#64748b]">
         {label}
       </p>
-      <p className="mt-1 text-sm font-black text-[#111]">{value}</p>
+      <p className="mt-1 text-sm font-black leading-5 text-[#111]">{value || emptyPlaceholder}</p>
     </div>
   );
 }
