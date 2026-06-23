@@ -554,17 +554,13 @@ const dutyActivitiesAfterLeg: Record<number, { time: string; title: string }[]> 
 
 function DutyActivityBox({ time, title }: { time: string; title: string }) {
   return (
-    <div className="rounded-[14px] border border-[#e5e7eb] bg-[#f8fafc] px-4 py-3 shadow-sm">
+    <div className="rounded-[14px] border border-[#cbd5e1] bg-[#eef2f6] px-4 py-3 shadow-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-        <div className="shrink-0 rounded-full bg-[#fff0f2] px-4 py-2 text-sm font-black text-[#d6001c]">
+        <div className="shrink-0 rounded-full bg-white px-4 py-2 text-sm font-black text-[#334155] shadow-sm">
           {time}
         </div>
 
-        <p className="text-base font-black text-[#222]">{title}</p>
-
-        <p className="sm:ml-auto text-[10px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">
-          Information only
-        </p>
+        <p className="text-base font-black text-[#334155]">{title}</p>
       </div>
     </div>
   );
@@ -623,14 +619,14 @@ function LegCard({
       type="button"
       onClick={isInteractive && canOpen ? onClick : undefined}
       disabled={isInteractive ? !canOpen : false}
-      className={`w-full rounded-[18px] border border-[#d0d0d0] p-4 text-left shadow-sm transition ${
+      className={`w-full rounded-[18px] border p-4 text-left shadow-sm transition ${
         isInteractive && canOpen
-          ? "bg-white hover:-translate-y-1 hover:shadow-md"
+          ? "border-[#d6001c] border-l-4 bg-[#fff7f8] hover:-translate-y-1 hover:shadow-md"
           : status === "Completed"
-          ? "bg-[#f0f0f0]"
+          ? "border-[#067a35] border-l-4 bg-[#f0fdf4]"
           : isLocked
-          ? "bg-[#f4f4f4] opacity-55"
-          : "bg-white"
+          ? "border-[#e5e7eb] border-l-4 border-l-[#cbd5e1] bg-[#f4f4f4] opacity-55"
+          : "border-[#d6001c] border-l-4 bg-white"
       }`}
     >
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -689,7 +685,7 @@ function LegCard({
 
 function InfoPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[12px] bg-[#f8fafc] p-3">
+    <div className="rounded-[12px] border border-[#fde2e7] bg-white p-3">
       <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#64748b]">
         {label}
       </p>
