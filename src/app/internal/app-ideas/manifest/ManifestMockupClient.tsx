@@ -487,7 +487,7 @@ function DutyDateHeader({
 
       <div className="rounded-[14px] border border-[#e5e7eb] bg-[#f8fafc] px-4 py-3 text-left sm:text-right">
         <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#64748b]">
-          Start / End Time
+          Duty Start / End Time
         </p>
         <p className="mt-1 text-base font-black text-[#222]">19:30 - 06:00</p>
       </div>
