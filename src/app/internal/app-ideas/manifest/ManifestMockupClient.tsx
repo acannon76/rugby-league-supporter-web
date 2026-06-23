@@ -336,19 +336,23 @@ function DutyScreen({
 
         <h2 className="mt-10 text-2xl font-black text-[#222]">Duty details</h2>
 
-        <p className="mt-6 text-xl font-bold text-[#333]">{today}</p>
+        <DutyDateHeader today={today} />
 
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 space-y-3">
+          <DutyActivityBox time="19:30 - 20:00" title="Start Facility" />
+
           {legs.map((leg) => (
-            <LegCard
+            <DutySequenceBlock
               key={leg.number}
               leg={leg}
               status={legStatuses[leg.number] || "To do"}
               issueReport={issueReports[leg.number]}
               canOpen={canOpenLeg(leg.number)}
-              onClick={() => onOpenLeg(leg.number)}
+              onOpenLeg={onOpenLeg}
             />
           ))}
+
+          <DutyActivityBox time="05:45 - 06:00" title="End Facility" />
         </div>
 
         <BackToDashboardButton />
@@ -436,19 +440,23 @@ function CompleteScreen({
 
         <h2 className="mt-10 text-2xl font-black text-[#222]">Duty completed</h2>
 
-        <p className="mt-8 text-xl font-bold text-[#333]">{today}</p>
+        <DutyDateHeader today={today} extraTopMargin="mt-8" />
 
         <TrailerNumberBanner trailerNumber={trailerNumber} />
 
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 space-y-3">
+          <DutyActivityBox time="19:30 - 20:00" title="Start Facility" />
+
           {manifestLegs.map((leg) => (
-            <LegCard
+            <DutySequenceBlock
               key={leg.number}
               leg={leg}
               status={legStatuses[leg.number] || "Completed"}
               issueReport={issueReports[leg.number]}
             />
           ))}
+
+          <DutyActivityBox time="05:45 - 06:00" title="End Facility" />
         </div>
 
         <section className="mt-6 rounded-[18px] bg-[#d9f7e5] p-5">
@@ -462,6 +470,103 @@ function CompleteScreen({
         <ResetButton onReset={onReset} />
       </section>
     </>
+  );
+}
+
+
+function DutyDateHeader({
+  today,
+  extraTopMargin = "mt-6",
+}: {
+  today: string;
+  extraTopMargin?: string;
+}) {
+  return (
+    <div className={`${extraTopMargin} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
+      <p className="text-xl font-bold text-[#333]">{today}</p>
+
+      <div className="rounded-[14px] border border-[#e5e7eb] bg-[#f8fafc] px-4 py-3 text-left sm:text-right">
+        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#64748b]">
+          Start / End Time
+        </p>
+        <p className="mt-1 text-base font-black text-[#222]">19:30 - 06:00</p>
+      </div>
+    </div>
+  );
+}
+
+function DutySequenceBlock({
+  leg,
+  status,
+  issueReport,
+  canOpen,
+  onOpenLeg,
+}: {
+  leg: DutyLeg;
+  status: LegStatus;
+  issueReport?: LegIssueReport;
+  canOpen?: boolean;
+  onOpenLeg?: (legNumber: number) => void;
+}) {
+  const followingActivities = dutyActivitiesAfterLeg[leg.number] || [];
+
+  return (
+    <>
+      <LegCard
+        leg={leg}
+        status={status}
+        issueReport={issueReport}
+        canOpen={canOpen}
+        onClick={onOpenLeg ? () => onOpenLeg(leg.number) : undefined}
+      />
+
+      {followingActivities.map((activity) => (
+        <DutyActivityBox
+          key={`${leg.number}-${activity.time}-${activity.title}`}
+          time={activity.time}
+          title={activity.title}
+        />
+      ))}
+    </>
+  );
+}
+
+const dutyActivitiesAfterLeg: Record<number, { time: string; title: string }[]> = {
+  1: [{ time: "20:50 - 21:20", title: "Load(Assist)" }],
+  2: [
+    { time: "22:00 - 22:30", title: "Unload(Assist)" },
+    { time: "22:30 - 23:00", title: "Load(Assist)" },
+  ],
+  3: [
+    { time: "23:50 - 00:10", title: "Meal Relief Whilst Vehicle Un/Loaded" },
+    { time: "00:10 - 00:50", title: "Load(Assist)" },
+  ],
+  4: [
+    { time: "01:40 - 02:10", title: "Unload(Assist)" },
+    { time: "02:10 - 02:40", title: "Meal Relief" },
+    { time: "02:40 - 03:30", title: "Load(Assist)" },
+  ],
+  5: [
+    { time: "03:30 - 04:05", title: "As Directed" },
+    { time: "04:05 - 04:20", title: "Xchange Trailer" },
+  ],
+};
+
+function DutyActivityBox({ time, title }: { time: string; title: string }) {
+  return (
+    <div className="rounded-[14px] border border-[#e5e7eb] bg-[#f8fafc] px-4 py-3 shadow-sm">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        <div className="shrink-0 rounded-full bg-[#fff0f2] px-4 py-2 text-sm font-black text-[#d6001c]">
+          {time}
+        </div>
+
+        <p className="text-base font-black text-[#222]">{title}</p>
+
+        <p className="sm:ml-auto text-[10px] font-black uppercase tracking-[0.16em] text-[#94a3b8]">
+          Information only
+        </p>
+      </div>
+    </div>
   );
 }
 
