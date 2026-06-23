@@ -689,6 +689,9 @@ function LegCard({
 }
 
 function getSpecialInstruction(legNumber: number) {
+  if (legNumber === 1) {
+    return "Pickup preloaded trailer from Bay 78";
+  }
   if (legNumber === 5) {
     return "At Preston give trailer to EHVOC12";
   }
