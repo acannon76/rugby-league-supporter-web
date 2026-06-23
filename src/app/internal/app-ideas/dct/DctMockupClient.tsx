@@ -67,15 +67,17 @@ function DctWebScreen({
   const columns: {
     key: string;
     label: string;
+    subLabel?: string;
     headerClass: string;
     widthClass: string;
   }[] = [
     { key: "status", label: "Leg Status", headerClass: "bg-[#cfeefa]", widthClass: "w-[90px]" },
     { key: "startDate", label: "Start Date", headerClass: "bg-[#cfeefa]", widthClass: "w-[95px]" },
     { key: "dutyOrder", label: "Duty Order", headerClass: "bg-[#cfeefa]", widthClass: "w-[68px]" },
+    { key: "vehicle", label: "Vehicle", headerClass: "bg-[#cfeefa]", widthClass: "w-[92px]" },
     { key: "trailerNumber", label: "Trailer Number", headerClass: "bg-[#cfeefa]", widthClass: "w-[100px]" },
     { key: "userId", label: "UserId", headerClass: "bg-[#cfeefa]", widthClass: "w-[140px]" },
-    { key: "contractorCompanyName", label: "Contractor Company Name", headerClass: "bg-[#cfeefa]", widthClass: "w-[120px]" },
+    { key: "contractorCompanyName", label: "Division", subLabel: "Letters/Network/Contractor", headerClass: "bg-[#cfeefa]", widthClass: "w-[130px]" },
     { key: "operator", label: "Operator", headerClass: "bg-[#cfeefa]", widthClass: "w-[62px]" },
     { key: "dutyId", label: "DutyId", headerClass: "bg-[#cfeefa]", widthClass: "w-[82px]" },
     { key: "trailerType", label: "Trailer Type", headerClass: "bg-[#fde7c7]", widthClass: "w-[105px]" },
@@ -85,10 +87,12 @@ function DctWebScreen({
     { key: "plannedDeparture", label: "Planned Departure Time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]" },
     { key: "departureActual", label: "Departure actual time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]" },
     { key: "departureDiff", label: "Departure Diff hh:mm", headerClass: "bg-[#f2e8c9]", widthClass: "w-[92px]" },
+    { key: "depAssets", label: "Dep Assets", headerClass: "bg-[#f2e8c9]", widthClass: "w-[82px]" },
     { key: "arrivalLocation", label: "Arrival Location", headerClass: "bg-[#d9f1d5]", widthClass: "w-[112px]" },
     { key: "plannedArrival", label: "Planned Arrival Time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]" },
     { key: "arrivalActual", label: "Arrival actual time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]" },
     { key: "arrivalDiff", label: "Arrival Diff hh:mm", headerClass: "bg-[#d9f1d5]", widthClass: "w-[92px]" },
+    { key: "arrAssets", label: "Arr Assets", headerClass: "bg-[#d9f1d5]", widthClass: "w-[82px]" },
     { key: "issueCategory", label: "Issue Category", headerClass: "bg-[#fde7c7]", widthClass: "w-[120px]" },
     { key: "issues", label: "Issues", headerClass: "bg-[#fde7c7]", widthClass: "w-[220px]" },
     { key: "gpsDeparture", label: "GPS Departure", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]" },
@@ -176,7 +180,7 @@ function DctWebScreen({
         ) : (
           <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[2500px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+              <table className="min-w-[2750px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
                   <tr>
                     {columns.map((column) => (
@@ -184,7 +188,14 @@ function DctWebScreen({
                         key={column.key}
                         className={`${column.headerClass} ${column.widthClass} border border-black px-1 py-2 align-bottom text-left font-normal text-black`}
                       >
-                        <div className="whitespace-normal break-words">{column.label}</div>
+                        <div className="whitespace-normal break-words">
+                          <div>{column.label}</div>
+                          {column.subLabel && (
+                            <div className="mt-1 text-[9px] font-black leading-3 text-[#d6001c]">
+                              {column.subLabel}
+                            </div>
+                          )}
+                        </div>
                       </th>
                     ))}
                   </tr>
@@ -196,6 +207,7 @@ function DctWebScreen({
                       <td className={`${getDctStatusCellClass(row.status)} border border-black px-1 py-2 font-normal text-black`}>{row.status}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.startDate}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.dutyOrder}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{getVehicleNumberForRow(row)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.trailerNumber || ""}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.userId}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.contractorCompanyName}</td>
@@ -212,6 +224,7 @@ function DctWebScreen({
                       <td className={`${getTimingCellClass(row.plannedDepartureTs, row.departureActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
                         {formatTimeDifference(row.plannedDepartureTs, row.departureActualTs)}
                       </td>
+                      <td className="border border-black px-1 py-2 text-center font-bold whitespace-nowrap">{getAssetCountForRow(row)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.arrivalLocation}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{formatDateTime(row.plannedArrivalTs)}</td>
                       <td className={`${getTimingCellClass(row.plannedArrivalTs, row.arrivalActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
@@ -220,6 +233,7 @@ function DctWebScreen({
                       <td className={`${getTimingCellClass(row.plannedArrivalTs, row.arrivalActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
                         {formatTimeDifference(row.plannedArrivalTs, row.arrivalActualTs)}
                       </td>
+                      <td className="border border-black px-1 py-2 text-center font-bold whitespace-nowrap">{getAssetCountForRow(row)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.issueCategory || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.issues || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsDeparture || "-"}</td>
@@ -234,6 +248,31 @@ function DctWebScreen({
       </section>
     </>
   );
+}
+
+function getVehicleNumberForRow(row: DctRow) {
+  if (row.status !== "Complete") {
+    return "";
+  }
+
+  return "PE68UHD";
+}
+
+function getAssetCountForRow(row: DctRow) {
+  if (row.status !== "Complete") {
+    return "";
+  }
+
+  const mockAssetCounts: Record<number, number> = {
+    1: 45,
+    2: 67,
+    3: 32,
+    4: 88,
+    5: 21,
+    6: 74,
+  };
+
+  return String(mockAssetCounts[row.legNumber] ?? 0);
 }
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
