@@ -23,6 +23,21 @@ type AppButton = {
 
 const appButtons: AppButton[] = [
   {
+    title: "Vehicle Checks",
+    text: "Daily checks and defect reporting.",
+    href: "/internal/vehicle-history",
+    icon: "✓",
+    actionText: "OPEN",
+    startsVehicleChecks: true,
+  },
+  {
+    title: "Manifest",
+    text: "Duty details, trailer journey and 318 manifest information.",
+    href: "/internal/app-ideas/manifest",
+    icon: "318",
+    actionText: "OPEN",
+  },
+  {
     title: "Navigation",
     text: "Route guidance and journey information.",
     externalHref: "https://www.google.com/maps",
@@ -37,12 +52,11 @@ const appButtons: AppButton[] = [
     actionText: "OPEN",
   },
   {
-    title: "Vehicle Checks",
-    text: "Daily checks and defect reporting.",
-    href: "/internal/vehicle-history",
-    icon: "✓",
-    actionText: "OPEN",
-    startsVehicleChecks: true,
+    title: "Messaging",
+    text: "Receive incoming operational messages.",
+    icon: "✉",
+    actionText: "MOCK MESSAGE",
+    isMessaging: true,
   },
   {
     title: "RTC",
@@ -58,20 +72,6 @@ const appButtons: AppButton[] = [
     icon: "R",
     actionText: "RESET ALL MOCKS",
     isReset: true,
-  },
-  {
-    title: "Manifest",
-    text: "Duty details, trailer journey and 318 manifest information.",
-    href: "/internal/app-ideas/manifest",
-    icon: "318",
-    actionText: "OPEN",
-  },
-  {
-    title: "Messaging",
-    text: "Receive incoming operational messages.",
-    icon: "✉",
-    actionText: "MOCK MESSAGE",
-    isMessaging: true,
   },
   {
     title: "Contacts",
@@ -98,33 +98,20 @@ export default function HgvDriverPdaMockupClient() {
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#001b3a]">
       <header className="bg-[#c4002f] px-4 py-5 text-white sm:px-6 lg:px-10">
-        <div className="mx-auto flex max-w-[1280px] flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:gap-5">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-white text-base font-black">
-                HGV
-              </div>
-
-              <div>
-                <h1 className="text-xl font-black leading-none sm:text-2xl">
-                  Driver PDA
-                </h1>
-                <p className="text-sm font-black leading-none sm:text-base">
-                  Concept Mockup
-                </p>
-              </div>
+        <div className="mx-auto flex max-w-[1280px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-white text-base font-black">
+              HGV
             </div>
 
-            {messageActive && (
-              <div className="rounded-2xl border border-[#067a35] bg-[#d9f7e5] px-4 py-3 text-[#067a35] shadow-sm lg:max-w-[420px]">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em]">
-                  Message From NWH Transport
-                </p>
-                <p className="mt-1 text-sm font-black leading-5">
-                  Please review messages before continuing your duty.
-                </p>
-              </div>
-            )}
+            <div>
+              <h1 className="text-xl font-black leading-none sm:text-2xl">
+                Driver PDA
+              </h1>
+              <p className="text-sm font-black leading-none sm:text-base">
+                Concept Mockup
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-col gap-3 sm:ml-auto sm:flex-row sm:items-center">
@@ -140,8 +127,21 @@ export default function HgvDriverPdaMockupClient() {
         </div>
       </header>
 
+      {messageActive && (
+        <section className="px-4 pt-5 sm:px-6 lg:px-10">
+          <div className="mx-auto max-w-[1280px] rounded-[18px] border-2 border-[#067a35] bg-[#d9f7e5] px-5 py-4 text-[#067a35] shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.16em]">
+              Message From NWH Transport
+            </p>
+            <p className="mt-2 text-base font-black">
+              Please check your operational messages before continuing your duty.
+            </p>
+          </div>
+        </section>
+      )}
+
       <section className="px-4 py-7 sm:px-6 lg:px-10">
-        <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:auto-rows-fr">
+        <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {appButtons.map((button) => (
             <ActionCard
               key={button.title}
@@ -170,7 +170,7 @@ function ActionCard({
 }) {
   const isMessagingActive = button.isMessaging && messageActive;
 
-  const cardClasses = `group flex h-full min-h-[300px] flex-col rounded-[28px] border p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
+  const cardClasses = `group flex min-h-[270px] flex-col rounded-[28px] border p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
     isMessagingActive
       ? "border-[#067a35] bg-[#d9f7e5] text-[#064e3b]"
       : "border-[#d0d7df] bg-white text-[#001b3a]"
@@ -240,35 +240,61 @@ function ActionCard({
     );
   }
 
-  if (button.href) {
-    const linkProps = button.startsVehicleChecks
-      ? { onClick: startVehicleCheckTimer }
-      : {};
-
-    return (
-      <Link href={button.href} className={`${cardClasses} no-underline`} {...linkProps}>
-        {content}
-      </Link>
-    );
-  }
-
-  return <div className={cardClasses}>{content}</div>;
+  return (
+    <Link
+      href={button.href || "#"}
+      onClick={button.startsVehicleChecks ? startVehicleCheckTimer : undefined}
+      className={`${cardClasses} no-underline`}
+    >
+      {content}
+    </Link>
+  );
 }
 
 function resetAllDriverPdaMocks() {
-  resetVehicleCheckMockup();
   resetDriverPdaManifestMockup();
 
-  if (typeof window !== "undefined") {
-    const keysToRemove = [
-      "driver-pda-dct-rows",
-      "driver-pda-dct-duty-id",
-      "driver-pda-dct-vehicle-number",
-      "driver-pda-dct-source-mockup",
-      "driver-pda-driver-message-active",
-      "hgv-mock-vehicle-history-extra",
-    ];
-
-    keysToRemove.forEach((key) => window.localStorage.removeItem(key));
+  if (typeof window === "undefined") {
+    return;
   }
+
+  resetVehicleCheckMockup();
+
+  const exactKeysToRemove = [
+    "hgv-check-timer-started-at",
+    "hgv-vehicle-check-status",
+    "hgv-current-mileage-km",
+    "hgv-vehicle-check-brake-status",
+    "hgv-vehicle-check-brake-descriptions",
+    "hgv-vehicle-check-brake-photo-names",
+    "hgv-brake-system-status",
+    "hgv-brake-system-descriptions",
+    "hgv-brake-system-photo-names",
+    "driver-pda-rtc-report",
+  ];
+
+  exactKeysToRemove.forEach((key) => window.localStorage.removeItem(key));
+
+  const prefixesToRemove = [
+    "driver-pda-",
+    "hgv-vehicle-check",
+    "hgv-brake",
+    "vehicle-check",
+  ];
+
+  const keysToRemove: string[] = [];
+
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+
+    if (!key) {
+      continue;
+    }
+
+    if (prefixesToRemove.some((prefix) => key.startsWith(prefix))) {
+      keysToRemove.push(key);
+    }
+  }
+
+  keysToRemove.forEach((key) => window.localStorage.removeItem(key));
 }
