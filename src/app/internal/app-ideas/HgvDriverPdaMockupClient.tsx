@@ -31,7 +31,7 @@ const appButtons: AppButton[] = [
     startsVehicleChecks: true,
   },
   {
-    title: "Manifest",
+    title: "Duty",
     text: "Duty details, trailer journey and 318 manifest information.",
     href: "/internal/app-ideas/manifest",
     icon: "318",
