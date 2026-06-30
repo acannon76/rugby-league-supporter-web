@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import VehicleCheckTimer, { startVehicleCheckTimer } from "../vehicle-checks/VehicleCheckTimer";
@@ -106,13 +107,17 @@ export default function VehicleHistoryPage() {
  const [extraHistoryItems, setExtraHistoryItems] = useState<HistoryItem[]>([]);
 
 useEffect(() => {
-  const savedExtraHistory = window.localStorage.getItem(
-    "hgv-mock-vehicle-history-extra"
-  );
+  const frame = window.requestAnimationFrame(() => {
+    const savedExtraHistory = window.localStorage.getItem(
+      "hgv-mock-vehicle-history-extra"
+    );
 
-  if (savedExtraHistory) {
-    setExtraHistoryItems(JSON.parse(savedExtraHistory));
-  }
+    if (savedExtraHistory) {
+      setExtraHistoryItems(JSON.parse(savedExtraHistory));
+    }
+  });
+
+  return () => window.cancelAnimationFrame(frame);
 }, []);
 
 function clearAddedMockHistory() {
@@ -159,7 +164,7 @@ const combinedHistoryItems = [...extraHistoryItems, ...historyItems];
             </div>
 
             <Link
-              href="/internal/app-ideas"
+              href="/internal/vehicle-check-type"
               className="text-sm font-black text-white no-underline"
             >
               Back
@@ -234,9 +239,11 @@ const combinedHistoryItems = [...extraHistoryItems, ...historyItems];
             </div>
 
             <div className="rounded-[24px] border border-[#e2e8f0] bg-[#f8fafc] p-3">
-              <img
+              <Image
                 src="/images/truck-history-overview.png"
                 alt="Vehicle history visual marker overview showing front, rear, left side, right side and top view of the vehicle"
+                width={782}
+                height={162}
                 className="h-auto w-full rounded-[18px] border border-[#e2e8f0] bg-white object-contain"
               />
             </div>

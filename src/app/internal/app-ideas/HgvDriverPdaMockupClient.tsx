@@ -2,10 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import VehicleCheckTimer, {
-  resetVehicleCheckMockup,
-  startVehicleCheckTimer,
-} from "../vehicle-checks/VehicleCheckTimer";
+import VehicleCheckTimer, { resetVehicleCheckMockup } from "../vehicle-checks/VehicleCheckTimer";
 import { resetDriverPdaManifestMockup } from "./driverPdaManifestData";
 
 type AppButton = {
@@ -16,19 +13,16 @@ type AppButton = {
   externalHref?: string;
   icon: string;
   actionText?: string;
-  isReset?: boolean;
   isMessaging?: boolean;
-  startsVehicleChecks?: boolean;
 };
 
 const appButtons: AppButton[] = [
   {
     title: "Vehicle Checks",
     text: "Daily checks and defect reporting.",
-    href: "/internal/vehicle-history",
+    href: "/internal/vehicle-check-type",
     icon: "✓",
     actionText: "OPEN",
-    startsVehicleChecks: true,
   },
   {
     title: "Duty",
@@ -55,7 +49,7 @@ const appButtons: AppButton[] = [
     title: "Messaging",
     text: "Receive incoming operational messages.",
     icon: "✉",
-    actionText: "MOCK MESSAGE",
+    actionText: "MOCK CONTROLS",
     isMessaging: true,
   },
   {
@@ -67,18 +61,15 @@ const appButtons: AppButton[] = [
   },
   {
     title: "Robin",
-    text: "Internal Website.",
-    redText: "Mock reset for all Driver PDA mock journeys.",
+    text: "Internal website function to be added.",
     icon: "R",
-    actionText: "RESET ALL MOCKS",
-    isReset: true,
+    actionText: "TO BE ADDED",
   },
   {
     title: "Contacts",
-    text: "Useful contact numbers and support details. DCT Mockup test.",
-    href: "/internal/app-ideas/dct",
+    text: "Useful contact numbers and support details to be added.",
     icon: "☎",
-    actionText: "OPEN",
+    actionText: "TO BE ADDED",
   },
 ];
 
@@ -91,7 +82,7 @@ export default function HgvDriverPdaMockupClient() {
     window.alert("All Driver PDA mock journeys have been reset.");
   }
 
-  function handleMessagingClick() {
+  function handleMockMessage() {
     setMessageActive((current) => !current);
   }
 
@@ -148,7 +139,7 @@ export default function HgvDriverPdaMockupClient() {
               button={button}
               messageActive={messageActive}
               onResetAllMocks={handleResetAllMocks}
-              onMessagingClick={handleMessagingClick}
+              onMockMessage={handleMockMessage}
             />
           ))}
         </div>
@@ -161,16 +152,19 @@ function ActionCard({
   button,
   messageActive,
   onResetAllMocks,
-  onMessagingClick,
+  onMockMessage,
 }: {
   button: AppButton;
   messageActive: boolean;
   onResetAllMocks: () => void;
-  onMessagingClick: () => void;
+  onMockMessage: () => void;
 }) {
   const isMessagingActive = button.isMessaging && messageActive;
+  const isInteractive = Boolean(button.href || button.externalHref);
 
-  const cardClasses = `group flex min-h-[270px] flex-col rounded-[28px] border p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
+  const cardClasses = `group flex min-h-[270px] flex-col rounded-[28px] border p-6 text-left shadow-sm transition ${
+    isInteractive ? "hover:-translate-y-1 hover:shadow-lg" : ""
+  } ${
     isMessagingActive
       ? "border-[#067a35] bg-[#d9f7e5] text-[#064e3b]"
       : "border-[#d0d7df] bg-white text-[#001b3a]"
@@ -206,24 +200,47 @@ function ActionCard({
 
       <div className={actionClasses}>
         {isMessagingActive ? "MESSAGE RECEIVED" : button.actionText || "OPEN"}{" "}
-        <span className="transition group-hover:translate-x-1">→</span>
+        {isInteractive && (
+          <span className="transition group-hover:translate-x-1">→</span>
+        )}
       </div>
     </>
   );
 
-  if (button.isReset) {
-    return (
-      <button type="button" onClick={onResetAllMocks} className={cardClasses}>
-        {content}
-      </button>
-    );
-  }
-
   if (button.isMessaging) {
     return (
-      <button type="button" onClick={onMessagingClick} className={cardClasses}>
-        {content}
-      </button>
+      <div className="flex flex-col gap-3">
+        <div className={cardClasses}>{content}</div>
+
+        <div className="flex flex-wrap gap-2 rounded-[18px] border border-[#d0d7df] bg-white p-2 shadow-sm">
+          <button
+            type="button"
+            onClick={onResetAllMocks}
+            className="rounded-[14px] bg-[#c4002f] px-4 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#9f0026]"
+          >
+            Reset
+          </button>
+
+          <button
+            type="button"
+            onClick={onMockMessage}
+            className={`rounded-[14px] px-4 py-2 text-[11px] font-black uppercase tracking-[0.14em] transition ${
+              messageActive
+                ? "bg-[#067a35] text-white hover:bg-[#045c28]"
+                : "bg-[#e8f7ee] text-[#067a35] hover:bg-[#d9f7e5]"
+            }`}
+          >
+            Message
+          </button>
+
+          <Link
+            href="/internal/app-ideas/dct"
+            className="rounded-[14px] bg-[#001b3a] px-4 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-white no-underline transition hover:bg-[#0f2f57]"
+          >
+            DCT
+          </Link>
+        </div>
+      </div>
     );
   }
 
@@ -240,15 +257,15 @@ function ActionCard({
     );
   }
 
-  return (
-    <Link
-      href={button.href || "#"}
-      onClick={button.startsVehicleChecks ? startVehicleCheckTimer : undefined}
-      className={`${cardClasses} no-underline`}
-    >
-      {content}
-    </Link>
-  );
+  if (button.href) {
+    return (
+      <Link href={button.href} className={`${cardClasses} no-underline`}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className={cardClasses}>{content}</div>;
 }
 
 function resetAllDriverPdaMocks() {
