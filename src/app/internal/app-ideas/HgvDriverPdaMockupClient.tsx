@@ -138,10 +138,14 @@ export default function HgvDriverPdaMockupClient() {
               key={button.title}
               button={button}
               messageActive={messageActive}
-              onResetAllMocks={handleResetAllMocks}
-              onMockMessage={handleMockMessage}
             />
           ))}
+
+          <MessagingControls
+            messageActive={messageActive}
+            onResetAllMocks={handleResetAllMocks}
+            onMockMessage={handleMockMessage}
+          />
         </div>
       </section>
     </main>
@@ -151,18 +155,14 @@ export default function HgvDriverPdaMockupClient() {
 function ActionCard({
   button,
   messageActive,
-  onResetAllMocks,
-  onMockMessage,
 }: {
   button: AppButton;
   messageActive: boolean;
-  onResetAllMocks: () => void;
-  onMockMessage: () => void;
 }) {
   const isMessagingActive = button.isMessaging && messageActive;
   const isInteractive = Boolean(button.href || button.externalHref);
 
-  const cardClasses = `group flex min-h-[270px] flex-col rounded-[28px] border p-6 text-left shadow-sm transition ${
+  const cardClasses = `group flex h-full min-h-[270px] flex-col rounded-[28px] border p-6 text-left shadow-sm transition ${
     isInteractive ? "hover:-translate-y-1 hover:shadow-lg" : ""
   } ${
     isMessagingActive
@@ -208,40 +208,7 @@ function ActionCard({
   );
 
   if (button.isMessaging) {
-    return (
-      <div className="flex flex-col gap-3">
-        <div className={cardClasses}>{content}</div>
-
-        <div className="flex flex-wrap gap-2 rounded-[18px] border border-[#d0d7df] bg-white p-2 shadow-sm">
-          <button
-            type="button"
-            onClick={onResetAllMocks}
-            className="rounded-[14px] bg-[#c4002f] px-4 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#9f0026]"
-          >
-            Reset
-          </button>
-
-          <button
-            type="button"
-            onClick={onMockMessage}
-            className={`rounded-[14px] px-4 py-2 text-[11px] font-black uppercase tracking-[0.14em] transition ${
-              messageActive
-                ? "bg-[#067a35] text-white hover:bg-[#045c28]"
-                : "bg-[#e8f7ee] text-[#067a35] hover:bg-[#d9f7e5]"
-            }`}
-          >
-            Message
-          </button>
-
-          <Link
-            href="/internal/app-ideas/dct"
-            className="rounded-[14px] bg-[#001b3a] px-4 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-white no-underline transition hover:bg-[#0f2f57]"
-          >
-            DCT
-          </Link>
-        </div>
-      </div>
-    );
+    return <div className={cardClasses}>{content}</div>;
   }
 
   if (button.externalHref) {
@@ -266,6 +233,47 @@ function ActionCard({
   }
 
   return <div className={cardClasses}>{content}</div>;
+}
+
+function MessagingControls({
+  messageActive,
+  onResetAllMocks,
+  onMockMessage,
+}: {
+  messageActive: boolean;
+  onResetAllMocks: () => void;
+  onMockMessage: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-[18px] border border-[#d0d7df] bg-white p-2 shadow-sm sm:col-span-2 lg:col-span-4">
+      <button
+        type="button"
+        onClick={onResetAllMocks}
+        className="min-w-[104px] rounded-[14px] bg-[#c4002f] px-5 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#9f0026]"
+      >
+        Reset
+      </button>
+
+      <button
+        type="button"
+        onClick={onMockMessage}
+        className={`min-w-[112px] rounded-[14px] px-5 py-2 text-[11px] font-black uppercase tracking-[0.14em] transition ${
+          messageActive
+            ? "bg-[#067a35] text-white hover:bg-[#045c28]"
+            : "bg-[#e8f7ee] text-[#067a35] hover:bg-[#d9f7e5]"
+        }`}
+      >
+        Message
+      </button>
+
+      <Link
+        href="/internal/app-ideas/dct"
+        className="min-w-[104px] rounded-[14px] bg-[#001b3a] px-5 py-2 text-center text-[11px] font-black uppercase tracking-[0.14em] text-white no-underline transition hover:bg-[#0f2f57]"
+      >
+        DCT
+      </Link>
+    </div>
+  );
 }
 
 function resetAllDriverPdaMocks() {
