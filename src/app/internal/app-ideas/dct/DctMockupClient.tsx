@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  DUTY_ID,
   DctRow,
   formatDateTime,
   formatDelayTotal,
@@ -16,30 +15,26 @@ import {
 } from "../driverPdaManifestData";
 
 export default function DctMockupClient() {
-  const [rows, setRows] = useState<DctRow[]>([]);
-  const [trailerNumber, setTrailerNumber] = useState("");
+  const [rows, setRows] = useState<DctRow[]>(() => readStoredManifestState().dctRows);
 
   useEffect(() => {
-    const state = readStoredManifestState();
-    setRows(state.dctRows);
-    setTrailerNumber(state.trailerNumber);
+    const refreshRows = window.setTimeout(() => {
+      setRows(readStoredManifestState().dctRows);
+    }, 0);
+
+    return () => window.clearTimeout(refreshRows);
   }, []);
 
   function completeReset() {
     resetDriverPdaManifestMockup();
     const nextState = readStoredManifestState();
     setRows(nextState.dctRows);
-    setTrailerNumber(nextState.trailerNumber);
   }
 
   return (
     <main className="min-h-screen bg-[#eef2f7] font-sans text-[#172033]">
       <div className="relative mx-auto min-h-screen w-full max-w-[1500px] bg-white shadow-2xl">
-        <DctWebScreen
-          rows={rows}
-          trailerNumber={trailerNumber}
-          onReset={completeReset}
-        />
+        <DctWebScreen rows={rows} onReset={completeReset} />
       </div>
     </main>
   );
@@ -47,11 +42,9 @@ export default function DctMockupClient() {
 
 function DctWebScreen({
   rows,
-  trailerNumber,
   onReset,
 }: {
   rows: DctRow[];
-  trailerNumber: string;
   onReset: () => void;
 }) {
   const lateLegs = rows.filter((row) => rowHasLateTiming(row)).length;
@@ -131,18 +124,27 @@ function DctWebScreen({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={onReset}
-              className="rounded-full bg-[#d6001c] px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-white"
-            >
-              Complete Reset
-            </button>
+            <div className="flex flex-col gap-3 sm:flex-row xl:flex-col">
+              <button
+                type="button"
+                onClick={() => downloadRowsAsExcel(rows)}
+                disabled={rows.length === 0}
+                className="rounded-full bg-[#001b3a] px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#0f2f57] disabled:cursor-not-allowed disabled:bg-[#94a3b8]"
+              >
+                Download Excel
+              </button>
+
+              <button
+                type="button"
+                onClick={onReset}
+                className="rounded-full bg-[#d6001c] px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#a90016]"
+              >
+                Complete Reset
+              </button>
+            </div>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <SummaryCard label="Source mock-up" value="Driver PDA Manifest" />
-            <SummaryCard label="Duty ID" value={DUTY_ID} />
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <SummaryCard label="Rows shown" value={String(rows.length)} />
             <SummaryCard
               label="Leg status completed"
@@ -151,7 +153,6 @@ function DctWebScreen({
             <SummaryCard label="Late legs" value={String(lateLegs)} />
             <SummaryCard label="Issues recorded" value={String(issuesRecorded)} />
             <SummaryCard label="Total delay" value={formatDelayTotal(totalDelayMinutes)} />
-            <SummaryCard label="Last trailer" value={trailerNumber || ""} />
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]">
@@ -248,6 +249,119 @@ function DctWebScreen({
       </section>
     </>
   );
+}
+
+function downloadRowsAsExcel(rows: DctRow[]) {
+  if (typeof window === "undefined" || rows.length === 0) {
+    return;
+  }
+
+  const headers = [
+    "Leg Status",
+    "Start Date",
+    "Duty Order",
+    "Vehicle",
+    "Trailer Number",
+    "UserId",
+    "Division Letters/Network/Contractor",
+    "Operator",
+    "DutyId",
+    "Trailer Type",
+    "Planz Code",
+    "Due To Convey",
+    "Departure location",
+    "Planned Departure Time",
+    "Departure actual time",
+    "Departure Diff hh:mm",
+    "Dep Assets",
+    "Arrival Location",
+    "Planned Arrival Time",
+    "Arrival actual time",
+    "Arrival Diff hh:mm",
+    "Arr Assets",
+    "Issue Category",
+    "Issues",
+    "GPS Departure",
+    "GPS Arrival",
+  ];
+
+  const exportRows = rows.map((row) => [
+    row.status,
+    row.startDate,
+    row.dutyOrder,
+    getVehicleNumberForRow(row),
+    row.trailerNumber || "",
+    row.userId,
+    row.contractorCompanyName,
+    row.operator,
+    row.dutyId,
+    row.trailerType,
+    row.planzCode,
+    row.dueToConvey,
+    row.departureLocation,
+    formatDateTime(row.plannedDepartureTs),
+    row.departureActualTs ? formatDateTime(row.departureActualTs) : "-",
+    formatTimeDifference(row.plannedDepartureTs, row.departureActualTs),
+    getAssetCountForRow(row),
+    row.arrivalLocation,
+    formatDateTime(row.plannedArrivalTs),
+    row.arrivalActualTs ? formatDateTime(row.arrivalActualTs) : "-",
+    formatTimeDifference(row.plannedArrivalTs, row.arrivalActualTs),
+    getAssetCountForRow(row),
+    row.issueCategory || "-",
+    row.issues || "-",
+    row.gpsDeparture || "-",
+    row.gpsArrival || "-",
+  ]);
+
+  const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; }
+    th, td { border: 1px solid #000; padding: 6px; vertical-align: middle; }
+    th { background: #cfeefa; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <table>
+    <thead><tr>${headers.map((header) => `<th>${escapeExcelHtml(header)}</th>`).join("")}</tr></thead>
+    <tbody>
+      ${exportRows
+        .map(
+          (exportRow) =>
+            `<tr>${exportRow
+              .map((cell) => `<td>${escapeExcelHtml(String(cell))}</td>`)
+              .join("")}</tr>`
+        )
+        .join("")}
+    </tbody>
+  </table>
+</body>
+</html>`;
+
+  const blob = new Blob([html], {
+    type: "application/vnd.ms-excel;charset=utf-8",
+  });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const today = new Date().toISOString().slice(0, 10);
+  link.href = url;
+  link.download = `dct-mockup-data-${today}.xls`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
+function escapeExcelHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function getVehicleNumberForRow(row: DctRow) {
