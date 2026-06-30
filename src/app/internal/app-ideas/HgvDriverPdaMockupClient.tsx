@@ -48,8 +48,9 @@ const appButtons: AppButton[] = [
   {
     title: "Messaging",
     text: "Receive incoming operational messages.",
+    href: "/internal/app-ideas/messaging",
     icon: "✉",
-    actionText: "MOCK CONTROLS",
+    actionText: "OPEN",
     isMessaging: true,
   },
   {
@@ -66,10 +67,11 @@ const appButtons: AppButton[] = [
     actionText: "TO BE ADDED",
   },
   {
-    title: "Contacts",
-    text: "Useful contact numbers and support details to be added.",
-    icon: "☎",
-    actionText: "TO BE ADDED",
+    title: "Breakdown",
+    text: "Breakdown support and recovery information to be added.",
+    href: "/internal/app-ideas/breakdown",
+    icon: "🚛",
+    actionText: "OPEN",
   },
 ];
 
@@ -207,10 +209,6 @@ function ActionCard({
     </>
   );
 
-  if (button.isMessaging) {
-    return <div className={cardClasses}>{content}</div>;
-  }
-
   if (button.externalHref) {
     return (
       <a
@@ -245,33 +243,42 @@ function MessagingControls({
   onMockMessage: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-[18px] border border-[#d0d7df] bg-white p-2 shadow-sm sm:col-span-2 lg:col-span-4">
-      <button
-        type="button"
-        onClick={onResetAllMocks}
-        className="min-w-[104px] rounded-[14px] bg-[#c4002f] px-5 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#9f0026]"
-      >
-        Reset
-      </button>
+    <div className="rounded-[18px] border border-[#d0d7df] bg-white p-2 shadow-sm sm:col-span-2 lg:col-span-4">
+      <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4">
+        <button
+          type="button"
+          onClick={onResetAllMocks}
+          className="flex min-h-[42px] w-full items-center justify-center rounded-[14px] bg-[#c4002f] px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#9f0026]"
+        >
+          Reset
+        </button>
 
-      <button
-        type="button"
-        onClick={onMockMessage}
-        className={`min-w-[112px] rounded-[14px] px-5 py-2 text-[11px] font-black uppercase tracking-[0.14em] transition ${
-          messageActive
-            ? "bg-[#067a35] text-white hover:bg-[#045c28]"
-            : "bg-[#e8f7ee] text-[#067a35] hover:bg-[#d9f7e5]"
-        }`}
-      >
-        Message
-      </button>
+        <button
+          type="button"
+          onClick={onMockMessage}
+          className={`flex min-h-[42px] w-full items-center justify-center rounded-[14px] px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.14em] transition ${
+            messageActive
+              ? "bg-[#067a35] text-white hover:bg-[#045c28]"
+              : "bg-[#e8f7ee] text-[#067a35] hover:bg-[#d9f7e5]"
+          }`}
+        >
+          Message
+        </button>
 
-      <Link
-        href="/internal/app-ideas/dct"
-        className="min-w-[104px] rounded-[14px] bg-[#001b3a] px-5 py-2 text-center text-[11px] font-black uppercase tracking-[0.14em] text-white no-underline transition hover:bg-[#0f2f57]"
-      >
-        DCT
-      </Link>
+        <Link
+          href="/internal/app-ideas/dct"
+          className="flex min-h-[42px] w-full items-center justify-center rounded-[14px] bg-[#001b3a] px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.14em] text-white no-underline transition hover:bg-[#0f2f57]"
+        >
+          DCT
+        </Link>
+
+        <Link
+          href="/internal/app-ideas/messaging"
+          className="flex min-h-[42px] w-full items-center justify-center rounded-[14px] bg-[#001b3a] px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.14em] text-white no-underline transition hover:bg-[#0f2f57]"
+        >
+          LINK Message Mock
+        </Link>
+      </div>
     </div>
   );
 }
