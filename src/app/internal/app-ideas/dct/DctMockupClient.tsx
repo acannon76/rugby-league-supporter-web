@@ -88,8 +88,10 @@ function DctWebScreen({
     { key: "arrAssets", label: "Arr Assets", headerClass: "bg-[#d9f1d5]", widthClass: "w-[82px]" },
     { key: "issueCategory", label: "Issue Category", headerClass: "bg-[#fde7c7]", widthClass: "w-[120px]" },
     { key: "issues", label: "Issues", headerClass: "bg-[#fde7c7]", widthClass: "w-[220px]" },
+    { key: "liveTracking", label: "Live Tracking", headerClass: "bg-[#ead5ea]", widthClass: "w-[110px]" },
     { key: "gpsDeparture", label: "GPS Departure", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]" },
     { key: "gpsArrival", label: "GPS Arrival", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]" },
+    { key: "yorkBarcode", label: "York Barcode", headerClass: "bg-[#ead5ea]", widthClass: "w-[130px]" },
   ];
 
   return (
@@ -181,7 +183,7 @@ function DctWebScreen({
         ) : (
           <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[2750px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+              <table className="min-w-[2990px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
                   <tr>
                     {columns.map((column) => (
@@ -237,8 +239,18 @@ function DctWebScreen({
                       <td className="border border-black px-1 py-2 text-center font-bold whitespace-nowrap">{getAssetCountForRow(row)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.issueCategory || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.issues || "-"}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal">
+                        <button
+                          type="button"
+                          className="rounded-full bg-[#001b3a] px-3 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-white shadow-sm transition hover:bg-[#0f2f57]"
+                          aria-label={`Track leg ${row.legNumber}`}
+                        >
+                          Track
+                        </button>
+                      </td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsDeparture || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsArrival || "-"}</td>
+                      <td className="border border-black px-1 py-2 font-normal break-words"></td>
                     </tr>
                   ))}
                 </tbody>
@@ -281,8 +293,10 @@ function downloadRowsAsExcel(rows: DctRow[]) {
     "Arr Assets",
     "Issue Category",
     "Issues",
+    "Live Tracking",
     "GPS Departure",
     "GPS Arrival",
+    "York Barcode",
   ];
 
   const exportRows = rows.map((row) => [
@@ -310,8 +324,10 @@ function downloadRowsAsExcel(rows: DctRow[]) {
     getAssetCountForRow(row),
     row.issueCategory || "-",
     row.issues || "-",
+    "Track",
     row.gpsDeparture || "-",
     row.gpsArrival || "-",
+    "",
   ]);
 
   const html = `<!doctype html>
