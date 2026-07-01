@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import VehicleCheckTimer from "../../vehicle-checks/VehicleCheckTimer";
 
 type SafetyCheckKey =
@@ -9,6 +9,7 @@ type SafetyCheckKey =
   | "othersSafe"
   | "vehicleSecure"
   | "policeContacted"
+  | "insuranceContacted"
   | "officeNotified";
 
 type PhotoItem = {
@@ -38,6 +39,11 @@ const safetyChecks: { key: SafetyCheckKey; label: string; help: string }[] = [
     help: "Call 999 for injury, danger, blocked road, serious damage or unsafe situation.",
   },
   {
+    key: "insuranceContacted",
+    label: "RM Insurance",
+    help: "Have you contacted %^$£$% Insurance.",
+  },
+  {
     key: "officeNotified",
     label: "Transport office / head office notified",
     help: "The office needs immediate awareness so the duty can be managed.",
@@ -50,11 +56,13 @@ export default function RtcPage() {
     othersSafe: false,
     vehicleSecure: false,
     policeContacted: false,
+    insuranceContacted: false,
     officeNotified: false,
   });
 
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [location, setLocation] = useState("");
+  const [gpsCoordinates, setGpsCoordinates] = useState("Fetching current GPS coordinates...");
   const [incidentTime, setIncidentTime] = useState("");
   const [injuries, setInjuries] = useState("");
   const [policeReference, setPoliceReference] = useState("");
@@ -62,6 +70,29 @@ export default function RtcPage() {
   const [damageDetails, setDamageDetails] = useState("");
   const [description, setDescription] = useState("");
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (!("geolocation" in navigator)) {
+      setGpsCoordinates("GPS coordinates unavailable on this device.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latitude = position.coords.latitude.toFixed(6);
+        const longitude = position.coords.longitude.toFixed(6);
+        setGpsCoordinates(`${latitude}, ${longitude}`);
+      },
+      () => {
+        setGpsCoordinates("GPS coordinates unavailable.");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      },
+    );
+  }, []);
 
   function toggleCheck(key: SafetyCheckKey) {
     setChecks((current) => ({
@@ -182,13 +213,13 @@ export default function RtcPage() {
                     className={`w-full rounded-[18px] border p-4 text-left shadow-sm transition ${
                       checks[check.key]
                         ? "border-[#067a35] bg-[#d9f7e5]"
-                        : "border-[#d0d7df] bg-white"
+                        : "border-[#e2b24a] bg-[#fff1c2]"
                     }`}
                   >
                     <div className="flex gap-3">
                       <div
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-black text-white ${
-                          checks[check.key] ? "bg-[#067a35]" : "bg-[#c4002f]"
+                          checks[check.key] ? "bg-[#067a35]" : "bg-[#e2a100]"
                         }`}
                       >
                         {checks[check.key] ? "✓" : "!"}
@@ -230,6 +261,11 @@ export default function RtcPage() {
 
               <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <TextInput label="Incident location" value={location} onChange={setLocation} />
+                <TextInput
+                  label="GPS Coordinates"
+                  value={gpsCoordinates}
+                  onChange={setGpsCoordinates}
+                />
                 <TextInput label="Incident time" value={incidentTime} onChange={setIncidentTime} />
                 <TextInput label="Injuries / immediate risk" value={injuries} onChange={setInjuries} />
                 <TextInput label="Police reference if applicable" value={policeReference} onChange={setPoliceReference} />
