@@ -3053,7 +3053,17 @@ const kitOptions = [
   "Curtainsider",
   "Rollerbed",
 ];
-const reasonOptions = ["Agency Shortfall", "Central Plan", "CPC Request"];
+const reasonOptions = [
+  "Agency Shortfall",
+  "Central Plan",
+  "CPC Request",
+  "Local Distribution Request",
+  "O Licence Restrictions",
+  "Rigid Fleet",
+  "Sprinter",
+  "Trailer Shortage",
+  "Vehicle Shortage",
+];
 const dutyScheduleOptions = [
   "NWH-PR-NWH-MN-NWH",
   "NWH_SDC_NWH",
@@ -3083,8 +3093,15 @@ const sidebarItems = [
 
 type RhcOrder = {
   id: string;
+  job: string;
+  rowChecksum: string;
+  modifiedOn: string;
   orderType: string;
   duty: string;
+  jobTier: string;
+  account: string;
+  proposedRateCategory: string;
+  proposedRate: string;
   date: string;
   day: string;
   week: number;
@@ -3110,6 +3127,8 @@ type RhcOrder = {
   region: string;
   tier: string;
   kit: string;
+  dvsRequired: string;
+  rmResponsiblePersonEmail: string;
   reason: string;
   required: string;
   notes: string;
@@ -3344,110 +3363,98 @@ export default function RhcTeamPage() {
             <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 2</p>
             <h2 className="mt-2 text-2xl font-black text-[#111827]">Choose duty</h2>
             <p className="mt-1 text-sm font-bold text-[#6b7280]">
-              Search for a duty, pick the operating date, then add the request to the holding area.
+              Search for a duty, pick the operating date, add notes, then add the request to the holding area.
             </p>
 
-            <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <label className="block">
-                <span className="text-sm font-black text-[#111827]">Search duty number</span>
-                <input
-                  value={dutySearch}
-                  onChange={(event) => {
-                    const nextSearch = event.target.value;
-                    setDutySearch(nextSearch);
-                    setConfirmation("");
+            <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[430px_1fr]">
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="text-sm font-black text-[#111827]">Search duty number</span>
+                  <input
+                    value={dutySearch}
+                    onChange={(event) => {
+                      const nextSearch = event.target.value;
+                      setDutySearch(nextSearch);
+                      setConfirmation("");
 
-                    const exactMatch = dutyOptions.find(
-                      (item) => item.duty.toLowerCase() === nextSearch.trim().toLowerCase(),
-                    );
+                      const exactMatch = dutyOptions.find(
+                        (item) => item.duty.toLowerCase() === nextSearch.trim().toLowerCase(),
+                      );
 
-                    if (exactMatch) {
-                      setSelectedDuty(exactMatch.duty);
-                    }
-                  }}
-                  placeholder="Example: NWH634 or WAVOC016"
-                  className="mt-2 h-12 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
-                />
-              </label>
+                      if (exactMatch) {
+                        setSelectedDuty(exactMatch.duty);
+                      }
+                    }}
+                    placeholder="Example: NWH634 or WAVOC016"
+                    className="mt-2 h-12 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
+                  />
+                </label>
 
-              <label className="block">
-                <span className="text-sm font-black text-[#111827]">Duty number</span>
-                <select
-                  value={duty.duty}
-                  onChange={(event) => chooseDuty(event.target.value)}
-                  className="mt-2 h-12 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
+                <label className="block">
+                  <span className="text-sm font-black text-[#111827]">Duty number</span>
+                  <select
+                    value={duty.duty}
+                    onChange={(event) => chooseDuty(event.target.value)}
+                    className="mt-2 h-12 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
+                  >
+                    {selectDutyOptions.map((item) => (
+                      <option key={item.duty} value={item.duty}>
+                        {item.duty} — {item.start} to {item.finish}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-xs font-bold text-[#6b7280]">
+                    {filteredDutyOptions.length} matching dut{filteredDutyOptions.length === 1 ? "y" : "ies"}
+                  </p>
+                </label>
+
+                <label className="block">
+                  <span className="flex items-center gap-2 text-sm font-black text-[#111827]">
+                    <span>Day / date</span>
+                    <span aria-hidden="true">📅</span>
+                  </span>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(event) => {
+                      setSelectedDate(event.target.value);
+                      setConfirmation("");
+                    }}
+                    className="mt-2 h-12 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
+                  />
+                  <p className="mt-2 text-xs font-black text-[#6b7280]">
+                    {dutyStartDay} • {selectedDateLabel} • Week {weekNumber}
+                  </p>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={addToHoldingArea}
+                  className="h-14 w-full rounded-lg bg-[#e40000] px-6 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#b80000]"
                 >
-                  {selectDutyOptions.map((item) => (
-                    <option key={item.duty} value={item.duty}>
-                      {item.duty} — {item.start} to {item.finish}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-2 text-xs font-bold text-[#6b7280]">
-                  {filteredDutyOptions.length} matching dut{filteredDutyOptions.length === 1 ? "y" : "ies"}
-                </p>
-              </label>
+                  Add Duty To Holding Area
+                </button>
+              </div>
 
-              <label className="block">
-                <span className="flex items-center gap-2 text-sm font-black text-[#111827]">
-                  <span>Day / date</span>
-                  <span aria-hidden="true">📅</span>
-                </span>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(event) => {
-                    setSelectedDate(event.target.value);
-                    setConfirmation("");
-                  }}
-                  className="mt-2 h-12 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
-                />
-                <p className="mt-2 text-xs font-black text-[#6b7280]">
-                  {dutyStartDay} • {selectedDateLabel} • Week {weekNumber}
-                </p>
-              </label>
-            </div>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-1">
+                <label className="block">
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">What is required</span>
+                  <textarea
+                    value={required}
+                    onChange={(event) => setRequired(event.target.value)}
+                    className="mt-2 min-h-[118px] w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+                  />
+                </label>
 
-            <label className="mt-4 block">
-              <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">What is required</span>
-              <textarea
-                value={required}
-                onChange={(event) => setRequired(event.target.value)}
-                className="mt-2 min-h-[86px] w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
-              />
-            </label>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
-              <section className="rounded-lg border border-[#d9dee6] bg-[#f8fafc] p-4">
-                <p className="text-sm font-black text-[#111827]">Send data to</p>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="flex items-center gap-2 text-sm font-bold text-[#374151]">
-                    <input checked={sendPortal} onChange={(event) => setSendPortal(event.target.checked)} type="checkbox" className="h-4 w-4" />
-                    RHC Portal
-                  </label>
-                  <label className="flex items-center gap-2 text-sm font-bold text-[#374151]">
-                    <input checked={send318} onChange={(event) => setSend318(event.target.checked)} type="checkbox" className="h-4 w-4" />
-                    318 Data
-                  </label>
-                </div>
-              </section>
-
-              <label className="block">
-                <span className="text-sm font-black text-[#111827]">Office notes</span>
-                <textarea
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  className="mt-2 min-h-[86px] w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
-                />
-              </label>
-
-              <button
-                type="button"
-                onClick={addToHoldingArea}
-                className="h-14 rounded-lg bg-[#e40000] px-6 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#b80000]"
-              >
-                Add Duty To Holding Area
-              </button>
+                <label className="block">
+                  <span className="text-sm font-black text-[#111827]">Office notes</span>
+                  <textarea
+                    value={notes}
+                    onChange={(event) => setNotes(event.target.value)}
+                    className="mt-2 min-h-[118px] w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+                  />
+                </label>
+              </div>
             </div>
 
             {confirmation && (
@@ -3489,15 +3496,29 @@ export default function RhcTeamPage() {
           </section>
 
           <section className="mt-4 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 3</p>
                 <h2 className="mt-2 text-2xl font-black text-[#111827]">Holding area</h2>
                 <p className="mt-1 text-sm font-bold text-[#6b7280]">
-                  Add multiple duties here, select the ones to send, upload the 318's, then send them to the RHC Team.
+                  Add multiple duties here, select the ones to send, upload the 318&apos;s, then send them to the RHC Team.
                 </p>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(260px,360px)_auto_auto] lg:items-center">
+                <section className="rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-4 py-3">
+                  <p className="text-sm font-black text-[#111827]">Send data to</p>
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    <label className="flex items-center gap-2 text-sm font-bold text-[#374151]">
+                      <input checked={sendPortal} onChange={(event) => setSendPortal(event.target.checked)} type="checkbox" className="h-4 w-4" />
+                      RHC Portal
+                    </label>
+                    <label className="flex items-center gap-2 text-sm font-bold text-[#374151]">
+                      <input checked={send318} onChange={(event) => setSend318(event.target.checked)} type="checkbox" className="h-4 w-4" />
+                      318 Data
+                    </label>
+                  </div>
+                </section>
+
                 <label className="cursor-pointer rounded-lg border border-[#e40000] bg-white px-5 py-3 text-center text-sm font-black uppercase tracking-[0.12em] text-[#e40000] transition hover:bg-[#fff0f0]">
                   Upload 318&apos;s
                   <input
@@ -3509,6 +3530,7 @@ export default function RhcTeamPage() {
                     }}
                   />
                 </label>
+
                 <button
                   type="button"
                   onClick={sendSelectedOrders}
@@ -3526,26 +3548,40 @@ export default function RhcTeamPage() {
             )}
 
             <div className="mt-4 overflow-x-auto rounded-lg border border-[#d9dee6]">
-              <table className="min-w-[1200px] w-full border-collapse text-left text-sm">
+              <table className="min-w-[2700px] w-full border-collapse text-left text-sm">
                 <thead className="bg-[#f8fafc] text-xs font-black uppercase tracking-[0.1em] text-[#6b7280]">
                   <tr>
                     <th className="px-3 py-3">Send</th>
-                    <th className="px-3 py-3">Duty</th>
-                    <th className="px-3 py-3">Date</th>
-                    <th className="px-3 py-3">Start</th>
-                    <th className="px-3 py-3">End</th>
-                    <th className="px-3 py-3">Total</th>
+                    <th className="px-3 py-3">(Do Not Modify) Job</th>
+                    <th className="px-3 py-3">(Do Not Modify) Row Checksum</th>
+                    <th className="px-3 py-3">(Do Not Modify) Modified On</th>
+                    <th className="px-3 py-3">Duty Number</th>
+                    <th className="px-3 py-3">JobTier</th>
+                    <th className="px-3 py-3">Account</th>
+                    <th className="px-3 py-3">Proposed Rate Category For Preferred Haulier</th>
+                    <th className="px-3 py-3">Proposed Rate For Preferred Haulier</th>
+                    <th className="px-3 py-3">Week Number</th>
+                    <th className="px-3 py-3">Plan Type</th>
                     <th className="px-3 py-3">Traffic</th>
-                    <th className="px-3 py-3">ADM</th>
+                    <th className="px-3 py-3">Start Location</th>
+                    <th className="px-3 py-3">Final Destination</th>
+                    <th className="px-3 py-3">Start Date And Time</th>
+                    <th className="px-3 py-3">End Time</th>
+                    <th className="px-3 py-3">Day Of Week</th>
                     <th className="px-3 py-3">Kit</th>
-                    <th className="px-3 py-3">Reason</th>
+                    <th className="px-3 py-3">DVS Required</th>
+                    <th className="px-3 py-3">Region</th>
+                    <th className="px-3 py-3">Duty Schedule</th>
+                    <th className="px-3 py-3">Miles</th>
+                    <th className="px-3 py-3">As Directed/Flex Time</th>
+                    <th className="px-3 py-3">RMResponsiblePersonEmail</th>
                     <th className="px-3 py-3">Remove</th>
                   </tr>
                 </thead>
                 <tbody>
                   {holdingOrders.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="px-3 py-8 text-center text-sm font-bold text-[#6b7280]">
+                      <td colSpan={25} className="px-3 py-8 text-center text-sm font-bold text-[#6b7280]">
                         No duties in the holding area yet.
                       </td>
                     </tr>
@@ -3560,15 +3596,29 @@ export default function RhcTeamPage() {
                             className="h-4 w-4"
                           />
                         </td>
+                        <td className="px-3 py-3">{order.job}</td>
+                        <td className="px-3 py-3">{order.rowChecksum}</td>
+                        <td className="px-3 py-3">{order.modifiedOn}</td>
                         <td className="px-3 py-3 font-black text-[#111827]">{order.duty}</td>
-                        <td className="px-3 py-3">{formatShortDate(order.date)}</td>
+                        <td className="px-3 py-3">{order.jobTier}</td>
+                        <td className="px-3 py-3">{order.account}</td>
+                        <td className="px-3 py-3">{order.proposedRateCategory}</td>
+                        <td className="px-3 py-3">{order.proposedRate}</td>
+                        <td className="px-3 py-3">{order.week}</td>
+                        <td className="px-3 py-3">{order.planType}</td>
+                        <td className="px-3 py-3">{order.traffic}</td>
+                        <td className="px-3 py-3">{order.startLocation}</td>
+                        <td className="px-3 py-3">{order.endLocation}</td>
                         <td className="px-3 py-3">{order.startDateTime}</td>
                         <td className="px-3 py-3">{order.endDateTime}</td>
-                        <td className="px-3 py-3">{order.totalTime}</td>
-                        <td className="px-3 py-3">{order.traffic}</td>
-                        <td className="px-3 py-3">{order.admName}</td>
+                        <td className="px-3 py-3">{order.day}</td>
                         <td className="px-3 py-3">{order.kit}</td>
-                        <td className="px-3 py-3">{order.reason}</td>
+                        <td className="px-3 py-3">{order.dvsRequired}</td>
+                        <td className="px-3 py-3">{order.region}</td>
+                        <td className="px-3 py-3">{order.dutySchedule}</td>
+                        <td className="px-3 py-3">{order.miles}</td>
+                        <td className="px-3 py-3">{order.asDirected}</td>
+                        <td className="px-3 py-3">{order.rmResponsiblePersonEmail}</td>
                         <td className="px-3 py-3">
                           <button
                             type="button"
@@ -3808,8 +3858,15 @@ function buildOrder({
 
   return {
     id: `${duty.duty}-${selectedDate}`,
+    job: "",
+    rowChecksum: "",
+    modifiedOn: "",
     orderType,
     duty: duty.duty,
+    jobTier: tier,
+    account: billingCentre,
+    proposedRateCategory: "Other",
+    proposedRate: "0",
     date: selectedDate,
     day,
     week,
@@ -3835,6 +3892,8 @@ function buildOrder({
     region,
     tier,
     kit,
+    dvsRequired: "No",
+    rmResponsiblePersonEmail: "rhc.team@royalmail.com",
     reason: coverReason,
     required,
     notes,

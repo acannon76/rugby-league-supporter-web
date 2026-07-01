@@ -7,8 +7,15 @@ const RHC_HISTORY_STORAGE_KEY = "mock-rhc-team-history";
 
 type RhcOrder = {
   id: string;
+  job?: string;
+  rowChecksum?: string;
+  modifiedOn?: string;
   orderType: string;
   duty: string;
+  jobTier?: string;
+  account?: string;
+  proposedRateCategory?: string;
+  proposedRate?: string;
   date: string;
   day: string;
   week: number;
@@ -32,6 +39,8 @@ type RhcOrder = {
   region: string;
   tier: string;
   kit: string;
+  dvsRequired?: string;
+  rmResponsiblePersonEmail?: string;
   reason: string;
   required: string;
   notes: string;
@@ -147,30 +156,39 @@ export default function RhcTeamHistoryPage() {
             </div>
 
             <div className="mt-4 overflow-x-auto rounded-lg border border-[#d9dee6]">
-              <table className="min-w-[1400px] w-full border-collapse text-left text-sm">
+              <table className="min-w-[2800px] w-full border-collapse text-left text-sm">
                 <thead className="bg-[#f8fafc] text-xs font-black uppercase tracking-[0.1em] text-[#6b7280]">
                   <tr>
                     <th className="px-3 py-3">Sent</th>
-                    <th className="px-3 py-3">Order</th>
-                    <th className="px-3 py-3">Duty</th>
-                    <th className="px-3 py-3">Day</th>
-                    <th className="px-3 py-3">Week</th>
-                    <th className="px-3 py-3">Start</th>
-                    <th className="px-3 py-3">End</th>
-                    <th className="px-3 py-3">Total</th>
+                    <th className="px-3 py-3">(Do Not Modify) Job</th>
+                    <th className="px-3 py-3">(Do Not Modify) Row Checksum</th>
+                    <th className="px-3 py-3">(Do Not Modify) Modified On</th>
+                    <th className="px-3 py-3">Duty Number</th>
+                    <th className="px-3 py-3">JobTier</th>
+                    <th className="px-3 py-3">Account</th>
+                    <th className="px-3 py-3">Proposed Rate Category For Preferred Haulier</th>
+                    <th className="px-3 py-3">Proposed Rate For Preferred Haulier</th>
+                    <th className="px-3 py-3">Week Number</th>
+                    <th className="px-3 py-3">Plan Type</th>
                     <th className="px-3 py-3">Traffic</th>
-                    <th className="px-3 py-3">Schedule</th>
-                    <th className="px-3 py-3">Miles</th>
-                    <th className="px-3 py-3">ADM</th>
+                    <th className="px-3 py-3">Start Location</th>
+                    <th className="px-3 py-3">Final Destination</th>
+                    <th className="px-3 py-3">Start Date And Time</th>
+                    <th className="px-3 py-3">End Time</th>
+                    <th className="px-3 py-3">Day Of Week</th>
                     <th className="px-3 py-3">Kit</th>
-                    <th className="px-3 py-3">Reason</th>
-                    <th className="px-3 py-3">Requested By</th>
+                    <th className="px-3 py-3">DVS Required</th>
+                    <th className="px-3 py-3">Region</th>
+                    <th className="px-3 py-3">Duty Schedule</th>
+                    <th className="px-3 py-3">Miles</th>
+                    <th className="px-3 py-3">As Directed/Flex Time</th>
+                    <th className="px-3 py-3">RMResponsiblePersonEmail</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredOrders.length === 0 ? (
                     <tr>
-                      <td colSpan={15} className="px-3 py-8 text-center text-sm font-bold text-[#6b7280]">
+                      <td colSpan={24} className="px-3 py-8 text-center text-sm font-bold text-[#6b7280]">
                         No RHC Team history records found.
                       </td>
                     </tr>
@@ -178,20 +196,29 @@ export default function RhcTeamHistoryPage() {
                     filteredOrders.map((order) => (
                       <tr key={`${order.id}-${order.submittedAt ?? "saved"}`} className="border-t border-[#d9dee6] font-bold text-[#374151]">
                         <td className="px-3 py-3">{formatSubmittedAt(order.submittedAt)}</td>
-                        <td className="px-3 py-3">{order.orderType}</td>
+                        <td className="px-3 py-3">{order.job ?? ""}</td>
+                        <td className="px-3 py-3">{order.rowChecksum ?? ""}</td>
+                        <td className="px-3 py-3">{order.modifiedOn ?? ""}</td>
                         <td className="px-3 py-3 font-black text-[#111827]">{order.duty}</td>
-                        <td className="px-3 py-3">{order.day}</td>
-                        <td className="px-3 py-3">Week {order.week}</td>
+                        <td className="px-3 py-3">{order.jobTier ?? order.tier}</td>
+                        <td className="px-3 py-3">{order.account ?? order.billingCentre}</td>
+                        <td className="px-3 py-3">{order.proposedRateCategory ?? "Other"}</td>
+                        <td className="px-3 py-3">{order.proposedRate ?? "0"}</td>
+                        <td className="px-3 py-3">{order.week}</td>
+                        <td className="px-3 py-3">{order.planType}</td>
+                        <td className="px-3 py-3">{order.traffic}</td>
+                        <td className="px-3 py-3">{order.startLocation}</td>
+                        <td className="px-3 py-3">{order.endLocation}</td>
                         <td className="px-3 py-3">{order.startDateTime}</td>
                         <td className="px-3 py-3">{order.endDateTime}</td>
-                        <td className="px-3 py-3">{order.totalTime}</td>
-                        <td className="px-3 py-3">{order.traffic}</td>
+                        <td className="px-3 py-3">{order.day}</td>
+                        <td className="px-3 py-3">{order.kit}</td>
+                        <td className="px-3 py-3">{order.dvsRequired ?? "No"}</td>
+                        <td className="px-3 py-3">{order.region}</td>
                         <td className="px-3 py-3">{order.dutySchedule}</td>
                         <td className="px-3 py-3">{order.miles}</td>
-                        <td className="px-3 py-3">{order.admName}</td>
-                        <td className="px-3 py-3">{order.kit}</td>
-                        <td className="px-3 py-3">{order.reason}</td>
-                        <td className="px-3 py-3">{order.requestedBy || "Blank"}</td>
+                        <td className="px-3 py-3">{order.asDirected}</td>
+                        <td className="px-3 py-3">{order.rmResponsiblePersonEmail ?? "rhc.team@royalmail.com"}</td>
                       </tr>
                     ))
                   )}
