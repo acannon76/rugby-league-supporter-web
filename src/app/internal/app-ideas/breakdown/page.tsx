@@ -340,7 +340,7 @@ export default function BreakdownPage() {
                 onClick={submitBreakdownReport}
                 className="mt-6 w-full rounded-full bg-[#c4002f] px-5 py-5 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm transition hover:bg-[#920022]"
               >
-                Send Breakdown Report To Office
+                Send Breakdown Report To Office / CPC
               </button>
 
               {submitted && (
