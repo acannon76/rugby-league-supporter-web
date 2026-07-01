@@ -248,7 +248,7 @@ export default function CommsHistoryPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1500px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[2600px] border-collapse text-left text-sm">
                 <thead className="bg-white text-xs uppercase tracking-[0.12em] text-[#6b7280]">
                   <tr>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Source</th>
@@ -265,9 +265,9 @@ export default function CommsHistoryPage() {
                     <th className="border-b border-[#d9dee6] px-4 py-3">Reply Priority</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Actioned At</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Final Status</th>
-                    <th className="border-b border-[#d9dee6] px-4 py-3">Details</th>
-                    <th className="border-b border-[#d9dee6] px-4 py-3">Driver Message</th>
-                    <th className="border-b border-[#d9dee6] px-4 py-3">Full Message Thread</th>
+                    <th className="min-w-[440px] border-b border-[#d9dee6] px-4 py-3">Details</th>
+                    <th className="min-w-[420px] border-b border-[#d9dee6] px-4 py-3">Driver Message</th>
+                    <th className="min-w-[640px] border-b border-[#d9dee6] px-4 py-3">Full Message Thread</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -288,9 +288,9 @@ export default function CommsHistoryPage() {
                         <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#374151]">{record.replyPriority || record.priority}</td>
                         <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#374151]">{record.actionedAt}</td>
                         <td className="border-b border-[#edf0f4] px-4 py-3"><span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-black text-[#157347]">{record.finalStatus}</span></td>
-                        <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#4b5563]">{record.detailSummary || record.summary}</td>
-                        <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#4b5563]">{record.driverMessage}</td>
-                        <td className="whitespace-pre-line border-b border-[#edf0f4] px-4 py-3 font-bold text-[#4b5563]">{record.messageThreadSummary || buildThreadSummary(record)}</td>
+                        <td className="min-w-[440px] whitespace-normal border-b border-[#edf0f4] px-4 py-3 font-bold leading-6 text-[#4b5563]">{record.detailSummary || record.summary}</td>
+                        <td className="min-w-[420px] whitespace-normal border-b border-[#edf0f4] px-4 py-3 font-bold leading-6 text-[#4b5563]">{record.driverMessage}</td>
+                        <td className="min-w-[640px] whitespace-pre-line border-b border-[#edf0f4] px-4 py-3 font-bold leading-6 text-[#4b5563]">{record.messageThreadSummary || buildThreadSummary(record)}</td>
                       </tr>
                     ))
                   ) : (
