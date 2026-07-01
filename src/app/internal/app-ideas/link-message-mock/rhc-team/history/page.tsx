@@ -49,6 +49,36 @@ type RhcOrder = {
   submittedAt?: string;
 };
 
+const rhcJobTemplateColumns: {
+  header: string;
+  value: (order: RhcOrder) => string | number | boolean | undefined;
+}[] = [
+  { header: "(Do Not Modify) Job", value: (order) => order.job },
+  { header: "(Do Not Modify) Row Checksum", value: (order) => order.rowChecksum },
+  { header: "(Do Not Modify) Modified On", value: (order) => order.modifiedOn },
+  { header: "Duty Number", value: (order) => order.duty },
+  { header: "JobTier", value: (order) => order.jobTier ?? order.tier },
+  { header: "Account", value: (order) => order.account ?? order.billingCentre },
+  { header: "Proposed Rate Category For Preferred Haulier", value: (order) => order.proposedRateCategory ?? "Other" },
+  { header: "Proposed Rate For Preferred Haulier", value: (order) => order.proposedRate ?? "0" },
+  { header: "Week Number", value: (order) => order.week },
+  { header: "Plan Type", value: (order) => order.planType },
+  { header: "Traffic", value: (order) => order.traffic },
+  { header: "Start Location", value: (order) => order.startLocation },
+  { header: "Final Destination", value: (order) => order.endLocation },
+  { header: "Start Date And Time", value: (order) => order.startDateTime },
+  { header: "End Time", value: (order) => order.endDateTime },
+  { header: "Day Of Week", value: (order) => order.day },
+  { header: "Kit", value: (order) => order.kit },
+  { header: "DVS Required", value: (order) => order.dvsRequired ?? "No" },
+  { header: "Region", value: (order) => order.region },
+  { header: "Duty Schedule", value: (order) => order.dutySchedule },
+  { header: "Miles", value: (order) => order.miles },
+  { header: "As Directed/Flex Time", value: (order) => order.asDirected },
+  { header: "RMResponsiblePersonEmail", value: (order) => order.rmResponsiblePersonEmail ?? "rhc.team@royalmail.com" },
+];
+
+
 const sidebarItems = [
   { label: "Duty Execution", icon: "⚙", href: "/internal/app-ideas/link-message-mock" },
   { label: "Planning", icon: "⚙", href: "/internal/app-ideas/link-message-mock" },
@@ -69,25 +99,42 @@ const sidebarItems = [
 export default function RhcTeamHistoryPage() {
   const [orders, setOrders] = useState<RhcOrder[]>([]);
   const [searchText, setSearchText] = useState("");
+  const [weekFilter, setWeekFilter] = useState("all");
+  const [dayFilter, setDayFilter] = useState("all");
+  const [planTypeFilter, setPlanTypeFilter] = useState("all");
 
   useEffect(() => {
     setOrders(readOrdersFromStorage());
   }, []);
 
+  const weekOptions = useMemo(() => Array.from(new Set(orders.map((order) => String(order.week)))).sort((a, b) => Number(a) - Number(b)), [orders]);
+  const dayOptions = useMemo(() => Array.from(new Set(orders.map((order) => order.day))).sort(), [orders]);
+  const planTypeOptions = useMemo(() => Array.from(new Set(orders.map((order) => order.planType))).sort(), [orders]);
+
   const filteredOrders = useMemo(() => {
     const search = searchText.trim().toLowerCase();
 
-    if (!search) {
-      return orders;
-    }
+    return orders.filter((order) => {
+      const matchesSearch =
+        !search ||
+        order.duty.toLowerCase().includes(search) ||
+        order.admName.toLowerCase().includes(search) ||
+        order.reason.toLowerCase().includes(search) ||
+        order.traffic.toLowerCase().includes(search) ||
+        order.day.toLowerCase().includes(search) ||
+        String(order.week).includes(search);
 
-    return orders.filter((order) =>
-      order.duty.toLowerCase().includes(search) ||
-      order.admName.toLowerCase().includes(search) ||
-      order.reason.toLowerCase().includes(search) ||
-      order.traffic.toLowerCase().includes(search),
-    );
-  }, [orders, searchText]);
+      const matchesWeek = weekFilter === "all" || String(order.week) === weekFilter;
+      const matchesDay = dayFilter === "all" || order.day === dayFilter;
+      const matchesPlanType = planTypeFilter === "all" || order.planType === planTypeFilter;
+
+      return matchesSearch && matchesWeek && matchesDay && matchesPlanType;
+    });
+  }, [orders, searchText, weekFilter, dayFilter, planTypeFilter]);
+
+  function exportHistory() {
+    exportOrdersToExcel(filteredOrders, "RHC-Team-History-Export");
+  }
 
   function clearHistory() {
     window.localStorage.removeItem(RHC_HISTORY_STORAGE_KEY);
@@ -125,6 +172,13 @@ export default function RhcTeamHistoryPage() {
                 </Link>
                 <button
                   type="button"
+                  onClick={exportHistory}
+                  className="rounded-lg border border-[#111827] bg-white px-4 py-2 text-sm font-black text-[#111827] transition hover:bg-[#f3f4f6]"
+                >
+                  Export To Excel
+                </button>
+                <button
+                  type="button"
                   onClick={clearHistory}
                   className="rounded-lg border border-[#e40000] bg-white px-4 py-2 text-sm font-black text-[#e40000] transition hover:bg-[#fff0f0]"
                 >
@@ -144,25 +198,32 @@ export default function RhcTeamHistoryPage() {
                 </p>
               </div>
 
-              <label className="block w-full lg:max-w-[380px]">
-                <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">Search history</span>
-                <input
-                  value={searchText}
-                  onChange={(event) => setSearchText(event.target.value)}
-                  placeholder="Search duty, ADM, reason or traffic"
-                  className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
-                />
-              </label>
+              <div className="grid w-full grid-cols-1 gap-3 lg:max-w-[920px] lg:grid-cols-4">
+                <label className="block">
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">Search history</span>
+                  <input
+                    value={searchText}
+                    onChange={(event) => setSearchText(event.target.value)}
+                    placeholder="Duty, ADM, reason or traffic"
+                    className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
+                  />
+                </label>
+
+                <FilterSelect label="Week Number" value={weekFilter} onChange={setWeekFilter} options={weekOptions} />
+                <FilterSelect label="Day Of Week" value={dayFilter} onChange={setDayFilter} options={dayOptions} />
+                <FilterSelect label="Plan Type" value={planTypeFilter} onChange={setPlanTypeFilter} options={planTypeOptions} />
+              </div>
             </div>
 
+            <p className="mt-4 rounded-lg border border-[#f59e0b] bg-[#fffbeb] px-3 py-2 text-xs font-black text-[#92400e]">
+              Warning: RHC Team History is stored locally in this browser for mockup use and will only stay on the system for 4 weeks.
+            </p>
+
             <div className="mt-4 overflow-x-auto rounded-lg border border-[#d9dee6]">
-              <table className="min-w-[2800px] w-full border-collapse text-left text-sm">
+              <table className="min-w-[2300px] w-full border-collapse text-left text-sm">
                 <thead className="bg-[#f8fafc] text-xs font-black uppercase tracking-[0.1em] text-[#6b7280]">
                   <tr>
                     <th className="px-3 py-3">Sent</th>
-                    <th className="px-3 py-3">(Do Not Modify) Job</th>
-                    <th className="px-3 py-3">(Do Not Modify) Row Checksum</th>
-                    <th className="px-3 py-3">(Do Not Modify) Modified On</th>
                     <th className="px-3 py-3">Duty Number</th>
                     <th className="px-3 py-3">JobTier</th>
                     <th className="px-3 py-3">Account</th>
@@ -188,7 +249,7 @@ export default function RhcTeamHistoryPage() {
                 <tbody>
                   {filteredOrders.length === 0 ? (
                     <tr>
-                      <td colSpan={24} className="px-3 py-8 text-center text-sm font-bold text-[#6b7280]">
+                      <td colSpan={21} className="px-3 py-8 text-center text-sm font-bold text-[#6b7280]">
                         No RHC Team history records found.
                       </td>
                     </tr>
@@ -196,9 +257,6 @@ export default function RhcTeamHistoryPage() {
                     filteredOrders.map((order) => (
                       <tr key={`${order.id}-${order.submittedAt ?? "saved"}`} className="border-t border-[#d9dee6] font-bold text-[#374151]">
                         <td className="px-3 py-3">{formatSubmittedAt(order.submittedAt)}</td>
-                        <td className="px-3 py-3">{order.job ?? ""}</td>
-                        <td className="px-3 py-3">{order.rowChecksum ?? ""}</td>
-                        <td className="px-3 py-3">{order.modifiedOn ?? ""}</td>
                         <td className="px-3 py-3 font-black text-[#111827]">{order.duty}</td>
                         <td className="px-3 py-3">{order.jobTier ?? order.tier}</td>
                         <td className="px-3 py-3">{order.account ?? order.billingCentre}</td>
@@ -298,6 +356,72 @@ function OfficeSidebar() {
   );
 }
 
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
+      >
+        <option value="all">All</option>
+        {options.map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function exportOrdersToExcel(orders: RhcOrder[], fileName: string) {
+  if (typeof window === "undefined" || orders.length === 0) {
+    return;
+  }
+
+  const headerHtml = rhcJobTemplateColumns
+    .map((column) => `<th>${escapeExcelCell(column.header)}</th>`)
+    .join("");
+
+  const rowsHtml = orders
+    .map((order) =>
+      `<tr>${rhcJobTemplateColumns
+        .map((column) => `<td>${escapeExcelCell(column.value(order))}</td>`)
+        .join("")}</tr>`,
+    )
+    .join("");
+
+  const html = `<!doctype html><html><head><meta charset="utf-8" /></head><body><table border="1"><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+  const blob = new Blob(["\ufeff", html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${fileName}-${new Date().toISOString().slice(0, 10)}.xls`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
+function escapeExcelCell(value: string | number | boolean | undefined) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function readOrdersFromStorage(): RhcOrder[] {
   if (typeof window === "undefined") {
     return [];
@@ -305,7 +429,22 @@ function readOrdersFromStorage(): RhcOrder[] {
 
   try {
     const rawHistory = window.localStorage.getItem(RHC_HISTORY_STORAGE_KEY);
-    return rawHistory ? (JSON.parse(rawHistory) as RhcOrder[]) : [];
+    const orders = rawHistory ? (JSON.parse(rawHistory) as RhcOrder[]) : [];
+    const fourWeeksAgo = Date.now() - 28 * 24 * 60 * 60 * 1000;
+    const retainedOrders = orders.filter((order) => {
+      if (!order.submittedAt) {
+        return true;
+      }
+
+      const submittedTime = new Date(order.submittedAt).getTime();
+      return Number.isNaN(submittedTime) || submittedTime >= fourWeeksAgo;
+    });
+
+    if (retainedOrders.length !== orders.length) {
+      window.localStorage.setItem(RHC_HISTORY_STORAGE_KEY, JSON.stringify(retainedOrders));
+    }
+
+    return retainedOrders;
   } catch {
     return [];
   }

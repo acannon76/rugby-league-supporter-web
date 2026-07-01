@@ -3137,6 +3137,36 @@ type RhcOrder = {
   submittedAt?: string;
 };
 
+const rhcJobTemplateColumns: {
+  header: string;
+  value: (order: RhcOrder) => string | number | boolean | undefined;
+}[] = [
+  { header: "(Do Not Modify) Job", value: (order) => order.job },
+  { header: "(Do Not Modify) Row Checksum", value: (order) => order.rowChecksum },
+  { header: "(Do Not Modify) Modified On", value: (order) => order.modifiedOn },
+  { header: "Duty Number", value: (order) => order.duty },
+  { header: "JobTier", value: (order) => order.jobTier },
+  { header: "Account", value: (order) => order.account },
+  { header: "Proposed Rate Category For Preferred Haulier", value: (order) => order.proposedRateCategory },
+  { header: "Proposed Rate For Preferred Haulier", value: (order) => order.proposedRate },
+  { header: "Week Number", value: (order) => order.week },
+  { header: "Plan Type", value: (order) => order.planType },
+  { header: "Traffic", value: (order) => order.traffic },
+  { header: "Start Location", value: (order) => order.startLocation },
+  { header: "Final Destination", value: (order) => order.endLocation },
+  { header: "Start Date And Time", value: (order) => order.startDateTime },
+  { header: "End Time", value: (order) => order.endDateTime },
+  { header: "Day Of Week", value: (order) => order.day },
+  { header: "Kit", value: (order) => order.kit },
+  { header: "DVS Required", value: (order) => order.dvsRequired },
+  { header: "Region", value: (order) => order.region },
+  { header: "Duty Schedule", value: (order) => order.dutySchedule },
+  { header: "Miles", value: (order) => order.miles },
+  { header: "As Directed/Flex Time", value: (order) => order.asDirected },
+  { header: "RMResponsiblePersonEmail", value: (order) => order.rmResponsiblePersonEmail },
+];
+
+
 export default function RhcTeamPage() {
   const [selectedDuty, setSelectedDuty] = useState(() => defaultDuty?.duty ?? "");
   const [selectedDate, setSelectedDate] = useState(DEFAULT_MOCK_DATE);
@@ -3162,7 +3192,8 @@ export default function RhcTeamPage() {
   const [selectedHoldingIds, setSelectedHoldingIds] = useState<string[]>([]);
   const [confirmation, setConfirmation] = useState("");
   const [rslFileName, setRslFileName] = useState("");
-  const [manifestFileName, setManifestFileName] = useState("");
+  const [manifestFileNames, setManifestFileNames] = useState<string[]>([]);
+  const [successPopup, setSuccessPopup] = useState("");
 
   const duty = useMemo(
     () => dutyOptions.find((item) => item.duty === selectedDuty) ?? defaultDuty,
@@ -3258,8 +3289,15 @@ export default function RhcTeamPage() {
       return;
     }
 
-    if (!manifestFileName) {
-      setConfirmation("Upload the 318's file before sending selected requests to the RHC Team.");
+    if (manifestFileNames.length === 0) {
+      setConfirmation("Upload the 318's before sending selected requests to the RHC Team. The 318 file name must match the duty number.");
+      return;
+    }
+
+    const missing318s = selectedOrders.filter((order) => !hasMatching318File(order.duty, manifestFileNames));
+
+    if (missing318s.length > 0) {
+      setConfirmation(`318 upload mismatch: ${missing318s.map((order) => order.duty).join(", ")} need matching 318 file names before sending.`);
       return;
     }
 
@@ -3271,7 +3309,12 @@ export default function RhcTeamPage() {
     saveOrdersToHistory(submittedOrders);
     setHoldingOrders((current) => current.filter((order) => !selectedHoldingIds.includes(order.id)));
     setSelectedHoldingIds([]);
-    setConfirmation(`${submittedOrders.length} RHC request${submittedOrders.length === 1 ? "" : "s"} sent to the RHC Team and added to RHC Team History.`);
+    setSuccessPopup(`${submittedOrders.length} RHC request${submittedOrders.length === 1 ? "" : "s"} successfully sent to the RHC Team and added to RHC Team History.`);
+    setConfirmation(`${submittedOrders.length} RHC request${submittedOrders.length === 1 ? "" : "s"} sent successfully and added to RHC Team History.`);
+  }
+
+  function exportHoldingArea() {
+    exportOrdersToExcel(holdingOrders, "RHC-Holding-Area-Export");
   }
 
   return (
@@ -3504,7 +3547,7 @@ export default function RhcTeamPage() {
                   Add multiple duties here, select the ones to send, upload the 318&apos;s, then send them to the RHC Team.
                 </p>
               </div>
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(260px,360px)_auto_auto] lg:items-center">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(260px,360px)_auto_auto_auto] lg:items-center">
                 <section className="rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-4 py-3">
                   <p className="text-sm font-black text-[#111827]">Send data to</p>
                   <div className="mt-2 grid grid-cols-2 gap-3">
@@ -3519,14 +3562,24 @@ export default function RhcTeamPage() {
                   </div>
                 </section>
 
+                <button
+                  type="button"
+                  onClick={exportHoldingArea}
+                  className="rounded-lg border border-[#111827] bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-[#111827] transition hover:bg-[#f3f4f6]"
+                >
+                  Export To Excel
+                </button>
+
                 <label className="cursor-pointer rounded-lg border border-[#e40000] bg-white px-5 py-3 text-center text-sm font-black uppercase tracking-[0.12em] text-[#e40000] transition hover:bg-[#fff0f0]">
                   Upload 318&apos;s
                   <input
                     type="file"
+                    multiple
                     className="hidden"
                     onChange={(event) => {
-                      setManifestFileName(event.target.files?.[0]?.name ?? "");
-                      setConfirmation(event.target.files?.[0]?.name ? `318 file selected: ${event.target.files[0].name}` : "");
+                      const files = Array.from(event.currentTarget.files ?? []).map((file: File) => file.name);
+                      setManifestFileNames(files);
+                      setConfirmation(files.length > 0 ? `${files.length} 318 file${files.length === 1 ? "" : "s"} selected. File names must match the selected duty numbers.` : "");
                     }}
                   />
                 </label>
@@ -3541,20 +3594,21 @@ export default function RhcTeamPage() {
               </div>
             </div>
 
-            {manifestFileName && (
+            <p className="mt-3 rounded-lg border border-[#f59e0b] bg-[#fffbeb] px-3 py-2 text-xs font-black text-[#92400e]">
+              Warning: the 318&apos;s must use the same file name as the duty number before the selected request can be sent.
+            </p>
+
+            {manifestFileNames.length > 0 && (
               <p className="mt-3 rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-3 py-2 text-xs font-black text-[#6b7280]">
-                318 file uploaded: {manifestFileName}
+                318 file{manifestFileNames.length === 1 ? "" : "s"} uploaded: {manifestFileNames.join(", ")}
               </p>
             )}
 
             <div className="mt-4 overflow-x-auto rounded-lg border border-[#d9dee6]">
-              <table className="min-w-[2700px] w-full border-collapse text-left text-sm">
+              <table className="min-w-[2300px] w-full border-collapse text-left text-sm">
                 <thead className="bg-[#f8fafc] text-xs font-black uppercase tracking-[0.1em] text-[#6b7280]">
                   <tr>
                     <th className="px-3 py-3">Send</th>
-                    <th className="px-3 py-3">(Do Not Modify) Job</th>
-                    <th className="px-3 py-3">(Do Not Modify) Row Checksum</th>
-                    <th className="px-3 py-3">(Do Not Modify) Modified On</th>
                     <th className="px-3 py-3">Duty Number</th>
                     <th className="px-3 py-3">JobTier</th>
                     <th className="px-3 py-3">Account</th>
@@ -3581,7 +3635,7 @@ export default function RhcTeamPage() {
                 <tbody>
                   {holdingOrders.length === 0 ? (
                     <tr>
-                      <td colSpan={25} className="px-3 py-8 text-center text-sm font-bold text-[#6b7280]">
+                      <td colSpan={22} className="px-3 py-8 text-center text-sm font-bold text-[#6b7280]">
                         No duties in the holding area yet.
                       </td>
                     </tr>
@@ -3596,9 +3650,6 @@ export default function RhcTeamPage() {
                             className="h-4 w-4"
                           />
                         </td>
-                        <td className="px-3 py-3">{order.job}</td>
-                        <td className="px-3 py-3">{order.rowChecksum}</td>
-                        <td className="px-3 py-3">{order.modifiedOn}</td>
                         <td className="px-3 py-3 font-black text-[#111827]">{order.duty}</td>
                         <td className="px-3 py-3">{order.jobTier}</td>
                         <td className="px-3 py-3">{order.account}</td>
@@ -3637,6 +3688,23 @@ export default function RhcTeamPage() {
           </section>
         </section>
       </div>
+
+      {successPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <section className="w-full max-w-lg rounded-2xl border-2 border-[#157347] bg-white p-6 shadow-2xl">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#157347]">RHC Team update successful</p>
+            <h2 className="mt-3 text-2xl font-black text-[#111827]">Requests sent successfully</h2>
+            <p className="mt-3 text-sm font-bold leading-6 text-[#374151]">{successPopup}</p>
+            <button
+              type="button"
+              onClick={() => setSuccessPopup("")}
+              className="mt-5 w-full rounded-lg bg-[#157347] px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#0f5f38]"
+            >
+              Close
+            </button>
+          </section>
+        </div>
+      )}
     </main>
   );
 }
@@ -3809,6 +3877,57 @@ function DataPackageCard({
   );
 }
 
+
+function hasMatching318File(duty: string, fileNames: string[]) {
+  const dutyName = normalise318FileName(duty);
+
+  return fileNames.some((fileName) => normalise318FileName(fileName) === dutyName);
+}
+
+function normalise318FileName(value: string) {
+  return value
+    .replace(/\.[^/.]+$/, "")
+    .trim()
+    .toLowerCase();
+}
+
+function exportOrdersToExcel(orders: RhcOrder[], fileName: string) {
+  if (typeof window === "undefined" || orders.length === 0) {
+    return;
+  }
+
+  const headerHtml = rhcJobTemplateColumns
+    .map((column) => `<th>${escapeExcelCell(column.header)}</th>`)
+    .join("");
+
+  const rowsHtml = orders
+    .map((order) =>
+      `<tr>${rhcJobTemplateColumns
+        .map((column) => `<td>${escapeExcelCell(column.value(order))}</td>`)
+        .join("")}</tr>`,
+    )
+    .join("");
+
+  const html = `<!doctype html><html><head><meta charset="utf-8" /></head><body><table border="1"><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+  const blob = new Blob(["\ufeff", html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${fileName}-${formatDateForInput(new Date())}.xls`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
+function escapeExcelCell(value: string | number | boolean | undefined) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function buildOrder({
   duty,
   selectedDate,
@@ -3918,7 +4037,22 @@ function readOrdersFromStorage(): RhcOrder[] {
 
   try {
     const rawHistory = window.localStorage.getItem(RHC_HISTORY_STORAGE_KEY);
-    return rawHistory ? (JSON.parse(rawHistory) as RhcOrder[]) : [];
+    const orders = rawHistory ? (JSON.parse(rawHistory) as RhcOrder[]) : [];
+    const fourWeeksAgo = Date.now() - 28 * 24 * 60 * 60 * 1000;
+    const retainedOrders = orders.filter((order) => {
+      if (!order.submittedAt) {
+        return true;
+      }
+
+      const submittedTime = new Date(order.submittedAt).getTime();
+      return Number.isNaN(submittedTime) || submittedTime >= fourWeeksAgo;
+    });
+
+    if (retainedOrders.length !== orders.length) {
+      window.localStorage.setItem(RHC_HISTORY_STORAGE_KEY, JSON.stringify(retainedOrders));
+    }
+
+    return retainedOrders;
   } catch {
     return [];
   }
