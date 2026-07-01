@@ -54,7 +54,7 @@ const appButtons: AppButton[] = [
     isMessaging: true,
   },
   {
-    title: "RTC",
+    title: "Report RTC",
     text: "Report a road traffic collision, incident, damage or breakdown immediately.",
     href: "/internal/app-ideas/rtc",
     icon: "!",
