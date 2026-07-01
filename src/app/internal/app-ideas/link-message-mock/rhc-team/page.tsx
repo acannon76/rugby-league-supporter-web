@@ -13,22 +13,6 @@ type DutyOption = {
   crossesMidnight: boolean;
 };
 
-const sidebarItems = [
-  { label: "Duty Execution", icon: "⚙", href: "/internal/app-ideas/link-message-mock" },
-  { label: "Planning", icon: "⚙", href: "/internal/app-ideas/link-message-mock" },
-  { label: "Vehicle view", icon: "🚛", href: "/internal/app-ideas/link-message-mock" },
-  { label: "Trailer view", icon: "▰", href: "/internal/app-ideas/link-message-mock" },
-  { label: "Fleet view", icon: "▱", href: "/internal/app-ideas/link-message-mock" },
-  {
-    label: "Comms",
-    icon: "💬",
-    href: "/internal/app-ideas/link-message-mock/comms",
-    alertCount: 4,
-  },
-  { label: "Debrief", icon: "🧾", href: "/internal/app-ideas/link-message-mock/debrief" },
-  { label: "RHC Team", icon: "RHC", href: "/internal/app-ideas/link-message-mock/rhc-team", active: true },
-];
-
 const rawDutyOptions = [
   {
     "duty": "CONNW3174SUN",
@@ -3035,10 +3019,15 @@ const dutyOptions: DutyOption[] = rawDutyOptions.map((item) => {
   };
 });
 
-const DEFAULT_MOCK_DATE = "2026-07-01";
+
+const RHC_HISTORY_STORAGE_KEY = "mock-rhc-team-history";
+const DEFAULT_MOCK_DATE = getTodayDateInput();
 const WEEK_ONE_START_DATE = "2026-03-30";
 const defaultDuty = dutyOptions.find((item) => item.duty === "TNWAMZ02") ?? dutyOptions[0];
 
+const orderTypeOptions = ["Order", "Amend", "Cancel"];
+const rmPfwOptions = ["RM", "PFW"];
+const billingCentreOptions = ["BT", "BAU", "Central"];
 const planTypeOptions = ["BAU", "BT", "Sprinter"];
 const tierOptions = ["Tier 1", "Tier 2", "Tier 3", "Tier 4"];
 const admOptions = ["John Smith", "Peter Jones", "Sarah Jane"];
@@ -3054,23 +3043,87 @@ const dutyScheduleOptions = [
   "NWH-SWDC-NWH",
 ];
 
+const sidebarItems = [
+  { label: "Duty Execution", icon: "⚙", href: "/internal/app-ideas/link-message-mock" },
+  { label: "Planning", icon: "⚙", href: "/internal/app-ideas/link-message-mock" },
+  { label: "Vehicle view", icon: "🚛", href: "/internal/app-ideas/link-message-mock" },
+  { label: "Trailer view", icon: "▰", href: "/internal/app-ideas/link-message-mock" },
+  { label: "Fleet view", icon: "▱", href: "/internal/app-ideas/link-message-mock" },
+  {
+    label: "Comms",
+    icon: "💬",
+    href: "/internal/app-ideas/link-message-mock/comms",
+    alertCount: 4,
+  },
+  { label: "Debrief", icon: "🧾", href: "/internal/app-ideas/link-message-mock/debrief" },
+  { label: "RHC Team", icon: "RHC", href: "/internal/app-ideas/link-message-mock/rhc-team", active: true },
+  { label: "RHC History", icon: "HIS", href: "/internal/app-ideas/link-message-mock/rhc-team/history" },
+];
+
+type RhcOrder = {
+  id: string;
+  orderType: string;
+  duty: string;
+  date: string;
+  day: string;
+  week: number;
+  start: string;
+  finish: string;
+  totalTime: string;
+  startDateTime: string;
+  endDateTime: string;
+  startLocation: string;
+  endLocation: string;
+  traffic: string;
+  planType: string;
+  dutySchedule: string;
+  miles: number;
+  asDirected: string;
+  admName: string;
+  rmPfw: string;
+  requestedBy: string;
+  billingCentre: string;
+  siteContactNumber: string;
+  primaryReason: string;
+  secondReason: string;
+  region: string;
+  tier: string;
+  kit: string;
+  reason: string;
+  required: string;
+  notes: string;
+  sendPortal: boolean;
+  send318: boolean;
+  submittedAt?: string;
+};
+
 export default function RhcTeamPage() {
   const [selectedDuty, setSelectedDuty] = useState(() => defaultDuty?.duty ?? "");
   const [selectedDate, setSelectedDate] = useState(DEFAULT_MOCK_DATE);
   const [dutySearch, setDutySearch] = useState("");
   const [sendPortal, setSendPortal] = useState(true);
   const [send318, setSend318] = useState(true);
+  const [orderType, setOrderType] = useState(orderTypeOptions[0]);
+  const [admName, setAdmName] = useState(admOptions[0]);
+  const [rmPfw, setRmPfw] = useState(rmPfwOptions[0]);
+  const [requestedBy, setRequestedBy] = useState("");
+  const [billingCentre, setBillingCentre] = useState(billingCentreOptions[0]);
+  const [siteContactNumber, setSiteContactNumber] = useState("02890 846243 / 0345 266 1060");
+  const [primaryReason, setPrimaryReason] = useState(reasonOptions[1]);
+  const [secondReason, setSecondReason] = useState(reasonOptions[1]);
+  const [region, setRegion] = useState("North West");
   const [planType, setPlanType] = useState(planTypeOptions[0]);
   const [required, setRequired] = useState("RHC cover required for selected LINK duty.");
-  const [region, setRegion] = useState("North West");
   const [tier, setTier] = useState(tierOptions[0]);
-  const [admName, setAdmName] = useState(admOptions[0]);
-  const [requestedBy, setRequestedBy] = useState("");
   const [kit, setKit] = useState(kitOptions[0]);
   const [coverReason, setCoverReason] = useState(reasonOptions[0]);
   const [dutySchedule, setDutySchedule] = useState(dutyScheduleOptions[0]);
   const [notes, setNotes] = useState("Order Road Haulage Contractor from LINK duty selection.");
+  const [holdingOrders, setHoldingOrders] = useState<RhcOrder[]>([]);
+  const [selectedHoldingIds, setSelectedHoldingIds] = useState<string[]>([]);
   const [confirmation, setConfirmation] = useState("");
+  const [rslFileName, setRslFileName] = useState("");
+  const [manifestFileName, setManifestFileName] = useState("");
 
   const duty = useMemo(
     () => dutyOptions.find((item) => item.duty === selectedDuty) ?? defaultDuty,
@@ -3108,24 +3161,73 @@ export default function RhcTeamPage() {
   const endDateTime = formatDateTime(selectedDate, duty.finish, duty.crossesMidnight);
   const mockMiles = seededRange(`${duty.duty}-${selectedDate}-miles`, 100, 300);
   const asDirected = seededTime(`${duty.duty}-${selectedDate}-as-directed`, 0, 360);
+  const currentOrder = buildOrder({
+    duty,
+    selectedDate,
+    orderType,
+    admName,
+    rmPfw,
+    requestedBy,
+    billingCentre,
+    siteContactNumber,
+    primaryReason,
+    secondReason,
+    region,
+    planType,
+    required,
+    tier,
+    kit,
+    coverReason,
+    dutySchedule,
+    notes,
+    sendPortal,
+    send318,
+  });
 
   function chooseDuty(nextDuty: string) {
     setSelectedDuty(nextDuty);
     setConfirmation("");
   }
 
-  function sendMockOrder() {
-    const destinations = [sendPortal ? "RHC Portal" : null, send318 ? "318 Data" : null]
-      .filter(Boolean)
-      .join(" and ");
+  function addToHoldingArea() {
+    const nextOrder = {
+      ...currentOrder,
+      id: `${currentOrder.duty}-${currentOrder.date}-${Date.now()}`,
+    };
 
-    setConfirmation(
-      `${duty.duty} has been sent to ${destinations || "the selected output"}. Start: ${startDateTime}. End: ${endDateTime}. Total: ${duty.totalTime}.`,
+    setHoldingOrders((current) => [...current, nextOrder]);
+    setSelectedHoldingIds((current) => [...current, nextOrder.id]);
+    setConfirmation(`${nextOrder.duty} added to the holding area. Add another duty or send selected requests using the master button.`);
+  }
+
+  function toggleHoldingSelection(id: string) {
+    setSelectedHoldingIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
     );
   }
 
-  function confirmUpload(uploadType: string) {
-    setConfirmation(`${uploadType} completed for ${duty.duty} on ${selectedDateLabel}.`);
+  function removeHoldingOrder(id: string) {
+    setHoldingOrders((current) => current.filter((item) => item.id !== id));
+    setSelectedHoldingIds((current) => current.filter((item) => item !== id));
+  }
+
+  function sendSelectedOrders() {
+    const selectedOrders = holdingOrders.filter((order) => selectedHoldingIds.includes(order.id));
+
+    if (selectedOrders.length === 0) {
+      setConfirmation("Select at least one duty in the holding area before sending to the RHC Team.");
+      return;
+    }
+
+    const submittedOrders = selectedOrders.map((order) => ({
+      ...order,
+      submittedAt: new Date().toISOString(),
+    }));
+
+    saveOrdersToHistory(submittedOrders);
+    setHoldingOrders((current) => current.filter((order) => !selectedHoldingIds.includes(order.id)));
+    setSelectedHoldingIds([]);
+    setConfirmation(`${submittedOrders.length} RHC request${submittedOrders.length === 1 ? "" : "s"} sent to the RHC Team and added to RHC Team History.`);
   }
 
   return (
@@ -3145,27 +3247,65 @@ export default function RhcTeamPage() {
                 <div>
                   <h1 className="text-2xl font-black text-[#111827]">RHC Team Order Dashboard</h1>
                   <p className="text-sm font-bold text-[#6b7280]">
-                    Select a LINK duty and send order data to the RHC Portal and 318 Data.
+                    Build one or more RHC requests, hold them for review, then send selected requests to the RHC Team.
                   </p>
                 </div>
               </div>
 
-              <Link
-                href="/internal/app-ideas/link-message-mock"
-                className="rounded-lg border border-[#ccd5e2] bg-white px-4 py-2 text-sm font-black text-[#4b5563] no-underline transition hover:border-[#e40000]"
-              >
-                ← Back to Duty Execution
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/internal/app-ideas/link-message-mock/rhc-team/history"
+                  className="rounded-lg border border-[#ccd5e2] bg-white px-4 py-2 text-sm font-black text-[#4b5563] no-underline transition hover:border-[#e40000]"
+                >
+                  RHC Team History
+                </Link>
+                <Link
+                  href="/internal/app-ideas/link-message-mock"
+                  className="rounded-lg border border-[#ccd5e2] bg-white px-4 py-2 text-sm font-black text-[#4b5563] no-underline transition hover:border-[#e40000]"
+                >
+                  ← Back to Duty Execution
+                </Link>
+              </div>
             </div>
           </section>
 
-          <section className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[0.86fr_1.14fr]">
+          <section className="mt-4 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-end xl:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 1</p>
+                <h2 className="mt-2 text-2xl font-black text-[#111827]">Request details</h2>
+                <p className="mt-1 text-sm font-bold text-[#6b7280]">
+                  These are the common request fields that should not need changing for every duty.
+                </p>
+              </div>
+              <div className="rounded-lg bg-[#fff0f0] px-4 py-3 text-sm font-black text-[#e40000]">
+                Today {todayLabel} • Week {weekNumber}
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <SelectField label="Order / Amend / Cancel" value={orderType} onChange={setOrderType} options={orderTypeOptions} />
+              <SelectField label="ADM" value={admName} onChange={setAdmName} options={admOptions} />
+              <SelectField label="RM / PFW" value={rmPfw} onChange={setRmPfw} options={rmPfwOptions} />
+              <TextField label="Requested by" value={requestedBy} onChange={setRequestedBy} placeholder="Planner's name" />
+              <SelectField label="Billing centre" value={billingCentre} onChange={setBillingCentre} options={billingCentreOptions} />
+              <TextField label="Site contact number" value={siteContactNumber} onChange={setSiteContactNumber} />
+              <SelectField label="Primary reason" value={primaryReason} onChange={setPrimaryReason} options={reasonOptions} />
+              <SelectField label="Second reason" value={secondReason} onChange={setSecondReason} options={reasonOptions} />
+              <TextField label="Region" value={region} onChange={setRegion} />
+              <SelectField label="Tier" value={tier} onChange={setTier} options={tierOptions} />
+              <SelectField label="Plan type" value={planType} onChange={setPlanType} options={planTypeOptions} />
+              <SelectField label="Kit" value={kit} onChange={setKit} options={kitOptions} />
+            </div>
+          </section>
+
+          <section className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[0.82fr_1.18fr]">
             <aside className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 1</p>
-              <h2 className="mt-2 text-2xl font-black text-[#111827]">Choose duty and order details</h2>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 2</p>
+              <h2 className="mt-2 text-2xl font-black text-[#111827]">Choose duty</h2>
 
               <label className="mt-5 block">
-                <span className="text-sm font-black text-[#111827]">Search duty</span>
+                <span className="text-sm font-black text-[#111827]">Search duty number</span>
                 <input
                   value={dutySearch}
                   onChange={(event) => {
@@ -3181,7 +3321,7 @@ export default function RhcTeamPage() {
                       setSelectedDuty(exactMatch.duty);
                     }
                   }}
-                  placeholder="Example: NWH007 or WAVOC016"
+                  placeholder="Example: NWH634 or WAVOC016"
                   className="mt-2 h-12 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
                 />
               </label>
@@ -3223,40 +3363,62 @@ export default function RhcTeamPage() {
                 </p>
               </label>
 
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <SelectField label="Reason for RHC cover" value={coverReason} onChange={setCoverReason} options={reasonOptions} />
+                <SelectField label="Duty schedule" value={dutySchedule} onChange={setDutySchedule} options={dutyScheduleOptions} />
+              </div>
+
+              <label className="mt-4 block">
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">What is required</span>
+                <textarea
+                  value={required}
+                  onChange={(event) => setRequired(event.target.value)}
+                  className="mt-2 min-h-[86px] w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+                />
+              </label>
+
               <section className="mt-5 rounded-lg border border-[#d9dee6] bg-[#f8fafc] p-4">
-                <p className="text-sm font-black text-[#111827]">RHC cover details</p>
-
-                <label className="mt-4 block">
-                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">What is required</span>
-                  <textarea
-                    value={required}
-                    onChange={(event) => setRequired(event.target.value)}
-                    className="mt-2 min-h-[86px] w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
-                  />
-                </label>
-
-                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <TextField label="Region" value={region} onChange={setRegion} />
-                  <SelectField label="Tier" value={tier} onChange={setTier} options={tierOptions} />
-                  <SelectField label="ADM Name" value={admName} onChange={setAdmName} options={admOptions} />
-                  <TextField label="Requested by" value={requestedBy} onChange={setRequestedBy} placeholder="Blank for mock input" />
-                  <SelectField label="Kit" value={kit} onChange={setKit} options={kitOptions} />
-                  <SelectField label="Reason for RHC cover" value={coverReason} onChange={setCoverReason} options={reasonOptions} />
-                  <SelectField label="Plan Type" value={planType} onChange={setPlanType} options={planTypeOptions} />
-                  <SelectField label="Duty Schedule" value={dutySchedule} onChange={setDutySchedule} options={dutyScheduleOptions} />
+                <p className="text-sm font-black text-[#111827]">Files and output</p>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="cursor-pointer rounded-lg border border-[#e40000] bg-white px-4 py-3 text-center text-sm font-black uppercase tracking-[0.12em] text-[#e40000] transition hover:bg-[#fff0f0]">
+                    RSL Upload
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(event) => {
+                        setRslFileName(event.target.files?.[0]?.name ?? "");
+                        setConfirmation(event.target.files?.[0]?.name ? `RSL file selected: ${event.target.files[0].name}` : "");
+                      }}
+                    />
+                  </label>
+                  <label className="cursor-pointer rounded-lg border border-[#e40000] bg-white px-4 py-3 text-center text-sm font-black uppercase tracking-[0.12em] text-[#e40000] transition hover:bg-[#fff0f0]">
+                    Upload 318&apos;s
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(event) => {
+                        setManifestFileName(event.target.files?.[0]?.name ?? "");
+                        setConfirmation(event.target.files?.[0]?.name ? `318 file selected: ${event.target.files[0].name}` : "");
+                      }}
+                    />
+                  </label>
                 </div>
-              </section>
-
-              <section className="mt-5 rounded-lg border border-[#d9dee6] bg-[#f8fafc] p-4">
-                <p className="text-sm font-black text-[#111827]">Send data to</p>
-                <label className="mt-3 flex items-center gap-2 text-sm font-bold text-[#374151]">
-                  <input checked={sendPortal} onChange={(event) => setSendPortal(event.target.checked)} type="checkbox" className="h-4 w-4" />
-                  RHC Portal
-                </label>
-                <label className="mt-3 flex items-center gap-2 text-sm font-bold text-[#374151]">
-                  <input checked={send318} onChange={(event) => setSend318(event.target.checked)} type="checkbox" className="h-4 w-4" />
-                  318 Data
-                </label>
+                {(rslFileName || manifestFileName) && (
+                  <div className="mt-3 space-y-1 text-xs font-black text-[#6b7280]">
+                    {rslFileName ? <p>RSL: {rslFileName}</p> : null}
+                    {manifestFileName ? <p>318: {manifestFileName}</p> : null}
+                  </div>
+                )}
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="flex items-center gap-2 text-sm font-bold text-[#374151]">
+                    <input checked={sendPortal} onChange={(event) => setSendPortal(event.target.checked)} type="checkbox" className="h-4 w-4" />
+                    RHC Portal
+                  </label>
+                  <label className="flex items-center gap-2 text-sm font-bold text-[#374151]">
+                    <input checked={send318} onChange={(event) => setSend318(event.target.checked)} type="checkbox" className="h-4 w-4" />
+                    318 Data
+                  </label>
+                </div>
               </section>
 
               <label className="mt-4 block">
@@ -3264,33 +3426,16 @@ export default function RhcTeamPage() {
                 <textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
-                  className="mt-2 min-h-[96px] w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+                  className="mt-2 min-h-[86px] w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
                 />
               </label>
 
-              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => confirmUpload("RSL upload")}
-                  className="rounded-lg border border-[#e40000] bg-white px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-[#e40000] transition hover:bg-[#fff0f0]"
-                >
-                  RSL Upload
-                </button>
-                <button
-                  type="button"
-                  onClick={() => confirmUpload("318 upload")}
-                  className="rounded-lg border border-[#e40000] bg-white px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-[#e40000] transition hover:bg-[#fff0f0]"
-                >
-                  Upload 318&apos;s
-                </button>
-              </div>
-
               <button
                 type="button"
-                onClick={sendMockOrder}
-                className="mt-3 w-full rounded-lg bg-[#e40000] px-4 py-4 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#b80000]"
+                onClick={addToHoldingArea}
+                className="mt-4 w-full rounded-lg bg-[#e40000] px-4 py-4 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#b80000]"
               >
-                Send RHC Order
+                Add Duty To Holding Area
               </button>
 
               {confirmation && (
@@ -3333,14 +3478,15 @@ export default function RhcTeamPage() {
               </div>
 
               <div className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Mock data package</p>
-                <h2 className="mt-2 text-2xl font-black text-[#111827]">What would be sent</h2>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Data package preview</p>
+                <h2 className="mt-2 text-2xl font-black text-[#111827]">What will be staged</h2>
 
                 <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <DataPackageCard
                     title="RHC Portal"
                     enabled={sendPortal}
                     rows={[
+                      `Order type: ${orderType}`,
                       `Duty ID: ${duty.duty}`,
                       `Today: ${todayLabel} / Week ${weekNumber}`,
                       `Traffic: ${traffic}`,
@@ -3362,7 +3508,7 @@ export default function RhcTeamPage() {
                       `Start date/time: ${startDateTime}`,
                       `End date/time: ${endDateTime}`,
                       `Total duration: ${duty.totalTime}`,
-                      `Miles: ${mockMiles}`,
+                      `RSL mileage: ${mockMiles}`,
                       `As directed: ${asDirected}`,
                       `Kit: ${kit}`,
                       `Requested by: ${requestedBy || "Blank"}`,
@@ -3372,6 +3518,85 @@ export default function RhcTeamPage() {
                 </div>
               </div>
             </section>
+          </section>
+
+          <section className="mt-4 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 3</p>
+                <h2 className="mt-2 text-2xl font-black text-[#111827]">Holding area</h2>
+                <p className="mt-1 text-sm font-bold text-[#6b7280]">
+                  Add multiple duties here, select the ones to send, then use the master button to send them to the RHC Team.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={sendSelectedOrders}
+                className="rounded-lg bg-[#111827] px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#252c33]"
+              >
+                Send Selected To RHC Team
+              </button>
+            </div>
+
+            <div className="mt-4 overflow-x-auto rounded-lg border border-[#d9dee6]">
+              <table className="min-w-[1200px] w-full border-collapse text-left text-sm">
+                <thead className="bg-[#f8fafc] text-xs font-black uppercase tracking-[0.1em] text-[#6b7280]">
+                  <tr>
+                    <th className="px-3 py-3">Send</th>
+                    <th className="px-3 py-3">Duty</th>
+                    <th className="px-3 py-3">Date</th>
+                    <th className="px-3 py-3">Start</th>
+                    <th className="px-3 py-3">End</th>
+                    <th className="px-3 py-3">Total</th>
+                    <th className="px-3 py-3">Traffic</th>
+                    <th className="px-3 py-3">ADM</th>
+                    <th className="px-3 py-3">Kit</th>
+                    <th className="px-3 py-3">Reason</th>
+                    <th className="px-3 py-3">Remove</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {holdingOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className="px-3 py-8 text-center text-sm font-bold text-[#6b7280]">
+                        No duties in the holding area yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    holdingOrders.map((order) => (
+                      <tr key={order.id} className="border-t border-[#d9dee6] font-bold text-[#374151]">
+                        <td className="px-3 py-3">
+                          <input
+                            checked={selectedHoldingIds.includes(order.id)}
+                            onChange={() => toggleHoldingSelection(order.id)}
+                            type="checkbox"
+                            className="h-4 w-4"
+                          />
+                        </td>
+                        <td className="px-3 py-3 font-black text-[#111827]">{order.duty}</td>
+                        <td className="px-3 py-3">{formatShortDate(order.date)}</td>
+                        <td className="px-3 py-3">{order.startDateTime}</td>
+                        <td className="px-3 py-3">{order.endDateTime}</td>
+                        <td className="px-3 py-3">{order.totalTime}</td>
+                        <td className="px-3 py-3">{order.traffic}</td>
+                        <td className="px-3 py-3">{order.admName}</td>
+                        <td className="px-3 py-3">{order.kit}</td>
+                        <td className="px-3 py-3">{order.reason}</td>
+                        <td className="px-3 py-3">
+                          <button
+                            type="button"
+                            onClick={() => removeHoldingOrder(order.id)}
+                            className="rounded-md border border-[#e40000] px-3 py-2 text-xs font-black uppercase text-[#e40000]"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </section>
         </section>
       </div>
@@ -3534,6 +3759,112 @@ function DataPackageCard({
   );
 }
 
+function buildOrder({
+  duty,
+  selectedDate,
+  orderType,
+  admName,
+  rmPfw,
+  requestedBy,
+  billingCentre,
+  siteContactNumber,
+  primaryReason,
+  secondReason,
+  region,
+  planType,
+  required,
+  tier,
+  kit,
+  coverReason,
+  dutySchedule,
+  notes,
+  sendPortal,
+  send318,
+}: {
+  duty: DutyOption;
+  selectedDate: string;
+  orderType: string;
+  admName: string;
+  rmPfw: string;
+  requestedBy: string;
+  billingCentre: string;
+  siteContactNumber: string;
+  primaryReason: string;
+  secondReason: string;
+  region: string;
+  planType: string;
+  required: string;
+  tier: string;
+  kit: string;
+  coverReason: string;
+  dutySchedule: string;
+  notes: string;
+  sendPortal: boolean;
+  send318: boolean;
+}): RhcOrder {
+  const week = getMockWeekNumber(selectedDate);
+  const day = getDayName(selectedDate);
+  const traffic = duty.duty.startsWith("WAVOC") ? "WAVOC" : "NWH";
+
+  return {
+    id: `${duty.duty}-${selectedDate}`,
+    orderType,
+    duty: duty.duty,
+    date: selectedDate,
+    day,
+    week,
+    start: duty.start,
+    finish: duty.finish,
+    totalTime: duty.totalTime,
+    startDateTime: formatDateTime(selectedDate, duty.start),
+    endDateTime: formatDateTime(selectedDate, duty.finish, duty.crossesMidnight),
+    startLocation: duty.startLocation,
+    endLocation: duty.endLocation,
+    traffic,
+    planType,
+    dutySchedule,
+    miles: seededRange(`${duty.duty}-${selectedDate}-miles`, 100, 300),
+    asDirected: seededTime(`${duty.duty}-${selectedDate}-as-directed`, 0, 360),
+    admName,
+    rmPfw,
+    requestedBy,
+    billingCentre,
+    siteContactNumber,
+    primaryReason,
+    secondReason,
+    region,
+    tier,
+    kit,
+    reason: coverReason,
+    required,
+    notes,
+    sendPortal,
+    send318,
+  };
+}
+
+function saveOrdersToHistory(orders: RhcOrder[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const current = readOrdersFromStorage();
+  window.localStorage.setItem(RHC_HISTORY_STORAGE_KEY, JSON.stringify([...orders, ...current]));
+}
+
+function readOrdersFromStorage(): RhcOrder[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const rawHistory = window.localStorage.getItem(RHC_HISTORY_STORAGE_KEY);
+    return rawHistory ? (JSON.parse(rawHistory) as RhcOrder[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 function calculateDutyDuration(start: string, finish: string) {
   const startMinutes = timeToMinutes(start);
   const finishMinutes = timeToMinutes(finish);
@@ -3565,6 +3896,10 @@ function formatShortDate(dateInput: string) {
   const year = String(date.getFullYear()).slice(-2);
 
   return `${day}/${month}/${year}`;
+}
+
+function getTodayDateInput() {
+  return formatDateForInput(new Date());
 }
 
 function getDayName(dateInput: string) {
