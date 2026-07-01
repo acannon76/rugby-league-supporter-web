@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import VehicleCheckTimer from "../../vehicle-checks/VehicleCheckTimer";
 
@@ -54,10 +56,11 @@ const messagingOptions: MessagingOption[] = [
     actionText: "TO BE ADDED",
   },
   {
-    title: "Button 8",
+    title: "Other",
     icon: "→",
-    text: "Dummy messaging function for mockup build-out.",
-    actionText: "TO BE ADDED",
+    text: "Send another message direct to the transport office.",
+    href: "/internal/app-ideas/messaging-transport-office",
+    actionText: "OPEN",
   },
 ];
 
