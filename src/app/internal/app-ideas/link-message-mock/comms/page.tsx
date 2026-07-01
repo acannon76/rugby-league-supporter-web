@@ -7,7 +7,12 @@ type CommsSource = "RTC" | "Breakdown" | "Messaging" | "PMT Confirmation";
 type CommsStatus = "New" | "Office review" | "Actioned";
 type Priority = "Critical" | "High" | "Normal";
 type PmtSeverity = "Vehicle Issue" | "Defect";
-type ActionType = "Acknowledge" | "Reply sent" | "Marked actioned" | "OK to continue" | "VOR / M5 sent";
+type ActionType =
+  | "Reply sent"
+  | "Marked actioned"
+  | "Reply and actioned"
+  | "Message driver and OK to continue"
+  | "VOR vehicle / M5 workshops";
 
 type PmtDetails = {
   pmt: string;
@@ -44,6 +49,7 @@ type BreakdownDetails = {
 type MessageDetails = {
   messageText: string;
   route: string;
+  direction?: "Driver to office" | "Office to driver";
 };
 
 type CommsItem = {
@@ -83,10 +89,30 @@ type CommsHistoryRecord = {
   actionedAt: string;
   finalStatus: "Actioned";
   driverMessage: string;
+  detailSummary: string;
 };
 
 const COMMS_HISTORY_STORAGE_KEY = "link-message-comms-history";
+const COMMS_OPEN_STORAGE_KEY = "link-message-comms-open-items";
 const MANAGER_NAME = "Harry Smith";
+
+const driverNames = [
+  "Andrew Cannon",
+  "Sarah Green",
+  "John Smith",
+  "Peter Jones",
+  "Sarah Jane",
+  "Michael Brown",
+  "David Wilson",
+  "Emma Taylor",
+  "James Walker",
+  "Laura Hughes",
+  "Mark Davies",
+  "Rachel Evans",
+  "Chris Roberts",
+  "Paul Thompson",
+  "Kelly Morgan",
+];
 
 const initialCommsItems: CommsItem[] = [
   {
@@ -489,12 +515,16 @@ const sidebarItems = [
 ];
 
 export default function LinkCommsDashboardPage() {
-  const [items, setItems] = useState<CommsItem[]>(initialCommsItems);
+  const [items, setItems] = useState<CommsItem[]>(() => readOpenItems());
   const [selectedSource, setSelectedSource] = useState<CommsSource | "All">("All");
   const [activeItem, setActiveItem] = useState<CommsItem | null>(null);
   const [replyText, setReplyText] = useState("");
   const [managerName, setManagerName] = useState(MANAGER_NAME);
   const [summaryPopup, setSummaryPopup] = useState<{ title: string; detail: string } | null>(null);
+  const [newMessageModalOpen, setNewMessageModalOpen] = useState(false);
+  const [newMessageDriver, setNewMessageDriver] = useState(driverNames[0]);
+  const [newMessageDuty, setNewMessageDuty] = useState("NWH426");
+  const [newMessageText, setNewMessageText] = useState("");
 
   const filteredItems = useMemo(() => {
     if (selectedSource === "All") {
@@ -510,6 +540,11 @@ export default function LinkCommsDashboardPage() {
     setActiveItem(item);
     setReplyText(defaultReplyForItem(item));
     setManagerName(MANAGER_NAME);
+  }
+
+  function persistOpenItems(nextItems: CommsItem[]) {
+    setItems(nextItems);
+    writeOpenItems(nextItems);
   }
 
   function saveHistoryRecord(item: CommsItem, action: ActionType) {
@@ -532,26 +567,82 @@ export default function LinkCommsDashboardPage() {
       actionedAt: new Date().toLocaleString("en-GB"),
       finalStatus: "Actioned",
       driverMessage,
+      detailSummary: buildDetailSummary(item),
     };
 
     const existing = readHistoryRecords();
     localStorage.setItem(COMMS_HISTORY_STORAGE_KEY, JSON.stringify([record, ...existing]));
 
-    setItems((current) =>
-      current.map((currentItem) =>
-        currentItem.id === item.id
-          ? {
-              ...currentItem,
-              status: "Actioned",
-            }
-          : currentItem,
-      ),
-    );
+    const nextItems = items.filter((currentItem) => currentItem.id !== item.id);
+    persistOpenItems(nextItems);
 
     setActiveItem(null);
     setSummaryPopup({
       title: `${item.duty} actioned by ${record.manager}`,
-      detail: `${item.source} item has been marked as Actioned, saved to Comms History and the mock driver message has been sent. ${driverMessage}`,
+      detail: `${item.source} item has been marked as Actioned, removed from the Comms queue, saved to Comms History and updated with the mock driver/workshop message. ${driverMessage}`,
+    });
+  }
+
+  function sendDriverReplyOnly(item: CommsItem) {
+    const reply = replyText.trim() || defaultReplyForItem(item);
+    const nextItems = items.map((currentItem) =>
+      currentItem.id === item.id
+        ? {
+            ...currentItem,
+            status: "Office review" as CommsStatus,
+            summary: `${currentItem.summary} Latest office reply: ${reply}`,
+          }
+        : currentItem,
+    );
+
+    persistOpenItems(nextItems);
+    setActiveItem(null);
+    setSummaryPopup({
+      title: `Reply sent to ${item.driver}`,
+      detail: `${item.duty} remains in the Comms queue until it is marked as actioned. Reply: ${reply}`,
+    });
+  }
+
+  function createManualDriverMessage() {
+    const now = new Date();
+    const newItem: CommsItem = {
+      id: `MANUAL-${Date.now()}`,
+      source: "Messaging",
+      priority: "Normal",
+      status: "Office review",
+      duty: newMessageDuty.trim() || "NWH426",
+      driver: newMessageDriver,
+      vehicle: "PE68UHD",
+      trailer: "7338014",
+      received: now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+      receivedDate: now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" }),
+      title: "Office message to driver",
+      summary: `Mock office message created for ${newMessageDriver}. Awaiting actioned confirmation.`,
+      message: {
+        route: "Office Communications > Message Driver",
+        direction: "Office to driver",
+        messageText: newMessageText.trim() || "Please contact the transport office when safe to do so.",
+      },
+    };
+
+    persistOpenItems([newItem, ...items]);
+    setNewMessageModalOpen(false);
+    setNewMessageText("");
+    setSummaryPopup({
+      title: `Message created for ${newMessageDriver}`,
+      detail: `${newItem.duty} has been added to the Comms queue and will remain there until actioned.`,
+    });
+  }
+
+  function resetMock() {
+    localStorage.removeItem(COMMS_OPEN_STORAGE_KEY);
+    localStorage.removeItem(COMMS_HISTORY_STORAGE_KEY);
+    setItems(initialCommsItems);
+    setSelectedSource("All");
+    setActiveItem(null);
+    setSummaryPopup({
+      title: "Comms mock reset",
+      detail: "The Comms queue has been restored to the original 16 mock examples and Comms History has been cleared.",
     });
   }
 
@@ -581,6 +672,20 @@ export default function LinkCommsDashboardPage() {
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => setNewMessageModalOpen(true)}
+                  className="rounded-lg bg-[#e40000] px-4 py-2 text-sm font-black text-white transition hover:bg-[#b80000]"
+                >
+                  Message Driver
+                </button>
+                <button
+                  type="button"
+                  onClick={resetMock}
+                  className="rounded-lg border border-[#e40000] bg-white px-4 py-2 text-sm font-black text-[#e40000] transition hover:bg-[#fff0f0]"
+                >
+                  Mock Reset
+                </button>
                 <Link
                   href="/internal/app-ideas/link-message-mock/comms/history"
                   className="rounded-lg border border-[#ccd5e2] bg-white px-4 py-2 text-sm font-black text-[#4b5563] no-underline transition hover:border-[#e40000]"
@@ -638,7 +743,7 @@ export default function LinkCommsDashboardPage() {
                 onClick={() => setSelectedSource("All")}
                 className="rounded-lg border border-[#ccd5e2] bg-white px-4 py-2 text-sm font-black text-[#4b5563] transition hover:border-[#e40000]"
               >
-                Show all 16 examples
+                Show all open messages
               </button>
             </div>
 
@@ -687,6 +792,21 @@ export default function LinkCommsDashboardPage() {
           onReplyTextChange={setReplyText}
           onClose={() => setActiveItem(null)}
           onSaveHistory={saveHistoryRecord}
+          onReplyOnly={sendDriverReplyOnly}
+        />
+      )}
+
+      {newMessageModalOpen && (
+        <NewDriverMessageModal
+          driverNames={driverNames}
+          selectedDriver={newMessageDriver}
+          duty={newMessageDuty}
+          message={newMessageText}
+          onDriverChange={setNewMessageDriver}
+          onDutyChange={setNewMessageDuty}
+          onMessageChange={setNewMessageText}
+          onClose={() => setNewMessageModalOpen(false)}
+          onCreate={createManualDriverMessage}
         />
       )}
 
@@ -709,6 +829,7 @@ function CommunicationModal({
   onReplyTextChange,
   onClose,
   onSaveHistory,
+  onReplyOnly,
 }: {
   item: CommsItem;
   managerName: string;
@@ -717,6 +838,7 @@ function CommunicationModal({
   onReplyTextChange: (value: string) => void;
   onClose: () => void;
   onSaveHistory: (item: CommsItem, action: ActionType) => void;
+  onReplyOnly: (item: CommsItem) => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 px-4 py-8">
@@ -779,27 +901,34 @@ function CommunicationModal({
               <div className="mt-4 grid grid-cols-1 gap-3">
                 <button
                   type="button"
-                  onClick={() => onSaveHistory(item, "OK to continue")}
+                  onClick={() => onSaveHistory(item, "Message driver and OK to continue")}
                   className="rounded-lg bg-[#15803d] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0f5f2d]"
                 >
-                  OK to continue
+                  Message driver & OK to continue
                 </button>
                 <button
                   type="button"
-                  onClick={() => onSaveHistory(item, "VOR / M5 sent")}
+                  onClick={() => onSaveHistory(item, "VOR vehicle / M5 workshops")}
                   className="rounded-lg bg-[#e40000] px-4 py-3 text-sm font-black text-white transition hover:bg-[#b80000]"
                 >
-                  VOR vehicle and send to M5 workshops
+                  VOR vehicle and send PMT to Workshops & Message Driver
                 </button>
               </div>
             ) : (
               <div className="mt-4 grid grid-cols-1 gap-3">
                 <button
                   type="button"
-                  onClick={() => onSaveHistory(item, "Reply sent")}
+                  onClick={() => onReplyOnly(item)}
+                  className="rounded-lg border border-[#e40000] bg-white px-4 py-3 text-sm font-black text-[#e40000] transition hover:bg-[#fff0f0]"
+                >
+                  Reply to driver
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSaveHistory(item, "Reply and actioned")}
                   className="rounded-lg bg-[#e40000] px-4 py-3 text-sm font-black text-white transition hover:bg-[#b80000]"
                 >
-                  Reply to driver and mark actioned
+                  Reply to driver and mark as actioned
                 </button>
                 <button
                   type="button"
@@ -812,7 +941,7 @@ function CommunicationModal({
             )}
 
             <div className="mt-4 rounded-lg border border-[#d9dee6] bg-white px-4 py-3 text-sm font-bold leading-6 text-[#4b5563]">
-              Resolving this mock item will update the queue status, save the record to Comms History with a timestamp, and record {managerName || MANAGER_NAME} as the manager.
+              Actioned items will be removed from Comms, saved to Comms History with a timestamp, and record {managerName || MANAGER_NAME} as the manager.
             </div>
           </aside>
         </div>
@@ -860,6 +989,7 @@ function MessageDetailsPanel({ details }: { details: MessageDetails }) {
         “{details.messageText}”
       </div>
       <p className="mt-3 text-sm font-bold text-[#6b7280]">Route: {details.route}</p>
+      {details.direction && <p className="mt-2 text-sm font-bold text-[#6b7280]">Direction: {details.direction}</p>}
     </section>
   );
 }
@@ -898,6 +1028,94 @@ function RtcDetailsPanel({ details }: { details: RtcDetails }) {
       <DetailBlock label="Vehicle / trailer damage" value={details.damageDetails} />
       <DetailBlock label="Incident description" value={details.incidentDescription} />
     </section>
+  );
+}
+
+function NewDriverMessageModal({
+  driverNames,
+  selectedDriver,
+  duty,
+  message,
+  onDriverChange,
+  onDutyChange,
+  onMessageChange,
+  onClose,
+  onCreate,
+}: {
+  driverNames: string[];
+  selectedDriver: string;
+  duty: string;
+  message: string;
+  onDriverChange: (value: string) => void;
+  onDutyChange: (value: string) => void;
+  onMessageChange: (value: string) => void;
+  onClose: () => void;
+  onCreate: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <section className="w-full max-w-[680px] rounded-2xl border border-[#d9dee6] bg-white p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e40000]">New office message</p>
+            <h2 className="mt-2 text-2xl font-black text-[#111827]">Message any driver</h2>
+            <p className="mt-2 text-sm font-bold leading-6 text-[#6b7280]">
+              This creates a mock office-to-driver message and keeps it in Comms until it is actioned.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-[#ccd5e2] bg-white px-4 py-2 text-sm font-black text-[#4b5563] transition hover:border-[#e40000]"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label>
+            <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">Driver</span>
+            <select
+              value={selectedDriver}
+              onChange={(event) => onDriverChange(event.target.value)}
+              className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+            >
+              {driverNames.map((driver) => (
+                <option key={driver} value={driver}>{driver}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">Duty</span>
+            <input
+              value={duty}
+              onChange={(event) => onDutyChange(event.target.value)}
+              className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+            />
+          </label>
+        </div>
+
+        <label className="mt-4 block">
+          <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">Message to driver</span>
+          <textarea
+            value={message}
+            onChange={(event) => onMessageChange(event.target.value)}
+            rows={6}
+            placeholder="Type the message that should be sent to the driver..."
+            className="mt-2 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+          />
+        </label>
+
+        <button
+          type="button"
+          onClick={onCreate}
+          className="mt-5 w-full rounded-lg bg-[#e40000] px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#b80000]"
+        >
+          Create message in Comms
+        </button>
+      </section>
+    </div>
   );
 }
 
@@ -1052,11 +1270,11 @@ function defaultReplyForItem(item: CommsItem) {
 }
 
 function getDriverMessage(item: CommsItem, action: ActionType, replyText: string) {
-  if (action === "VOR / M5 sent") {
+  if (action === "VOR vehicle / M5 workshops") {
     return "Vehicle has been de-allocated. Workshop data has been sent to M5 in the mockup.";
   }
 
-  if (action === "OK to continue") {
+  if (action === "Message driver and OK to continue") {
     return "Manager has confirmed the vehicle is OK to continue in the mockup.";
   }
 
@@ -1065,6 +1283,29 @@ function getDriverMessage(item: CommsItem, action: ActionType, replyText: string
   }
 
   return `${item.source} item actioned with no additional driver message.`;
+}
+
+function readOpenItems(): CommsItem[] {
+  if (typeof window === "undefined") {
+    return initialCommsItems;
+  }
+
+  try {
+    const rawItems = localStorage.getItem(COMMS_OPEN_STORAGE_KEY);
+    if (!rawItems) {
+      const actionedIds = new Set(readHistoryRecords().map((record) => record.id.split("-").slice(0, -1).join("-")));
+      return initialCommsItems.filter((item) => !actionedIds.has(item.id));
+    }
+
+    const parsed = JSON.parse(rawItems);
+    return Array.isArray(parsed) ? parsed : initialCommsItems;
+  } catch {
+    return initialCommsItems;
+  }
+}
+
+function writeOpenItems(items: CommsItem[]) {
+  localStorage.setItem(COMMS_OPEN_STORAGE_KEY, JSON.stringify(items));
 }
 
 function readHistoryRecords(): CommsHistoryRecord[] {
@@ -1079,4 +1320,24 @@ function readHistoryRecords(): CommsHistoryRecord[] {
   } catch {
     return [];
   }
+}
+
+function buildDetailSummary(item: CommsItem) {
+  if (item.pmt) {
+    return `PMT ${item.pmt.pmt}: ${item.pmt.issueTitle}. ${item.pmt.severity}. Reported ${item.pmt.reported}; fixed ${item.pmt.fixed}; mileage ${item.pmt.mileage}. Notes: ${item.pmt.notes}`;
+  }
+
+  if (item.rtc) {
+    return `RTC location ${item.rtc.incidentLocation}; GPS ${item.rtc.gpsCoordinates}; incident time ${item.rtc.incidentTime}; injuries/risk ${item.rtc.injuries}; police ref ${item.rtc.policeReference}; damage ${item.rtc.damageDetails}; description ${item.rtc.incidentDescription}; photos ${item.rtc.photos}.`;
+  }
+
+  if (item.breakdown) {
+    return `Breakdown location ${item.breakdown.location}; direction ${item.breakdown.direction}; safe status ${item.breakdown.safeStatus}; fault ${item.breakdown.fault}; support needed ${item.breakdown.supportNeeded}; photos ${item.breakdown.photos}.`;
+  }
+
+  if (item.message) {
+    return `${item.message.direction || "Driver to office"} message via ${item.message.route}: ${item.message.messageText}`;
+  }
+
+  return item.summary;
 }

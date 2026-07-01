@@ -5,7 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 
 type CommsSource = "RTC" | "Breakdown" | "Messaging" | "PMT Confirmation";
 type Priority = "Critical" | "High" | "Normal";
-type ActionType = "Acknowledge" | "Reply sent" | "Marked actioned" | "OK to continue" | "VOR / M5 sent";
+type ActionType =
+  | "Reply sent"
+  | "Marked actioned"
+  | "Reply and actioned"
+  | "Message driver and OK to continue"
+  | "VOR vehicle / M5 workshops";
 
 type CommsHistoryRecord = {
   id: string;
@@ -25,9 +30,11 @@ type CommsHistoryRecord = {
   actionedAt: string;
   finalStatus: "Actioned";
   driverMessage: string;
+  detailSummary?: string;
 };
 
 const COMMS_HISTORY_STORAGE_KEY = "link-message-comms-history";
+const COMMS_OPEN_STORAGE_KEY = "link-message-comms-open-items";
 
 const sidebarItems = [
   { label: "Duty Execution", icon: "⚙", href: "/internal/app-ideas/link-message-mock" },
@@ -77,6 +84,7 @@ export default function CommsHistoryPage() {
       "Reply To Driver",
       "Actioned At",
       "Final Status",
+      "Detail Summary",
       "Driver Message",
     ];
 
@@ -96,6 +104,7 @@ export default function CommsHistoryPage() {
       record.replyToDriver,
       record.actionedAt,
       record.finalStatus,
+      record.detailSummary || record.summary,
       record.driverMessage,
     ]);
 
@@ -112,6 +121,12 @@ export default function CommsHistoryPage() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  }
+
+  function resetMockHistory() {
+    localStorage.removeItem(COMMS_HISTORY_STORAGE_KEY);
+    localStorage.removeItem(COMMS_OPEN_STORAGE_KEY);
+    setRecords([]);
   }
 
   return (
@@ -137,6 +152,13 @@ export default function CommsHistoryPage() {
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={resetMockHistory}
+                  className="rounded-lg border border-[#e40000] bg-white px-4 py-2 text-sm font-black uppercase tracking-[0.12em] text-[#e40000] transition hover:bg-[#fff0f0]"
+                >
+                  Mock Reset
+                </button>
                 <button
                   type="button"
                   onClick={exportHistoryToCsv}
@@ -225,6 +247,7 @@ export default function CommsHistoryPage() {
                     <th className="border-b border-[#d9dee6] px-4 py-3">Reply To Driver</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Actioned At</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Final Status</th>
+                    <th className="border-b border-[#d9dee6] px-4 py-3">Details</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Driver Message</th>
                   </tr>
                 </thead>
@@ -245,12 +268,13 @@ export default function CommsHistoryPage() {
                         <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#4b5563]">{record.replyToDriver}</td>
                         <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#374151]">{record.actionedAt}</td>
                         <td className="border-b border-[#edf0f4] px-4 py-3"><span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-black text-[#157347]">{record.finalStatus}</span></td>
+                        <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#4b5563]">{record.detailSummary || record.summary}</td>
                         <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#4b5563]">{record.driverMessage}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={14} className="px-4 py-10 text-center text-base font-black text-[#6b7280]">
+                      <td colSpan={15} className="px-4 py-10 text-center text-base font-black text-[#6b7280]">
                         No resolved communications are in the mock history yet.
                       </td>
                     </tr>
