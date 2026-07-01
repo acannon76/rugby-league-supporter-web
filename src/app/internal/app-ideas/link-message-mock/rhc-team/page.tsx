@@ -3023,7 +3023,7 @@ const rawDutyOptions = [
 ];
 
 const dutyOptions: DutyOption[] = rawDutyOptions.map((item) => {
-  const dutyLocation = item.duty.startsWith("WAVOC") ? "Warrington VOC" : "North West Hub";
+  const dutyLocation = item.duty.startsWith("WAVOC") ? "WAVOC" : "North West Hub";
   const duration = calculateDutyDuration(item.start, item.finish);
 
   return {
@@ -3035,19 +3035,45 @@ const dutyOptions: DutyOption[] = rawDutyOptions.map((item) => {
   };
 });
 
-const dayOptions = ["Mon 29 Jun", "Tue 30 Jun", "Wed 01 Jul", "Thu 02 Jul", "Fri 03 Jul", "Sat 04 Jul", "Sun 05 Jul"];
+const DEFAULT_MOCK_DATE = "2026-07-01";
+const WEEK_ONE_START_DATE = "2026-03-30";
+const defaultDuty = dutyOptions.find((item) => item.duty === "TNWAMZ02") ?? dutyOptions[0];
+
+const planTypeOptions = ["BAU", "BT", "Sprinter"];
+const tierOptions = ["Tier 1", "Tier 2", "Tier 3", "Tier 4"];
+const admOptions = ["John Smith", "Peter Jones", "Sarah Jane"];
+const kitOptions = ["Box", "Trailer", "18T", "DDT", "3.5T Van", "Traction Only"];
+const reasonOptions = ["Agency Shortfall", "Central Plan", "CPC Request"];
+const dutyScheduleOptions = [
+  "NWH-PR-NWH-MN-NWH",
+  "NWH_SDC_NWH",
+  "NWH-YDC-NE-NWH",
+  "NWH-MSH-NWH",
+  "NWH-PRDC-NWH",
+  "NWH-SWINDON-NWH",
+  "NWH-SWDC-NWH",
+];
 
 export default function RhcTeamPage() {
-  const [selectedDuty, setSelectedDuty] = useState(() => dutyOptions[0]?.duty ?? "");
-  const [selectedDay, setSelectedDay] = useState("Wed 01 Jul");
+  const [selectedDuty, setSelectedDuty] = useState(() => defaultDuty?.duty ?? "");
+  const [selectedDate, setSelectedDate] = useState(DEFAULT_MOCK_DATE);
   const [dutySearch, setDutySearch] = useState("");
   const [sendPortal, setSendPortal] = useState(true);
   const [send318, setSend318] = useState(true);
+  const [planType, setPlanType] = useState(planTypeOptions[0]);
+  const [required, setRequired] = useState("RHC cover required for selected LINK duty.");
+  const [region, setRegion] = useState("North West");
+  const [tier, setTier] = useState(tierOptions[0]);
+  const [admName, setAdmName] = useState(admOptions[0]);
+  const [requestedBy, setRequestedBy] = useState("");
+  const [kit, setKit] = useState(kitOptions[0]);
+  const [coverReason, setCoverReason] = useState(reasonOptions[0]);
+  const [dutySchedule, setDutySchedule] = useState(dutyScheduleOptions[0]);
   const [notes, setNotes] = useState("Order Road Haulage Contractor from LINK duty selection.");
   const [confirmation, setConfirmation] = useState("");
 
   const duty = useMemo(
-    () => dutyOptions.find((item) => item.duty === selectedDuty) ?? dutyOptions[0],
+    () => dutyOptions.find((item) => item.duty === selectedDuty) ?? defaultDuty,
     [selectedDuty],
   );
 
@@ -3065,6 +3091,24 @@ export default function RhcTeamPage() {
     );
   }, [dutySearch]);
 
+  const selectDutyOptions = useMemo(() => {
+    if (filteredDutyOptions.some((item) => item.duty === duty.duty)) {
+      return filteredDutyOptions;
+    }
+
+    return [duty, ...filteredDutyOptions];
+  }, [duty, filteredDutyOptions]);
+
+  const selectedDateLabel = formatShortDate(selectedDate);
+  const todayLabel = formatShortDate(DEFAULT_MOCK_DATE);
+  const dutyStartDay = getDayName(selectedDate);
+  const weekNumber = getMockWeekNumber(selectedDate);
+  const traffic = duty.duty.startsWith("WAVOC") ? "WAVOC" : "NWH";
+  const startDateTime = formatDateTime(selectedDate, duty.start);
+  const endDateTime = formatDateTime(selectedDate, duty.finish, duty.crossesMidnight);
+  const mockMiles = seededRange(`${duty.duty}-${selectedDate}-miles`, 100, 300);
+  const asDirected = seededTime(`${duty.duty}-${selectedDate}-as-directed`, 0, 360);
+
   function chooseDuty(nextDuty: string) {
     setSelectedDuty(nextDuty);
     setConfirmation("");
@@ -3076,8 +3120,12 @@ export default function RhcTeamPage() {
       .join(" and ");
 
     setConfirmation(
-      `${duty.duty} for ${selectedDay} has been prepared and sent to ${destinations || "the selected output"}. Duty time: ${duty.start} - ${duty.finish} (${duty.totalTime}).`,
+      `${duty.duty} has been sent to ${destinations || "the selected output"}. Start: ${startDateTime}. End: ${endDateTime}. Total: ${duty.totalTime}.`,
     );
+  }
+
+  function confirmUpload(uploadType: string) {
+    setConfirmation(`${uploadType} completed for ${duty.duty} on ${selectedDateLabel}.`);
   }
 
   return (
@@ -3097,7 +3145,7 @@ export default function RhcTeamPage() {
                 <div>
                   <h1 className="text-2xl font-black text-[#111827]">RHC Team Order Dashboard</h1>
                   <p className="text-sm font-bold text-[#6b7280]">
-                    Select a LINK duty and send mock order data to the RHC Portal and 318 Data.
+                    Select a LINK duty and send order data to the RHC Portal and 318 Data.
                   </p>
                 </div>
               </div>
@@ -3111,54 +3159,92 @@ export default function RhcTeamPage() {
             </div>
           </section>
 
-          <section className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+          <section className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[0.86fr_1.14fr]">
             <aside className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 1</p>
-              <h2 className="mt-2 text-2xl font-black text-[#111827]">Choose duty and day</h2>
+              <h2 className="mt-2 text-2xl font-black text-[#111827]">Choose duty and order details</h2>
 
               <label className="mt-5 block">
+                <span className="text-sm font-black text-[#111827]">Search duty</span>
+                <input
+                  value={dutySearch}
+                  onChange={(event) => {
+                    const nextSearch = event.target.value;
+                    setDutySearch(nextSearch);
+                    setConfirmation("");
+
+                    const exactMatch = dutyOptions.find(
+                      (item) => item.duty.toLowerCase() === nextSearch.trim().toLowerCase(),
+                    );
+
+                    if (exactMatch) {
+                      setSelectedDuty(exactMatch.duty);
+                    }
+                  }}
+                  placeholder="Example: NWH007 or WAVOC016"
+                  className="mt-2 h-12 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
+                />
+              </label>
+
+              <label className="mt-4 block">
                 <span className="text-sm font-black text-[#111827]">Duty number</span>
                 <select
-                  value={selectedDuty}
+                  value={duty.duty}
                   onChange={(event) => chooseDuty(event.target.value)}
                   className="mt-2 h-12 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
                 >
-                  {dutyOptions.map((item) => (
+                  {selectDutyOptions.map((item) => (
                     <option key={item.duty} value={item.duty}>
                       {item.duty} — {item.start} to {item.finish}
                     </option>
                   ))}
                 </select>
+                <p className="mt-2 text-xs font-bold text-[#6b7280]">
+                  {filteredDutyOptions.length} matching dut{filteredDutyOptions.length === 1 ? "y" : "ies"}
+                </p>
               </label>
 
               <label className="mt-4 block">
-                <span className="text-sm font-black text-[#111827]">Day</span>
-                <select
-                  value={selectedDay}
+                <span className="flex items-center gap-2 text-sm font-black text-[#111827]">
+                  <span>Day / date</span>
+                  <span aria-hidden="true">📅</span>
+                </span>
+                <input
+                  type="date"
+                  value={selectedDate}
                   onChange={(event) => {
-                    setSelectedDay(event.target.value);
+                    setSelectedDate(event.target.value);
                     setConfirmation("");
                   }}
                   className="mt-2 h-12 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
-                >
-                  {dayOptions.map((day) => (
-                    <option key={day}>{day}</option>
-                  ))}
-                </select>
+                />
+                <p className="mt-2 text-xs font-black text-[#6b7280]">
+                  {dutyStartDay} • {selectedDateLabel} • Week {weekNumber}
+                </p>
               </label>
 
               <section className="mt-5 rounded-lg border border-[#d9dee6] bg-[#f8fafc] p-4">
-                <p className="text-sm font-black text-[#111827]">Duty timing preview</p>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <MiniTiming label="Start" value={duty.start} />
-                  <MiniTiming label="End" value={duty.finish} />
-                  <MiniTiming label="Total" value={duty.totalTime} />
+                <p className="text-sm font-black text-[#111827]">RHC cover details</p>
+
+                <label className="mt-4 block">
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">What is required</span>
+                  <textarea
+                    value={required}
+                    onChange={(event) => setRequired(event.target.value)}
+                    className="mt-2 min-h-[86px] w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+                  />
+                </label>
+
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <TextField label="Region" value={region} onChange={setRegion} />
+                  <SelectField label="Tier" value={tier} onChange={setTier} options={tierOptions} />
+                  <SelectField label="ADM Name" value={admName} onChange={setAdmName} options={admOptions} />
+                  <TextField label="Requested by" value={requestedBy} onChange={setRequestedBy} placeholder="Blank for mock input" />
+                  <SelectField label="Kit" value={kit} onChange={setKit} options={kitOptions} />
+                  <SelectField label="Reason for RHC cover" value={coverReason} onChange={setCoverReason} options={reasonOptions} />
+                  <SelectField label="Plan Type" value={planType} onChange={setPlanType} options={planTypeOptions} />
+                  <SelectField label="Duty Schedule" value={dutySchedule} onChange={setDutySchedule} options={dutyScheduleOptions} />
                 </div>
-                {duty.crossesMidnight ? (
-                  <p className="mt-3 rounded-md border border-[#f59e0b] bg-[#fff7ed] px-3 py-2 text-xs font-black text-[#92400e]">
-                    This duty crosses midnight. The total time has been calculated into the next day.
-                  </p>
-                ) : null}
               </section>
 
               <section className="mt-5 rounded-lg border border-[#d9dee6] bg-[#f8fafc] p-4">
@@ -3178,16 +3264,33 @@ export default function RhcTeamPage() {
                 <textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
-                  className="mt-2 min-h-[110px] w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+                  className="mt-2 min-h-[96px] w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
                 />
               </label>
+
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => confirmUpload("RSL upload")}
+                  className="rounded-lg border border-[#e40000] bg-white px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-[#e40000] transition hover:bg-[#fff0f0]"
+                >
+                  RSL Upload
+                </button>
+                <button
+                  type="button"
+                  onClick={() => confirmUpload("318 upload")}
+                  className="rounded-lg border border-[#e40000] bg-white px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-[#e40000] transition hover:bg-[#fff0f0]"
+                >
+                  Upload 318&apos;s
+                </button>
+              </div>
 
               <button
                 type="button"
                 onClick={sendMockOrder}
-                className="mt-5 w-full rounded-lg bg-[#e40000] px-4 py-4 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#b80000]"
+                className="mt-3 w-full rounded-lg bg-[#e40000] px-4 py-4 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#b80000]"
               >
-                Send mock RHC order
+                Send RHC Order
               </button>
 
               {confirmation && (
@@ -3203,17 +3306,29 @@ export default function RhcTeamPage() {
                 <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                   <h2 className="mt-2 text-4xl font-black text-[#111827]">{duty.duty}</h2>
                   <p className="rounded-full bg-[#f3f4f6] px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">
-                    {duty.duty.startsWith("WAVOC") ? "WAVOC duty" : "North West Hub duty"}
+                    {traffic === "WAVOC" ? "WAVOC duty" : "North West Hub duty"}
                   </p>
                 </div>
 
                 <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3 2xl:grid-cols-6">
-                  <InfoBox label="Day" value={selectedDay} />
-                  <InfoBox label="Starts at" value={duty.startLocation} />
-                  <InfoBox label="Ends at" value={duty.endLocation} />
-                  <InfoBox label="Start time" value={duty.start} />
-                  <InfoBox label="End time" value={duty.finish} />
-                  <InfoBox label="Total time" value={duty.totalTime} />
+                  <InfoBox label="Today" value={todayLabel} />
+                  <InfoBox label="Week" value={`Week ${weekNumber}`} />
+                  <InfoBox label="Duty Start Day" value={dutyStartDay} />
+                  <InfoBox label="Plan Type" value={planType} />
+                  <InfoBox label="Traffic" value={traffic} />
+                  <InfoBox label="Total Time" value={duty.totalTime} />
+                  <InfoBox label="Starts At" value={duty.startLocation} />
+                  <InfoBox label="Ends At" value={duty.endLocation} />
+                  <InfoBox label="Start Date / Time" value={startDateTime} />
+                  <InfoBox label="End Date / Time" value={endDateTime} />
+                  <InfoBox label="Duty Schedule" value={dutySchedule} />
+                  <InfoBox label="Miles" value={`${mockMiles} miles`} />
+                  <InfoBox label="As Directed" value={asDirected} />
+                  <InfoBox label="Tier" value={tier} />
+                  <InfoBox label="ADM" value={admName} />
+                  <InfoBox label="Kit" value={kit} />
+                  <InfoBox label="Reason" value={coverReason} />
+                  <InfoBox label="Requested By" value={requestedBy || "Blank"} />
                 </div>
               </div>
 
@@ -3226,76 +3341,34 @@ export default function RhcTeamPage() {
                     title="RHC Portal"
                     enabled={sendPortal}
                     rows={[
-                      "Duty ID and operating date",
+                      `Duty ID: ${duty.duty}`,
+                      `Today: ${todayLabel} / Week ${weekNumber}`,
+                      `Traffic: ${traffic}`,
+                      `Plan type: ${planType}`,
                       `Start/end location: ${duty.startLocation} to ${duty.endLocation}`,
-                      `Planned duty timings: ${duty.start} - ${duty.finish}`,
-                      `Calculated total duty time: ${duty.totalTime}`,
-                      "Contractor order note",
+                      `Start: ${startDateTime}`,
+                      `End: ${endDateTime}`,
+                      `Duty schedule: ${dutySchedule}`,
+                      `Reason: ${coverReason}`,
+                      `Requirement: ${required}`,
+                      `Region / tier / ADM: ${region} / ${tier} / ${admName}`,
                     ]}
                   />
                   <DataPackageCard
                     title="318 Data"
                     enabled={send318}
                     rows={[
-                      "Duty number and day",
-                      `Start time, end time and total duration: ${duty.start} - ${duty.finish} (${duty.totalTime})`,
-                      duty.crossesMidnight ? "Overnight duty flag for midnight crossover" : "Same-day duty timing flag",
-                      "Trailer and load requirement placeholder",
+                      `Duty number and operating day: ${duty.duty} / ${dutyStartDay}`,
+                      `Start date/time: ${startDateTime}`,
+                      `End date/time: ${endDateTime}`,
+                      `Total duration: ${duty.totalTime}`,
+                      `Miles: ${mockMiles}`,
+                      `As directed: ${asDirected}`,
+                      `Kit: ${kit}`,
+                      `Requested by: ${requestedBy || "Blank"}`,
                       "Office notes for downstream mockup",
                     ]}
                   />
-                </div>
-              </div>
-
-              <div className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Duty picker</p>
-                    <p className="mt-2 text-sm font-bold text-[#6b7280]">
-                      Search and select from the pasted duty number list.
-                    </p>
-                  </div>
-                  <label className="block lg:w-[340px]">
-                    <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">Search duty</span>
-                    <input
-                      value={dutySearch}
-                      onChange={(event) => setDutySearch(event.target.value)}
-                      placeholder="Example: NWH007 or WAVOC016"
-                      className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
-                    />
-                  </label>
-                </div>
-
-                <div className="mt-4 max-h-[460px] overflow-y-auto rounded-lg border border-[#e5e7eb] bg-[#f8fafc] p-3">
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
-                    {filteredDutyOptions.map((item) => (
-                      <button
-                        key={item.duty}
-                        type="button"
-                        onClick={() => chooseDuty(item.duty)}
-                        className={`rounded-lg border p-3 text-left transition hover:border-[#e40000] ${
-                          selectedDuty === item.duty ? "border-[#e40000] bg-[#fff0f0]" : "border-[#d9dee6] bg-white"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-black text-[#111827]">{item.duty}</p>
-                            <p className="mt-1 text-xs font-bold text-[#6b7280]">{item.startLocation} to {item.endLocation}</p>
-                          </div>
-                          <span className="rounded-full bg-[#eef2f7] px-2 py-1 text-[11px] font-black text-[#374151]">
-                            {item.totalTime}
-                          </span>
-                        </div>
-                        <p className="mt-3 text-xs font-black text-[#374151]">
-                          {item.start} → {item.finish}{item.crossesMidnight ? " +1 day" : ""}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-
-                  {filteredDutyOptions.length === 0 ? (
-                    <p className="p-4 text-sm font-black text-[#6b7280]">No duty numbers match your search.</p>
-                  ) : null}
                 </div>
               </div>
             </section>
@@ -3372,7 +3445,7 @@ function OfficeSidebar() {
   );
 }
 
-function InfoBox({ label, value }: { label: string; value: string }) {
+function InfoBox({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-lg border border-[#d9dee6] bg-[#f8fafc] p-3">
       <p className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">{label}</p>
@@ -3381,12 +3454,54 @@ function InfoBox({ label, value }: { label: string; value: string }) {
   );
 }
 
-function MiniTiming({ label, value }: { label: string; value: string }) {
+function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
   return (
-    <div className="rounded-md border border-[#d9dee6] bg-white p-3">
-      <p className="text-[11px] font-black uppercase tracking-[0.12em] text-[#6b7280]">{label}</p>
-      <p className="mt-1 text-sm font-black text-[#111827]">{value}</p>
-    </div>
+    <label className="block">
+      <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
+      />
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
+      >
+        {options.map((option) => (
+          <option key={option}>{option}</option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -3436,4 +3551,70 @@ function calculateDutyDuration(start: string, finish: string) {
 function timeToMinutes(time: string) {
   const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
+}
+
+function parseDateInput(dateInput: string) {
+  const [year, month, day] = dateInput.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatShortDate(dateInput: string) {
+  const date = parseDateInput(dateInput);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = String(date.getFullYear()).slice(-2);
+
+  return `${day}/${month}/${year}`;
+}
+
+function getDayName(dateInput: string) {
+  return parseDateInput(dateInput).toLocaleDateString("en-GB", { weekday: "long" });
+}
+
+function getMockWeekNumber(dateInput: string) {
+  const selectedDate = parseDateInput(dateInput);
+  const weekOneStart = parseDateInput(WEEK_ONE_START_DATE);
+  const selectedStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+  const baseStart = new Date(weekOneStart.getFullYear(), weekOneStart.getMonth(), weekOneStart.getDate());
+  const daysDifference = Math.floor((selectedStart.getTime() - baseStart.getTime()) / (24 * 60 * 60 * 1000));
+  const weekIndex = Math.floor(daysDifference / 7);
+
+  return ((weekIndex % 52) + 52) % 52 + 1;
+}
+
+function formatDateTime(dateInput: string, time: string, addDay = false) {
+  const date = parseDateInput(dateInput);
+
+  if (addDay) {
+    date.setDate(date.getDate() + 1);
+  }
+
+  return `${formatShortDate(formatDateForInput(date))} ${time}`;
+}
+
+function formatDateForInput(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function seededRange(seed: string, min: number, max: number) {
+  const value = hashSeed(seed);
+  return min + (value % (max - min + 1));
+}
+
+function seededTime(seed: string, minMinutes: number, maxMinutes: number) {
+  const totalMinutes = seededRange(seed, minMinutes, maxMinutes);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function hashSeed(seed: string) {
+  return seed.split("").reduce((hash, character) => {
+    return (hash * 31 + character.charCodeAt(0)) >>> 0;
+  }, 7);
 }
