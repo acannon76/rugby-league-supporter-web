@@ -6,6 +6,16 @@ import { useMemo, useState } from "react";
 type CommsSource = "RTC" | "Breakdown" | "Messaging" | "PMT Confirmation";
 type CommsStatus = "New" | "Office review" | "Actioned";
 type Priority = "Critical" | "High" | "Normal";
+
+type MessageThreadEntry = {
+  id: string;
+  sender: "Driver" | "Office" | "System" | "M5 Workshops";
+  senderName: string;
+  message: string;
+  timestamp: string;
+  priority: Priority;
+  direction: "Driver to office" | "Office to driver" | "System" | "Workshop";
+};
 type PmtSeverity = "Vehicle Issue" | "Defect";
 type ActionType =
   | "Reply sent"
@@ -69,6 +79,7 @@ type CommsItem = {
   rtc?: RtcDetails;
   breakdown?: BreakdownDetails;
   message?: MessageDetails;
+  messageThread?: MessageThreadEntry[];
 };
 
 type CommsHistoryRecord = {
@@ -89,7 +100,10 @@ type CommsHistoryRecord = {
   actionedAt: string;
   finalStatus: "Actioned";
   driverMessage: string;
+  replyPriority: Priority;
   detailSummary: string;
+  messageThread: MessageThreadEntry[];
+  messageThreadSummary: string;
 };
 
 const COMMS_HISTORY_STORAGE_KEY = "link-message-comms-history";
@@ -519,12 +533,14 @@ export default function LinkCommsDashboardPage() {
   const [selectedSource, setSelectedSource] = useState<CommsSource | "All">("All");
   const [activeItem, setActiveItem] = useState<CommsItem | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [replyPriority, setReplyPriority] = useState<Priority>("Normal");
   const [managerName, setManagerName] = useState(MANAGER_NAME);
   const [summaryPopup, setSummaryPopup] = useState<{ title: string; detail: string } | null>(null);
   const [newMessageModalOpen, setNewMessageModalOpen] = useState(false);
   const [newMessageDriver, setNewMessageDriver] = useState(driverNames[0]);
   const [newMessageDuty, setNewMessageDuty] = useState("NWH426");
   const [newMessageText, setNewMessageText] = useState("");
+  const [newMessagePriority, setNewMessagePriority] = useState<Priority>("Normal");
 
   const filteredItems = useMemo(() => {
     if (selectedSource === "All") {
@@ -539,6 +555,7 @@ export default function LinkCommsDashboardPage() {
   function openCommunication(item: CommsItem) {
     setActiveItem(item);
     setReplyText(defaultReplyForItem(item));
+    setReplyPriority("Normal");
     setManagerName(MANAGER_NAME);
   }
 
@@ -548,7 +565,10 @@ export default function LinkCommsDashboardPage() {
   }
 
   function saveHistoryRecord(item: CommsItem, action: ActionType) {
+    const actionedAt = new Date().toLocaleString("en-GB");
+    const manager = managerName.trim() || MANAGER_NAME;
     const driverMessage = getDriverMessage(item, action, replyText);
+    const messageThread = buildActionedThread(item, action, replyText, replyPriority, manager, actionedAt);
     const record: CommsHistoryRecord = {
       id: `${item.id}-${Date.now()}`,
       source: item.source,
@@ -561,13 +581,16 @@ export default function LinkCommsDashboardPage() {
       receivedDate: item.receivedDate,
       title: item.title,
       summary: item.summary,
-      manager: managerName.trim() || MANAGER_NAME,
+      manager,
       action,
-      replyToDriver: replyText.trim() || "No additional driver message entered.",
-      actionedAt: new Date().toLocaleString("en-GB"),
+      replyToDriver: getReplyTextForHistory(action, replyText, driverMessage),
+      actionedAt,
       finalStatus: "Actioned",
       driverMessage,
+      replyPriority,
       detailSummary: buildDetailSummary(item),
+      messageThread,
+      messageThreadSummary: buildThreadSummary(messageThread),
     };
 
     const existing = readHistoryRecords();
@@ -579,18 +602,27 @@ export default function LinkCommsDashboardPage() {
     setActiveItem(null);
     setSummaryPopup({
       title: `${item.duty} actioned by ${record.manager}`,
-      detail: `${item.source} item has been marked as Actioned, removed from the Comms queue, saved to Comms History and updated with the mock driver/workshop message. ${driverMessage}`,
+      detail: `${item.source} item has been marked as Actioned, removed from the Comms queue, saved to Comms History and updated with the full message thread. ${driverMessage}`,
     });
   }
 
   function sendDriverReplyOnly(item: CommsItem) {
     const reply = replyText.trim() || defaultReplyForItem(item);
+    const replyEntry = createThreadEntry({
+      sender: "Office",
+      senderName: managerName.trim() || MANAGER_NAME,
+      message: reply,
+      priority: replyPriority,
+      direction: "Office to driver",
+    });
+
     const nextItems = items.map((currentItem) =>
       currentItem.id === item.id
         ? {
             ...currentItem,
             status: "Office review" as CommsStatus,
-            summary: `${currentItem.summary} Latest office reply: ${reply}`,
+            summary: `${currentItem.summary} Latest office reply (${replyPriority}): ${reply}`,
+            messageThread: [...getMessageThread(currentItem), replyEntry],
           }
         : currentItem,
     );
@@ -599,7 +631,7 @@ export default function LinkCommsDashboardPage() {
     setActiveItem(null);
     setSummaryPopup({
       title: `Reply sent to ${item.driver}`,
-      detail: `${item.duty} remains in the Comms queue until it is marked as actioned. Reply: ${reply}`,
+      detail: `${item.duty} remains in the Comms queue until it is marked as actioned. Reply priority: ${replyPriority}. Reply: ${reply}`,
     });
   }
 
@@ -608,7 +640,7 @@ export default function LinkCommsDashboardPage() {
     const newItem: CommsItem = {
       id: `MANUAL-${Date.now()}`,
       source: "Messaging",
-      priority: "Normal",
+      priority: newMessagePriority,
       status: "Office review",
       duty: newMessageDuty.trim() || "NWH426",
       driver: newMessageDriver,
@@ -623,11 +655,21 @@ export default function LinkCommsDashboardPage() {
         direction: "Office to driver",
         messageText: newMessageText.trim() || "Please contact the transport office when safe to do so.",
       },
+      messageThread: [
+        createThreadEntry({
+          sender: "Office",
+          senderName: MANAGER_NAME,
+          message: newMessageText.trim() || "Please contact the transport office when safe to do so.",
+          priority: newMessagePriority,
+          direction: "Office to driver",
+        }),
+      ],
     };
 
     persistOpenItems([newItem, ...items]);
     setNewMessageModalOpen(false);
     setNewMessageText("");
+    setNewMessagePriority("Normal");
     setSummaryPopup({
       title: `Message created for ${newMessageDriver}`,
       detail: `${newItem.duty} has been added to the Comms queue and will remain there until actioned.`,
@@ -788,8 +830,10 @@ export default function LinkCommsDashboardPage() {
           item={activeItem}
           managerName={managerName}
           replyText={replyText}
+          replyPriority={replyPriority}
           onManagerNameChange={setManagerName}
           onReplyTextChange={setReplyText}
+          onReplyPriorityChange={setReplyPriority}
           onClose={() => setActiveItem(null)}
           onSaveHistory={saveHistoryRecord}
           onReplyOnly={sendDriverReplyOnly}
@@ -802,9 +846,11 @@ export default function LinkCommsDashboardPage() {
           selectedDriver={newMessageDriver}
           duty={newMessageDuty}
           message={newMessageText}
+          priority={newMessagePriority}
           onDriverChange={setNewMessageDriver}
           onDutyChange={setNewMessageDuty}
           onMessageChange={setNewMessageText}
+          onPriorityChange={setNewMessagePriority}
           onClose={() => setNewMessageModalOpen(false)}
           onCreate={createManualDriverMessage}
         />
@@ -825,8 +871,10 @@ function CommunicationModal({
   item,
   managerName,
   replyText,
+  replyPriority,
   onManagerNameChange,
   onReplyTextChange,
+  onReplyPriorityChange,
   onClose,
   onSaveHistory,
   onReplyOnly,
@@ -834,8 +882,10 @@ function CommunicationModal({
   item: CommsItem;
   managerName: string;
   replyText: string;
+  replyPriority: Priority;
   onManagerNameChange: (value: string) => void;
   onReplyTextChange: (value: string) => void;
+  onReplyPriorityChange: (value: Priority) => void;
   onClose: () => void;
   onSaveHistory: (item: CommsItem, action: ActionType) => void;
   onReplyOnly: (item: CommsItem) => void;
@@ -868,6 +918,8 @@ function CommunicationModal({
               <InfoBox label="Trailer" value={item.trailer} />
             </div>
 
+            <ChatThreadPanel thread={getMessageThread(item)} />
+
             {item.pmt && <PmtDetailsPanel item={item} details={item.pmt} />}
             {item.message && <MessageDetailsPanel details={item.message} />}
             {item.breakdown && <BreakdownDetailsPanel details={item.breakdown} />}
@@ -895,6 +947,19 @@ function CommunicationModal({
                 rows={7}
                 className="mt-2 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
               />
+            </label>
+
+            <label className="mt-4 block">
+              <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">Driver message importance</span>
+              <select
+                value={replyPriority}
+                onChange={(event) => onReplyPriorityChange(event.target.value as Priority)}
+                className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+              >
+                <option value="Normal">Normal</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
+              </select>
             </label>
 
             {item.source === "PMT Confirmation" ? (
@@ -947,6 +1012,46 @@ function CommunicationModal({
         </div>
       </section>
     </div>
+  );
+}
+
+function ChatThreadPanel({ thread }: { thread: MessageThreadEntry[] }) {
+  return (
+    <section className="rounded-xl border border-[#d9dee6] bg-[#f8fafc] p-4 shadow-sm">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e40000]">Message history</p>
+      <h3 className="mt-2 text-2xl font-black text-[#111827]">Conversation thread</h3>
+      <div className="mt-4 max-h-[360px] space-y-3 overflow-y-auto rounded-xl border border-[#d9dee6] bg-white p-4">
+        {thread.map((entry) => {
+          const isOffice = entry.sender === "Office" || entry.sender === "M5 Workshops";
+          return (
+            <div key={entry.id} className={`flex ${isOffice ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`max-w-[78%] rounded-2xl px-4 py-3 shadow-sm ${
+                  isOffice ? "bg-[#e40000] text-white" : entry.sender === "System" ? "bg-[#fff7e6] text-[#111827]" : "bg-[#eef2f7] text-[#111827]"
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-[0.12em]">{entry.senderName}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${
+                    entry.priority === "Critical"
+                      ? "bg-white text-[#e40000]"
+                      : entry.priority === "High"
+                        ? "bg-[#fff7e6] text-[#a66900]"
+                        : "bg-white/90 text-[#2c80e5]"
+                  }`}>
+                    {entry.priority}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm font-bold leading-6">{entry.message}</p>
+                <p className={`mt-2 text-[11px] font-bold ${isOffice ? "text-white/80" : "text-[#6b7280]"}`}>
+                  {entry.timestamp} · {entry.direction}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -1036,9 +1141,11 @@ function NewDriverMessageModal({
   selectedDriver,
   duty,
   message,
+  priority,
   onDriverChange,
   onDutyChange,
   onMessageChange,
+  onPriorityChange,
   onClose,
   onCreate,
 }: {
@@ -1046,9 +1153,11 @@ function NewDriverMessageModal({
   selectedDriver: string;
   duty: string;
   message: string;
+  priority: Priority;
   onDriverChange: (value: string) => void;
   onDutyChange: (value: string) => void;
   onMessageChange: (value: string) => void;
+  onPriorityChange: (value: Priority) => void;
   onClose: () => void;
   onCreate: () => void;
 }) {
@@ -1095,6 +1204,19 @@ function NewDriverMessageModal({
             />
           </label>
         </div>
+
+        <label className="mt-4 block">
+          <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">Message importance</span>
+          <select
+            value={priority}
+            onChange={(event) => onPriorityChange(event.target.value as Priority)}
+            className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+          >
+            <option value="Normal">Normal</option>
+            <option value="High">High</option>
+            <option value="Critical">Critical</option>
+          </select>
+        </label>
 
         <label className="mt-4 block">
           <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">Message to driver</span>
@@ -1285,6 +1407,142 @@ function getDriverMessage(item: CommsItem, action: ActionType, replyText: string
   return `${item.source} item actioned with no additional driver message.`;
 }
 
+function createThreadEntry({
+  sender,
+  senderName,
+  message,
+  priority,
+  direction,
+  timestamp,
+}: {
+  sender: MessageThreadEntry["sender"];
+  senderName: string;
+  message: string;
+  priority: Priority;
+  direction: MessageThreadEntry["direction"];
+  timestamp?: string;
+}): MessageThreadEntry {
+  return {
+    id: `${sender}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    sender,
+    senderName,
+    message,
+    timestamp: timestamp || new Date().toLocaleString("en-GB"),
+    priority,
+    direction,
+  };
+}
+
+function getMessageThread(item: CommsItem): MessageThreadEntry[] {
+  if (item.messageThread && item.messageThread.length > 0) {
+    return item.messageThread;
+  }
+
+  return [createInitialThreadEntry(item)];
+}
+
+function createInitialThreadEntry(item: CommsItem): MessageThreadEntry {
+  return {
+    id: `${item.id}-initial`,
+    sender: item.message?.direction === "Office to driver" ? "Office" : "Driver",
+    senderName: item.message?.direction === "Office to driver" ? MANAGER_NAME : item.driver,
+    message: initialThreadMessage(item),
+    timestamp: `${item.receivedDate} ${item.received}`,
+    priority: item.priority,
+    direction: item.message?.direction || "Driver to office",
+  };
+}
+
+function initialThreadMessage(item: CommsItem) {
+  if (item.message) {
+    return item.message.messageText;
+  }
+
+  if (item.pmt) {
+    return `PMT confirmation submitted: ${item.pmt.issueTitle}. ${item.pmt.severity}. ${item.pmt.notes}`;
+  }
+
+  if (item.rtc) {
+    return `RTC report submitted. Location: ${item.rtc.incidentLocation}. Incident time: ${item.rtc.incidentTime}. ${item.rtc.incidentDescription}`;
+  }
+
+  if (item.breakdown) {
+    return `Breakdown report submitted. Location: ${item.breakdown.location}. Fault: ${item.breakdown.fault}. Safe status: ${item.breakdown.safeStatus}.`;
+  }
+
+  return item.summary;
+}
+
+function buildActionedThread(
+  item: CommsItem,
+  action: ActionType,
+  replyText: string,
+  replyPriority: Priority,
+  manager: string,
+  actionedAt: string,
+) {
+  const thread = [...getMessageThread(item)];
+  const driverMessage = getDriverMessage(item, action, replyText);
+
+  if (action === "Marked actioned") {
+    thread.push({
+      id: `${item.id}-actioned-${Date.now()}`,
+      sender: "System",
+      senderName: manager,
+      message: `${item.source} item marked as actioned with no reply sent to the driver.`,
+      timestamp: actionedAt,
+      priority: replyPriority,
+      direction: "System",
+    });
+    return thread;
+  }
+
+  thread.push({
+    id: `${item.id}-reply-${Date.now()}`,
+    sender: "Office",
+    senderName: manager,
+    message: driverMessage.replace(/^Driver reply: /, ""),
+    timestamp: actionedAt,
+    priority: replyPriority,
+    direction: "Office to driver",
+  });
+
+  if (action === "VOR vehicle / M5 workshops") {
+    thread.push({
+      id: `${item.id}-m5-${Date.now()}`,
+      sender: "M5 Workshops",
+      senderName: "M5 Workshops",
+      message: `Mock M5 workshop notification created for ${item.vehicle}, duty ${item.duty}. Vehicle set to VOR and driver told the vehicle has been de-allocated.`,
+      timestamp: actionedAt,
+      priority: "Critical",
+      direction: "Workshop",
+    });
+  }
+
+  return thread;
+}
+
+function buildThreadSummary(thread: MessageThreadEntry[]) {
+  return thread
+    .map((entry) => `${entry.timestamp} | ${entry.senderName} | ${entry.priority} | ${entry.message}`)
+    .join("\n");
+}
+
+function getReplyTextForHistory(action: ActionType, replyText: string, driverMessage: string) {
+  if (action === "Marked actioned") {
+    return "No reply sent to driver.";
+  }
+
+  return replyText.trim() || driverMessage;
+}
+
+function normaliseCommsItem(item: CommsItem): CommsItem {
+  return {
+    ...item,
+    messageThread: getMessageThread(item),
+  };
+}
+
 function readOpenItems(): CommsItem[] {
   if (typeof window === "undefined") {
     return initialCommsItems;
@@ -1294,13 +1552,13 @@ function readOpenItems(): CommsItem[] {
     const rawItems = localStorage.getItem(COMMS_OPEN_STORAGE_KEY);
     if (!rawItems) {
       const actionedIds = new Set(readHistoryRecords().map((record) => record.id.split("-").slice(0, -1).join("-")));
-      return initialCommsItems.filter((item) => !actionedIds.has(item.id));
+      return initialCommsItems.filter((item) => !actionedIds.has(item.id)).map(normaliseCommsItem);
     }
 
     const parsed = JSON.parse(rawItems);
-    return Array.isArray(parsed) ? parsed : initialCommsItems;
+    return Array.isArray(parsed) ? parsed.map(normaliseCommsItem) : initialCommsItems.map(normaliseCommsItem);
   } catch {
-    return initialCommsItems;
+    return initialCommsItems.map(normaliseCommsItem);
   }
 }
 

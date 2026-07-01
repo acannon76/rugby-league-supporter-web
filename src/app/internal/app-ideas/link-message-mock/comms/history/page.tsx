@@ -5,6 +5,16 @@ import { useEffect, useMemo, useState } from "react";
 
 type CommsSource = "RTC" | "Breakdown" | "Messaging" | "PMT Confirmation";
 type Priority = "Critical" | "High" | "Normal";
+
+type MessageThreadEntry = {
+  id: string;
+  sender: "Driver" | "Office" | "System" | "M5 Workshops";
+  senderName: string;
+  message: string;
+  timestamp: string;
+  priority: Priority;
+  direction: "Driver to office" | "Office to driver" | "System" | "Workshop";
+};
 type ActionType =
   | "Reply sent"
   | "Marked actioned"
@@ -30,7 +40,10 @@ type CommsHistoryRecord = {
   actionedAt: string;
   finalStatus: "Actioned";
   driverMessage: string;
+  replyPriority?: Priority;
   detailSummary?: string;
+  messageThread?: MessageThreadEntry[];
+  messageThreadSummary?: string;
 };
 
 const COMMS_HISTORY_STORAGE_KEY = "link-message-comms-history";
@@ -82,10 +95,12 @@ export default function CommsHistoryPage() {
       "Manager",
       "Action",
       "Reply To Driver",
+      "Reply Priority",
       "Actioned At",
       "Final Status",
       "Detail Summary",
       "Driver Message",
+      "Full Message Thread",
     ];
 
     const rows = filteredRecords.map((record) => [
@@ -102,10 +117,12 @@ export default function CommsHistoryPage() {
       record.manager,
       record.action,
       record.replyToDriver,
+      record.replyPriority || record.priority,
       record.actionedAt,
       record.finalStatus,
       record.detailSummary || record.summary,
       record.driverMessage,
+      record.messageThreadSummary || buildThreadSummary(record),
     ]);
 
     const csvContent = [headers, ...rows]
@@ -245,10 +262,12 @@ export default function CommsHistoryPage() {
                     <th className="border-b border-[#d9dee6] px-4 py-3">Manager</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Action</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Reply To Driver</th>
+                    <th className="border-b border-[#d9dee6] px-4 py-3">Reply Priority</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Actioned At</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Final Status</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Details</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Driver Message</th>
+                    <th className="border-b border-[#d9dee6] px-4 py-3">Full Message Thread</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -266,15 +285,17 @@ export default function CommsHistoryPage() {
                         <td className="border-b border-[#edf0f4] px-4 py-3 font-black text-[#374151]">{record.manager}</td>
                         <td className="border-b border-[#edf0f4] px-4 py-3 font-black text-[#374151]">{record.action}</td>
                         <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#4b5563]">{record.replyToDriver}</td>
+                        <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#374151]">{record.replyPriority || record.priority}</td>
                         <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#374151]">{record.actionedAt}</td>
                         <td className="border-b border-[#edf0f4] px-4 py-3"><span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-black text-[#157347]">{record.finalStatus}</span></td>
                         <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#4b5563]">{record.detailSummary || record.summary}</td>
                         <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#4b5563]">{record.driverMessage}</td>
+                        <td className="whitespace-pre-line border-b border-[#edf0f4] px-4 py-3 font-bold text-[#4b5563]">{record.messageThreadSummary || buildThreadSummary(record)}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={15} className="px-4 py-10 text-center text-base font-black text-[#6b7280]">
+                      <td colSpan={17} className="px-4 py-10 text-center text-base font-black text-[#6b7280]">
                         No resolved communications are in the mock history yet.
                       </td>
                     </tr>
@@ -348,6 +369,16 @@ function OfficeSidebar() {
       </button>
     </aside>
   );
+}
+
+function buildThreadSummary(record: CommsHistoryRecord) {
+  if (record.messageThread && record.messageThread.length > 0) {
+    return record.messageThread
+      .map((entry) => `${entry.timestamp} | ${entry.senderName} | ${entry.priority} | ${entry.message}`)
+      .join("\n");
+  }
+
+  return `${record.receivedDate} ${record.received} | ${record.driver} | ${record.priority} | ${record.summary}\n${record.actionedAt} | ${record.manager} | ${record.replyPriority || record.priority} | ${record.replyToDriver}`;
 }
 
 function readHistoryRecords(): CommsHistoryRecord[] {
