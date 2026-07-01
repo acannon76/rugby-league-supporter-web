@@ -3027,11 +3027,32 @@ const defaultDuty = dutyOptions.find((item) => item.duty === "TNWAMZ02") ?? duty
 
 const orderTypeOptions = ["Order", "Amend", "Cancel"];
 const rmPfwOptions = ["RM", "PFW"];
-const billingCentreOptions = ["BT", "BAU", "Central"];
-const planTypeOptions = ["BAU", "BT", "Sprinter"];
-const tierOptions = ["Tier 1", "Tier 2", "Tier 3", "Tier 4"];
+const planTypeOptions = ["BAU", "BT", "FLEX", "INT", "Sprinter"];
 const admOptions = ["John Smith", "Peter Jones", "Sarah Jane"];
-const kitOptions = ["Box", "Trailer", "18T", "DDT", "3.5T Van", "Traction Only"];
+const regionOptions = [
+  "Anglia",
+  "Belfast",
+  "London",
+  "Midlands",
+  "North East",
+  "North West",
+  "Scotland",
+  "South",
+  "South East",
+  "South West",
+];
+const kitOptions = [
+  "Traction Only",
+  "RHC Box or C/S",
+  "RHC Box",
+  "RHC Box (T/L)",
+  "RM DDT - Anderson Leads",
+  "18/26T",
+  "7.5T",
+  "3.5T Van",
+  "Curtainsider",
+  "Rollerbed",
+];
 const reasonOptions = ["Agency Shortfall", "Central Plan", "CPC Request"];
 const dutyScheduleOptions = [
   "NWH-PR-NWH-MN-NWH",
@@ -3107,17 +3128,16 @@ export default function RhcTeamPage() {
   const [admName, setAdmName] = useState(admOptions[0]);
   const [rmPfw, setRmPfw] = useState(rmPfwOptions[0]);
   const [requestedBy, setRequestedBy] = useState("");
-  const [billingCentre, setBillingCentre] = useState(billingCentreOptions[0]);
-  const [siteContactNumber, setSiteContactNumber] = useState("02890 846243 / 0345 266 1060");
+  const [billingCentre, setBillingCentre] = useState("");
+  const [siteContactNumber, setSiteContactNumber] = useState("");
   const [primaryReason, setPrimaryReason] = useState(reasonOptions[1]);
   const [secondReason, setSecondReason] = useState(reasonOptions[1]);
   const [region, setRegion] = useState("North West");
   const [planType, setPlanType] = useState(planTypeOptions[0]);
   const [required, setRequired] = useState("RHC cover required for selected LINK duty.");
-  const [tier, setTier] = useState(tierOptions[0]);
+  const tier = "Tier 1";
   const [kit, setKit] = useState(kitOptions[0]);
-  const [coverReason, setCoverReason] = useState(reasonOptions[0]);
-  const [dutySchedule, setDutySchedule] = useState(dutyScheduleOptions[0]);
+  const [dutySchedule] = useState(dutyScheduleOptions[0]);
   const [notes, setNotes] = useState("Order Road Haulage Contractor from LINK duty selection.");
   const [holdingOrders, setHoldingOrders] = useState<RhcOrder[]>([]);
   const [selectedHoldingIds, setSelectedHoldingIds] = useState<string[]>([]);
@@ -3177,7 +3197,7 @@ export default function RhcTeamPage() {
     required,
     tier,
     kit,
-    coverReason,
+    coverReason: primaryReason,
     dutySchedule,
     notes,
     sendPortal,
@@ -3197,7 +3217,7 @@ export default function RhcTeamPage() {
 
     setHoldingOrders((current) => [...current, nextOrder]);
     setSelectedHoldingIds((current) => [...current, nextOrder.id]);
-    setConfirmation(`${nextOrder.duty} added to the holding area. Add another duty or send selected requests using the master button.`);
+    setConfirmation(`${nextOrder.duty} added to the holding area. Add another duty or upload the 318's before sending selected requests.`);
   }
 
   function toggleHoldingSelection(id: string) {
@@ -3216,6 +3236,11 @@ export default function RhcTeamPage() {
 
     if (selectedOrders.length === 0) {
       setConfirmation("Select at least one duty in the holding area before sending to the RHC Team.");
+      return;
+    }
+
+    if (!manifestFileName) {
+      setConfirmation("Upload the 318's file before sending selected requests to the RHC Team.");
       return;
     }
 
@@ -3252,7 +3277,18 @@ export default function RhcTeamPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="cursor-pointer rounded-lg border border-[#e40000] bg-white px-4 py-2 text-sm font-black uppercase tracking-[0.12em] text-[#e40000] transition hover:bg-[#fff0f0]">
+                  RSL Import
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={(event) => {
+                      setRslFileName(event.target.files?.[0]?.name ?? "");
+                      setConfirmation(event.target.files?.[0]?.name ? `RSL import selected: ${event.target.files[0].name}` : "");
+                    }}
+                  />
+                </label>
                 <Link
                   href="/internal/app-ideas/link-message-mock/rhc-team/history"
                   className="rounded-lg border border-[#ccd5e2] bg-white px-4 py-2 text-sm font-black text-[#4b5563] no-underline transition hover:border-[#e40000]"
@@ -3267,6 +3303,11 @@ export default function RhcTeamPage() {
                 </Link>
               </div>
             </div>
+            {rslFileName && (
+              <p className="mt-3 rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-3 py-2 text-xs font-black text-[#6b7280]">
+                RSL import selected: {rslFileName}
+              </p>
+            )}
           </section>
 
           <section className="mt-4 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
@@ -3288,23 +3329,26 @@ export default function RhcTeamPage() {
               <SelectField label="ADM" value={admName} onChange={setAdmName} options={admOptions} />
               <SelectField label="RM / PFW" value={rmPfw} onChange={setRmPfw} options={rmPfwOptions} />
               <TextField label="Requested by" value={requestedBy} onChange={setRequestedBy} placeholder="Planner's name" />
-              <SelectField label="Billing centre" value={billingCentre} onChange={setBillingCentre} options={billingCentreOptions} />
-              <TextField label="Site contact number" value={siteContactNumber} onChange={setSiteContactNumber} />
+              <TextField label="Billing centre" value={billingCentre} onChange={setBillingCentre} placeholder="Blank" />
+              <TextField label="Site contact number" value={siteContactNumber} onChange={setSiteContactNumber} placeholder="Blank" />
               <SelectField label="Primary reason" value={primaryReason} onChange={setPrimaryReason} options={reasonOptions} />
               <SelectField label="Second reason" value={secondReason} onChange={setSecondReason} options={reasonOptions} />
-              <TextField label="Region" value={region} onChange={setRegion} />
-              <SelectField label="Tier" value={tier} onChange={setTier} options={tierOptions} />
+              <SelectField label="Region" value={region} onChange={setRegion} options={regionOptions} />
+              <ReadOnlyField label="Tier" value={tier} />
               <SelectField label="Plan type" value={planType} onChange={setPlanType} options={planTypeOptions} />
               <SelectField label="Kit" value={kit} onChange={setKit} options={kitOptions} />
             </div>
           </section>
 
-          <section className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[0.82fr_1.18fr]">
-            <aside className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 2</p>
-              <h2 className="mt-2 text-2xl font-black text-[#111827]">Choose duty</h2>
+          <section className="mt-4 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 2</p>
+            <h2 className="mt-2 text-2xl font-black text-[#111827]">Choose duty</h2>
+            <p className="mt-1 text-sm font-bold text-[#6b7280]">
+              Search for a duty, pick the operating date, then add the request to the holding area.
+            </p>
 
-              <label className="mt-5 block">
+            <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <label className="block">
                 <span className="text-sm font-black text-[#111827]">Search duty number</span>
                 <input
                   value={dutySearch}
@@ -3326,7 +3370,7 @@ export default function RhcTeamPage() {
                 />
               </label>
 
-              <label className="mt-4 block">
+              <label className="block">
                 <span className="text-sm font-black text-[#111827]">Duty number</span>
                 <select
                   value={duty.duty}
@@ -3344,7 +3388,7 @@ export default function RhcTeamPage() {
                 </p>
               </label>
 
-              <label className="mt-4 block">
+              <label className="block">
                 <span className="flex items-center gap-2 text-sm font-black text-[#111827]">
                   <span>Day / date</span>
                   <span aria-hidden="true">📅</span>
@@ -3362,54 +3406,21 @@ export default function RhcTeamPage() {
                   {dutyStartDay} • {selectedDateLabel} • Week {weekNumber}
                 </p>
               </label>
+            </div>
 
-              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                <SelectField label="Reason for RHC cover" value={coverReason} onChange={setCoverReason} options={reasonOptions} />
-                <SelectField label="Duty schedule" value={dutySchedule} onChange={setDutySchedule} options={dutyScheduleOptions} />
-              </div>
+            <label className="mt-4 block">
+              <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">What is required</span>
+              <textarea
+                value={required}
+                onChange={(event) => setRequired(event.target.value)}
+                className="mt-2 min-h-[86px] w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+              />
+            </label>
 
-              <label className="mt-4 block">
-                <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">What is required</span>
-                <textarea
-                  value={required}
-                  onChange={(event) => setRequired(event.target.value)}
-                  className="mt-2 min-h-[86px] w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
-                />
-              </label>
-
-              <section className="mt-5 rounded-lg border border-[#d9dee6] bg-[#f8fafc] p-4">
-                <p className="text-sm font-black text-[#111827]">Files and output</p>
+            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+              <section className="rounded-lg border border-[#d9dee6] bg-[#f8fafc] p-4">
+                <p className="text-sm font-black text-[#111827]">Send data to</p>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="cursor-pointer rounded-lg border border-[#e40000] bg-white px-4 py-3 text-center text-sm font-black uppercase tracking-[0.12em] text-[#e40000] transition hover:bg-[#fff0f0]">
-                    RSL Upload
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(event) => {
-                        setRslFileName(event.target.files?.[0]?.name ?? "");
-                        setConfirmation(event.target.files?.[0]?.name ? `RSL file selected: ${event.target.files[0].name}` : "");
-                      }}
-                    />
-                  </label>
-                  <label className="cursor-pointer rounded-lg border border-[#e40000] bg-white px-4 py-3 text-center text-sm font-black uppercase tracking-[0.12em] text-[#e40000] transition hover:bg-[#fff0f0]">
-                    Upload 318&apos;s
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(event) => {
-                        setManifestFileName(event.target.files?.[0]?.name ?? "");
-                        setConfirmation(event.target.files?.[0]?.name ? `318 file selected: ${event.target.files[0].name}` : "");
-                      }}
-                    />
-                  </label>
-                </div>
-                {(rslFileName || manifestFileName) && (
-                  <div className="mt-3 space-y-1 text-xs font-black text-[#6b7280]">
-                    {rslFileName ? <p>RSL: {rslFileName}</p> : null}
-                    {manifestFileName ? <p>318: {manifestFileName}</p> : null}
-                  </div>
-                )}
-                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="flex items-center gap-2 text-sm font-bold text-[#374151]">
                     <input checked={sendPortal} onChange={(event) => setSendPortal(event.target.checked)} type="checkbox" className="h-4 w-4" />
                     RHC Portal
@@ -3421,7 +3432,7 @@ export default function RhcTeamPage() {
                 </div>
               </section>
 
-              <label className="mt-4 block">
+              <label className="block">
                 <span className="text-sm font-black text-[#111827]">Office notes</span>
                 <textarea
                   value={notes}
@@ -3433,91 +3444,48 @@ export default function RhcTeamPage() {
               <button
                 type="button"
                 onClick={addToHoldingArea}
-                className="mt-4 w-full rounded-lg bg-[#e40000] px-4 py-4 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#b80000]"
+                className="h-14 rounded-lg bg-[#e40000] px-6 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#b80000]"
               >
                 Add Duty To Holding Area
               </button>
+            </div>
 
-              {confirmation && (
-                <section className="mt-4 rounded-lg border-2 border-[#157347] bg-[#ecfdf3] p-4 text-sm font-black leading-6 text-[#157347]">
-                  {confirmation}
-                </section>
-              )}
-            </aside>
+            {confirmation && (
+              <section className="mt-4 rounded-lg border-2 border-[#157347] bg-[#ecfdf3] p-4 text-sm font-black leading-6 text-[#157347]">
+                {confirmation}
+              </section>
+            )}
+          </section>
 
-            <section className="space-y-4">
-              <div className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Selected LINK duty</p>
-                <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                  <h2 className="mt-2 text-4xl font-black text-[#111827]">{duty.duty}</h2>
-                  <p className="rounded-full bg-[#f3f4f6] px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">
-                    {traffic === "WAVOC" ? "WAVOC duty" : "North West Hub duty"}
-                  </p>
-                </div>
+          <section className="mt-4 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Selected LINK duty</p>
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <h2 className="mt-2 text-4xl font-black text-[#111827]">{duty.duty}</h2>
+              <p className="rounded-full bg-[#f3f4f6] px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">
+                {traffic === "WAVOC" ? "WAVOC duty" : "North West Hub duty"}
+              </p>
+            </div>
 
-                <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3 2xl:grid-cols-6">
-                  <InfoBox label="Today" value={todayLabel} />
-                  <InfoBox label="Week" value={`Week ${weekNumber}`} />
-                  <InfoBox label="Duty Start Day" value={dutyStartDay} />
-                  <InfoBox label="Plan Type" value={planType} />
-                  <InfoBox label="Traffic" value={traffic} />
-                  <InfoBox label="Total Time" value={duty.totalTime} />
-                  <InfoBox label="Starts At" value={duty.startLocation} />
-                  <InfoBox label="Ends At" value={duty.endLocation} />
-                  <InfoBox label="Start Date / Time" value={startDateTime} />
-                  <InfoBox label="End Date / Time" value={endDateTime} />
-                  <InfoBox label="Duty Schedule" value={dutySchedule} />
-                  <InfoBox label="Miles" value={`${mockMiles} miles`} />
-                  <InfoBox label="As Directed" value={asDirected} />
-                  <InfoBox label="Tier" value={tier} />
-                  <InfoBox label="ADM" value={admName} />
-                  <InfoBox label="Kit" value={kit} />
-                  <InfoBox label="Reason" value={coverReason} />
-                  <InfoBox label="Requested By" value={requestedBy || "Blank"} />
-                </div>
-              </div>
-
-              <div className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Data package preview</p>
-                <h2 className="mt-2 text-2xl font-black text-[#111827]">What will be staged</h2>
-
-                <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <DataPackageCard
-                    title="RHC Portal"
-                    enabled={sendPortal}
-                    rows={[
-                      `Order type: ${orderType}`,
-                      `Duty ID: ${duty.duty}`,
-                      `Today: ${todayLabel} / Week ${weekNumber}`,
-                      `Traffic: ${traffic}`,
-                      `Plan type: ${planType}`,
-                      `Start/end location: ${duty.startLocation} to ${duty.endLocation}`,
-                      `Start: ${startDateTime}`,
-                      `End: ${endDateTime}`,
-                      `Duty schedule: ${dutySchedule}`,
-                      `Reason: ${coverReason}`,
-                      `Requirement: ${required}`,
-                      `Region / tier / ADM: ${region} / ${tier} / ${admName}`,
-                    ]}
-                  />
-                  <DataPackageCard
-                    title="318 Data"
-                    enabled={send318}
-                    rows={[
-                      `Duty number and operating day: ${duty.duty} / ${dutyStartDay}`,
-                      `Start date/time: ${startDateTime}`,
-                      `End date/time: ${endDateTime}`,
-                      `Total duration: ${duty.totalTime}`,
-                      `RSL mileage: ${mockMiles}`,
-                      `As directed: ${asDirected}`,
-                      `Kit: ${kit}`,
-                      `Requested by: ${requestedBy || "Blank"}`,
-                      "Office notes for downstream mockup",
-                    ]}
-                  />
-                </div>
-              </div>
-            </section>
+            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3 2xl:grid-cols-6">
+              <InfoBox label="Today" value={todayLabel} />
+              <InfoBox label="Week" value={`Week ${weekNumber}`} />
+              <InfoBox label="Duty Start Day" value={dutyStartDay} />
+              <InfoBox label="Plan Type" value={planType} />
+              <InfoBox label="Traffic" value={traffic} />
+              <InfoBox label="Total Time" value={duty.totalTime} />
+              <InfoBox label="Starts At" value={duty.startLocation} />
+              <InfoBox label="Ends At" value={duty.endLocation} />
+              <InfoBox label="Start Date / Time" value={startDateTime} />
+              <InfoBox label="End Date / Time" value={endDateTime} />
+              <InfoBox label="Duty Schedule" value={dutySchedule} />
+              <InfoBox label="Miles" value={`${mockMiles} miles`} />
+              <InfoBox label="As Directed" value={asDirected} />
+              <InfoBox label="Tier" value={tier} />
+              <InfoBox label="ADM" value={admName} />
+              <InfoBox label="Kit" value={kit} />
+              <InfoBox label="Reason" value={primaryReason} />
+              <InfoBox label="Requested By" value={requestedBy || "Blank"} />
+            </div>
           </section>
 
           <section className="mt-4 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
@@ -3526,17 +3494,36 @@ export default function RhcTeamPage() {
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 3</p>
                 <h2 className="mt-2 text-2xl font-black text-[#111827]">Holding area</h2>
                 <p className="mt-1 text-sm font-bold text-[#6b7280]">
-                  Add multiple duties here, select the ones to send, then use the master button to send them to the RHC Team.
+                  Add multiple duties here, select the ones to send, upload the 318's, then send them to the RHC Team.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={sendSelectedOrders}
-                className="rounded-lg bg-[#111827] px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#252c33]"
-              >
-                Send Selected To RHC Team
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <label className="cursor-pointer rounded-lg border border-[#e40000] bg-white px-5 py-3 text-center text-sm font-black uppercase tracking-[0.12em] text-[#e40000] transition hover:bg-[#fff0f0]">
+                  Upload 318&apos;s
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={(event) => {
+                      setManifestFileName(event.target.files?.[0]?.name ?? "");
+                      setConfirmation(event.target.files?.[0]?.name ? `318 file selected: ${event.target.files[0].name}` : "");
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={sendSelectedOrders}
+                  className="rounded-lg bg-[#111827] px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#252c33]"
+                >
+                  Send Selected To RHC Team
+                </button>
+              </div>
             </div>
+
+            {manifestFileName && (
+              <p className="mt-3 rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-3 py-2 text-xs font-black text-[#6b7280]">
+                318 file uploaded: {manifestFileName}
+              </p>
+            )}
 
             <div className="mt-4 overflow-x-auto rounded-lg border border-[#d9dee6]">
               <table className="min-w-[1200px] w-full border-collapse text-left text-sm">
@@ -3698,6 +3685,19 @@ function TextField({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none focus:border-[#e40000]"
+      />
+    </label>
+  );
+}
+
+function ReadOnlyField({ label, value }: { label: string; value: string }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">{label}</span>
+      <input
+        value={value}
+        readOnly
+        className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-[#f8fafc] px-3 text-sm font-black text-[#111827] outline-none"
       />
     </label>
   );
