@@ -1,15 +1,64 @@
 import Link from "next/link";
 import VehicleCheckTimer from "../../vehicle-checks/VehicleCheckTimer";
 
-const dummyButtons = [
-  { title: "Button 1", icon: "●" },
-  { title: "Button 2", icon: "◆" },
-  { title: "Button 3", icon: "■" },
-  { title: "Button 4", icon: "▲" },
-  { title: "Button 5", icon: "★" },
-  { title: "Button 6", icon: "✓" },
-  { title: "Button 7", icon: "!" },
-  { title: "Button 8", icon: "→" },
+type MessagingOption = {
+  title: string;
+  icon: string;
+  text: string;
+  href?: string;
+  actionText?: string;
+};
+
+const messagingOptions: MessagingOption[] = [
+  {
+    title: "Breakdown",
+    icon: "🚛",
+    text: "Breakdown support and recovery information.",
+    href: "/internal/app-ideas/breakdown",
+    actionText: "OPEN",
+  },
+  {
+    title: "CPC",
+    icon: "CPC",
+    text: "Dummy CPC messaging function for mockup build-out.",
+    actionText: "TO BE ADDED",
+  },
+  {
+    title: "Button 3",
+    icon: "■",
+    text: "Dummy messaging function for mockup build-out.",
+    actionText: "TO BE ADDED",
+  },
+  {
+    title: "Button 4",
+    icon: "▲",
+    text: "Dummy messaging function for mockup build-out.",
+    actionText: "TO BE ADDED",
+  },
+  {
+    title: "Button 5",
+    icon: "★",
+    text: "Dummy messaging function for mockup build-out.",
+    actionText: "TO BE ADDED",
+  },
+  {
+    title: "Button 6",
+    icon: "✓",
+    text: "Dummy messaging function for mockup build-out.",
+    actionText: "TO BE ADDED",
+  },
+  {
+    title: "Button 7",
+    icon: "!",
+    text: "Dummy messaging function for mockup build-out.",
+    actionText: "TO BE ADDED",
+  },
+  {
+    title: "Button 8",
+    icon: "→",
+    text: "Dummy messaging function for mockup build-out.",
+    actionText: "TO BE ADDED",
+  },
 ];
 
 export default function MessagingPage() {
@@ -67,32 +116,52 @@ export default function MessagingPage() {
           </section>
 
           <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {dummyButtons.map((button) => (
-              <button
-                key={button.title}
-                type="button"
-                className="group flex h-full min-h-[270px] flex-col rounded-[28px] border border-[#d0d7df] bg-white p-6 text-left text-[#001b3a] shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-              >
-                <div className="mb-7 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#c4002f] text-2xl font-black text-white">
-                  {button.icon}
-                </div>
-
-                <h3 className="text-3xl font-black leading-tight">
-                  {button.title}
-                </h3>
-
-                <p className="mt-5 text-base font-bold leading-7 text-[#61748b]">
-                  Dummy messaging function for mockup build-out.
-                </p>
-
-                <div className="mt-auto pt-8 text-xs font-black uppercase tracking-[0.16em] text-[#c4002f]">
-                  To be added
-                </div>
-              </button>
+            {messagingOptions.map((button) => (
+              <MessagingOptionCard key={button.title} button={button} />
             ))}
           </section>
         </div>
       </section>
     </main>
+  );
+}
+
+function MessagingOptionCard({ button }: { button: MessagingOption }) {
+  const cardClasses =
+    "group flex h-full min-h-[270px] flex-col rounded-[28px] border border-[#d0d7df] bg-white p-6 text-left text-[#001b3a] shadow-sm transition hover:-translate-y-1 hover:shadow-lg";
+
+  const content = (
+    <>
+      <div className="mb-7 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#c4002f] text-2xl font-black text-white">
+        {button.icon}
+      </div>
+
+      <h3 className="text-3xl font-black leading-tight">{button.title}</h3>
+
+      <p className="mt-5 text-base font-bold leading-7 text-[#61748b]">
+        {button.text}
+      </p>
+
+      <div className="mt-auto pt-8 text-xs font-black uppercase tracking-[0.16em] text-[#c4002f]">
+        {button.actionText || "TO BE ADDED"}{" "}
+        {button.href && (
+          <span className="transition group-hover:translate-x-1">→</span>
+        )}
+      </div>
+    </>
+  );
+
+  if (button.href) {
+    return (
+      <Link href={button.href} className={`${cardClasses} no-underline`}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" className={cardClasses}>
+      {content}
+    </button>
   );
 }

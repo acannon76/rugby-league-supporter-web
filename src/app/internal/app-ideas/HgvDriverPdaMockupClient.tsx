@@ -67,10 +67,10 @@ const appButtons: AppButton[] = [
     actionText: "TO BE ADDED",
   },
   {
-    title: "Breakdown",
-    text: "Breakdown support and recovery information to be added.",
-    href: "/internal/app-ideas/breakdown",
-    icon: "🚛",
+    title: "Contacts",
+    text: "Key contact numbers and operational support details.",
+    href: "/internal/app-ideas/contacts",
+    icon: "☎",
     actionText: "OPEN",
   },
 ];
