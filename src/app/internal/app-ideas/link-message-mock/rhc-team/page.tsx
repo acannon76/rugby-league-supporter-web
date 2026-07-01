@@ -3311,30 +3311,16 @@ export default function RhcTeamPage() {
       return;
     }
 
-    if (send318 && manifestFileNames.length === 0) {
-      const message = "Upload the 318's before sending selected requests. The 318 file name must include the selected duty number, for example TNWAMZ02.pdf.";
-      setConfirmation(message);
-      setActionPopup({
-        title: "318 upload required",
-        message,
-        tone: "warning",
-      });
-      return;
-    }
-
     const missing318s = send318
       ? selectedOrders.filter((order) => !hasMatching318File(order.duty, manifestFileNames))
       : [];
 
-    if (missing318s.length > 0) {
-      const message = `318 upload mismatch: ${missing318s.map((order) => order.duty).join(", ")} need matching 318 file names before sending.`;
-      setConfirmation(message);
-      setActionPopup({
-        title: "318 upload mismatch",
-        message,
-        tone: "warning",
-      });
-      return;
+    let mockUploadWarning = "";
+
+    if (send318 && manifestFileNames.length === 0) {
+      mockUploadWarning = "318's have not been uploaded. This is a mockup warning only, so the selected requests have still been sent.";
+    } else if (missing318s.length > 0) {
+      mockUploadWarning = `318 file name warning: ${missing318s.map((order) => order.duty).join(", ")} do not have matching 318 file names. This is a mockup warning only, so the selected requests have still been sent.`;
     }
 
     const submittedAt = new Date().toISOString();
@@ -3349,7 +3335,7 @@ export default function RhcTeamPage() {
     setSelectedHoldingIds((current) => current.filter((id) => !selectedIds.includes(id)));
 
     const sentDutyList = submittedOrders.map((order) => order.duty).join(", ");
-    const message = `${submittedOrders.length} RHC request${submittedOrders.length === 1 ? "" : "s"} sent to the RHC Team and added to RHC Team History: ${sentDutyList}.`;
+    const message = `${submittedOrders.length} RHC request${submittedOrders.length === 1 ? "" : "s"} sent to the RHC Team and added to RHC Team History: ${sentDutyList}.${mockUploadWarning ? ` ${mockUploadWarning}` : ""}`;
 
     setActionPopup({
       title: "RHC Team update successful",
@@ -3607,7 +3593,7 @@ export default function RhcTeamPage() {
                     </label>
                   </div>
                   <p className="mt-2 rounded-md border border-[#f59e0b] bg-[#fffbeb] px-2 py-1 text-[11px] font-black leading-5 text-[#92400e]">
-                    318 file names must match the selected duty number.
+                    Mock warning: 318 file names should match the selected duty number. This will not stop the mock send.
                   </p>
                 </section>
 
