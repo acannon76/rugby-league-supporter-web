@@ -1545,7 +1545,7 @@ function normaliseCommsItem(item: CommsItem): CommsItem {
 
 function readOpenItems(): CommsItem[] {
   if (typeof window === "undefined") {
-    return initialCommsItems;
+    return initialCommsItems.map(normaliseCommsItem);
   }
 
   try {
@@ -1556,10 +1556,34 @@ function readOpenItems(): CommsItem[] {
     }
 
     const parsed = JSON.parse(rawItems);
-    return Array.isArray(parsed) ? parsed.map(normaliseCommsItem) : initialCommsItems.map(normaliseCommsItem);
+
+    if (!Array.isArray(parsed)) {
+      return initialCommsItems.map(normaliseCommsItem);
+    }
+
+    return parsed.map((item, index) =>
+      normaliseCommsItem({
+        ...item,
+        driver: getCurrentMockDriverName(item, index),
+      }),
+    );
   } catch {
     return initialCommsItems.map(normaliseCommsItem);
   }
+}
+
+function getCurrentMockDriverName(item: CommsItem, index: number) {
+  if (item.id?.startsWith("MANUAL-")) {
+    return item.driver || driverNames[0];
+  }
+
+  const matchingCurrentMock = initialCommsItems.find(
+    (currentItem) =>
+      currentItem.id === item.id ||
+      (currentItem.source === item.source && currentItem.duty === item.duty),
+  );
+
+  return matchingCurrentMock?.driver || driverNames[index % driverNames.length];
 }
 
 function writeOpenItems(items: CommsItem[]) {
