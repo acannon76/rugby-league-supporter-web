@@ -276,7 +276,7 @@ function MessagingControls({
           href="/internal/app-ideas/link-message-mock"
           className="flex min-h-[42px] w-full items-center justify-center rounded-[14px] bg-[#001b3a] px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.14em] text-white no-underline transition hover:bg-[#0f2f57]"
         >
-          LINK Message Mock
+          Office Dashboard
         </Link>
       </div>
     </div>
