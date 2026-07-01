@@ -13,6 +13,12 @@ type DutyOption = {
   crossesMidnight: boolean;
 };
 
+type ActionPopup = {
+  title: string;
+  message: string;
+  tone: "success" | "warning";
+};
+
 const rawDutyOptions = [
   {
     "duty": "CONNW3174SUN",
@@ -3202,7 +3208,7 @@ export default function RhcTeamPage() {
   const [confirmation, setConfirmation] = useState("");
   const [rslFileName, setRslFileName] = useState("");
   const [manifestFileNames, setManifestFileNames] = useState<string[]>([]);
-  const [successPopup, setSuccessPopup] = useState("");
+  const [actionPopup, setActionPopup] = useState<ActionPopup | null>(null);
 
   const duty = useMemo(
     () => dutyOptions.find((item) => item.duty === selectedDuty) ?? defaultDuty,
@@ -3291,39 +3297,66 @@ export default function RhcTeamPage() {
   }
 
   function sendSelectedOrders() {
-    const selectedOrders = holdingOrders.filter((order) => selectedHoldingIds.includes(order.id));
+    const selectedIds = [...selectedHoldingIds];
+    const selectedOrders = holdingOrders.filter((order) => selectedIds.includes(order.id));
 
     if (selectedOrders.length === 0) {
-      setConfirmation("Select at least one duty in the holding area before sending to the RHC Team.");
+      const message = "No duties have been selected in the holding area. Tick at least one duty before sending to the RHC Team.";
+      setConfirmation(message);
+      setActionPopup({
+        title: "Nothing sent",
+        message,
+        tone: "warning",
+      });
       return;
     }
 
-    if (manifestFileNames.length === 0) {
-      setConfirmation("Upload the 318's before sending selected requests to the RHC Team. The 318 file name must match the duty number.");
+    if (send318 && manifestFileNames.length === 0) {
+      const message = "Upload the 318's before sending selected requests. The 318 file name must include the selected duty number, for example TNWAMZ02.pdf.";
+      setConfirmation(message);
+      setActionPopup({
+        title: "318 upload required",
+        message,
+        tone: "warning",
+      });
       return;
     }
 
-    const missing318s = selectedOrders.filter((order) => !hasMatching318File(order.duty, manifestFileNames));
+    const missing318s = send318
+      ? selectedOrders.filter((order) => !hasMatching318File(order.duty, manifestFileNames))
+      : [];
 
     if (missing318s.length > 0) {
-      setConfirmation(`318 upload mismatch: ${missing318s.map((order) => order.duty).join(", ")} need matching 318 file names before sending.`);
+      const message = `318 upload mismatch: ${missing318s.map((order) => order.duty).join(", ")} need matching 318 file names before sending.`;
+      setConfirmation(message);
+      setActionPopup({
+        title: "318 upload mismatch",
+        message,
+        tone: "warning",
+      });
       return;
     }
 
+    const submittedAt = new Date().toISOString();
     const submittedOrders = selectedOrders.map((order) => ({
       ...order,
-      submittedAt: new Date().toISOString(),
+      submittedAt,
     }));
 
     saveOrdersToHistory(submittedOrders);
-    setHoldingOrders((current) => current.filter((order) => !selectedHoldingIds.includes(order.id)));
-    setSelectedHoldingIds([]);
-    const sentSummary = submittedOrders
-      .map((order) => `${order.duty} (${order.startDateTime} to ${order.endDateTime})`)
-      .join("; ");
 
-    setSuccessPopup(`${submittedOrders.length} RHC request${submittedOrders.length === 1 ? "" : "s"} successfully sent to the RHC Team and added to RHC Team History. ${sentSummary}`);
-    setConfirmation(`${submittedOrders.length} RHC request${submittedOrders.length === 1 ? "" : "s"} sent successfully and added to RHC Team History.`);
+    setHoldingOrders((current) => current.filter((order) => !selectedIds.includes(order.id)));
+    setSelectedHoldingIds((current) => current.filter((id) => !selectedIds.includes(id)));
+
+    const sentDutyList = submittedOrders.map((order) => order.duty).join(", ");
+    const message = `${submittedOrders.length} RHC request${submittedOrders.length === 1 ? "" : "s"} sent to the RHC Team and added to RHC Team History: ${sentDutyList}.`;
+
+    setActionPopup({
+      title: "RHC Team update successful",
+      message,
+      tone: "success",
+    });
+    setConfirmation(message);
   }
 
   function exportHoldingArea() {
@@ -3677,16 +3710,30 @@ export default function RhcTeamPage() {
         </section>
       </div>
 
-      {successPopup && (
+      {actionPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <section className="w-full max-w-lg rounded-2xl border-2 border-[#157347] bg-white p-6 shadow-2xl">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#157347]">RHC Team update successful</p>
-            <h2 className="mt-3 text-2xl font-black text-[#111827]">Requests sent successfully</h2>
-            <p className="mt-3 text-sm font-bold leading-6 text-[#374151]">{successPopup}</p>
+          <section
+            className={`w-full max-w-lg rounded-2xl border-2 bg-white p-6 shadow-2xl ${
+              actionPopup.tone === "success" ? "border-[#157347]" : "border-[#f59e0b]"
+            }`}
+          >
+            <p
+              className={`text-xs font-black uppercase tracking-[0.16em] ${
+                actionPopup.tone === "success" ? "text-[#157347]" : "text-[#92400e]"
+              }`}
+            >
+              {actionPopup.title}
+            </p>
+            <h2 className="mt-3 text-2xl font-black text-[#111827]">
+              {actionPopup.tone === "success" ? "Requests sent successfully" : "Action needed"}
+            </h2>
+            <p className="mt-3 text-sm font-bold leading-6 text-[#374151]">{actionPopup.message}</p>
             <button
               type="button"
-              onClick={() => setSuccessPopup("")}
-              className="mt-5 w-full rounded-lg bg-[#157347] px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#0f5f38]"
+              onClick={() => setActionPopup(null)}
+              className={`mt-5 w-full rounded-lg px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white transition ${
+                actionPopup.tone === "success" ? "bg-[#157347] hover:bg-[#0f5f38]" : "bg-[#92400e] hover:bg-[#78350f]"
+              }`}
             >
               Close
             </button>
@@ -3883,7 +3930,10 @@ function formatTableCell(value: string | number | boolean | undefined) {
 function hasMatching318File(duty: string, fileNames: string[]) {
   const dutyName = normalise318FileName(duty);
 
-  return fileNames.some((fileName) => normalise318FileName(fileName) === dutyName);
+  return fileNames.some((fileName) => {
+    const normalisedFileName = normalise318FileName(fileName);
+    return normalisedFileName === dutyName || normalisedFileName.includes(dutyName);
+  });
 }
 
 function normalise318FileName(value: string) {
