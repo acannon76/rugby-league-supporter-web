@@ -78,6 +78,15 @@ const rhcJobTemplateColumns: {
   { header: "RMResponsiblePersonEmail", value: (order) => order.rmResponsiblePersonEmail ?? "rhc.team@royalmail.com" },
 ];
 
+const hiddenUiJobTemplateHeaders = new Set([
+  "(Do Not Modify) Job",
+  "(Do Not Modify) Row Checksum",
+  "(Do Not Modify) Modified On",
+  "Account",
+  "Proposed Rate Category For Preferred Haulier",
+  "Proposed Rate For Preferred Haulier",
+]);
+
 
 const sidebarItems = [
   { label: "Duty Execution", icon: "⚙", href: "/internal/app-ideas/link-message-mock" },
@@ -100,6 +109,7 @@ export default function RhcTeamHistoryPage() {
   const [orders, setOrders] = useState<RhcOrder[]>([]);
   const [searchText, setSearchText] = useState("");
   const [weekFilter, setWeekFilter] = useState("all");
+  const [dutyFilter, setDutyFilter] = useState("all");
   const [dayFilter, setDayFilter] = useState("all");
   const [planTypeFilter, setPlanTypeFilter] = useState("all");
 
@@ -108,6 +118,7 @@ export default function RhcTeamHistoryPage() {
   }, []);
 
   const weekOptions = useMemo(() => Array.from(new Set(orders.map((order) => String(order.week)))).sort((a, b) => Number(a) - Number(b)), [orders]);
+  const dutyOptions = useMemo(() => Array.from(new Set(orders.map((order) => order.duty))).sort(), [orders]);
   const dayOptions = useMemo(() => Array.from(new Set(orders.map((order) => order.day))).sort(), [orders]);
   const planTypeOptions = useMemo(() => Array.from(new Set(orders.map((order) => order.planType))).sort(), [orders]);
 
@@ -125,12 +136,13 @@ export default function RhcTeamHistoryPage() {
         String(order.week).includes(search);
 
       const matchesWeek = weekFilter === "all" || String(order.week) === weekFilter;
+      const matchesDuty = dutyFilter === "all" || order.duty === dutyFilter;
       const matchesDay = dayFilter === "all" || order.day === dayFilter;
       const matchesPlanType = planTypeFilter === "all" || order.planType === planTypeFilter;
 
-      return matchesSearch && matchesWeek && matchesDay && matchesPlanType;
+      return matchesSearch && matchesWeek && matchesDuty && matchesDay && matchesPlanType;
     });
-  }, [orders, searchText, weekFilter, dayFilter, planTypeFilter]);
+  }, [orders, searchText, weekFilter, dutyFilter, dayFilter, planTypeFilter]);
 
   function exportHistory() {
     exportOrdersToExcel(filteredOrders, "RHC-Team-History-Export");
@@ -198,7 +210,7 @@ export default function RhcTeamHistoryPage() {
                 </p>
               </div>
 
-              <div className="grid w-full grid-cols-1 gap-3 lg:max-w-[920px] lg:grid-cols-4">
+              <div className="grid w-full grid-cols-1 gap-3 xl:max-w-[1120px] xl:grid-cols-5">
                 <label className="block">
                   <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">Search history</span>
                   <input
@@ -210,6 +222,7 @@ export default function RhcTeamHistoryPage() {
                 </label>
 
                 <FilterSelect label="Week Number" value={weekFilter} onChange={setWeekFilter} options={weekOptions} />
+                <FilterSelect label="Duty" value={dutyFilter} onChange={setDutyFilter} options={dutyOptions} />
                 <FilterSelect label="Day Of Week" value={dayFilter} onChange={setDayFilter} options={dayOptions} />
                 <FilterSelect label="Plan Type" value={planTypeFilter} onChange={setPlanTypeFilter} options={planTypeOptions} />
               </div>
@@ -220,63 +233,37 @@ export default function RhcTeamHistoryPage() {
             </p>
 
             <div className="mt-4 overflow-x-auto rounded-lg border border-[#d9dee6]">
-              <table className="min-w-[2300px] w-full border-collapse text-left text-sm">
+              <table className="min-w-[2000px] w-full border-collapse text-left text-sm">
                 <thead className="bg-[#f8fafc] text-xs font-black uppercase tracking-[0.1em] text-[#6b7280]">
                   <tr>
-                    <th className="px-3 py-3">Sent</th>
-                    <th className="px-3 py-3">Duty Number</th>
-                    <th className="px-3 py-3">JobTier</th>
-                    <th className="px-3 py-3">Account</th>
-                    <th className="px-3 py-3">Proposed Rate Category For Preferred Haulier</th>
-                    <th className="px-3 py-3">Proposed Rate For Preferred Haulier</th>
-                    <th className="px-3 py-3">Week Number</th>
-                    <th className="px-3 py-3">Plan Type</th>
-                    <th className="px-3 py-3">Traffic</th>
-                    <th className="px-3 py-3">Start Location</th>
-                    <th className="px-3 py-3">Final Destination</th>
-                    <th className="px-3 py-3">Start Date And Time</th>
-                    <th className="px-3 py-3">End Time</th>
-                    <th className="px-3 py-3">Day Of Week</th>
-                    <th className="px-3 py-3">Kit</th>
-                    <th className="px-3 py-3">DVS Required</th>
-                    <th className="px-3 py-3">Region</th>
-                    <th className="px-3 py-3">Duty Schedule</th>
-                    <th className="px-3 py-3">Miles</th>
-                    <th className="px-3 py-3">As Directed/Flex Time</th>
-                    <th className="px-3 py-3">RMResponsiblePersonEmail</th>
+                    {rhcJobTemplateColumns.map((column) => (
+                      <th key={column.header} className={jobTemplateColumnClass(column.header)}>
+                        {column.header}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredOrders.length === 0 ? (
                     <tr>
-                      <td colSpan={21} className="px-3 py-8 text-center text-sm font-bold text-[#6b7280]">
+                      <td colSpan={rhcJobTemplateColumns.length} className="px-3 py-8 text-center text-sm font-bold text-[#6b7280]">
                         No RHC Team history records found.
                       </td>
                     </tr>
                   ) : (
                     filteredOrders.map((order) => (
                       <tr key={`${order.id}-${order.submittedAt ?? "saved"}`} className="border-t border-[#d9dee6] font-bold text-[#374151]">
-                        <td className="px-3 py-3">{formatSubmittedAt(order.submittedAt)}</td>
-                        <td className="px-3 py-3 font-black text-[#111827]">{order.duty}</td>
-                        <td className="px-3 py-3">{order.jobTier ?? order.tier}</td>
-                        <td className="px-3 py-3">{order.account ?? order.billingCentre}</td>
-                        <td className="px-3 py-3">{order.proposedRateCategory ?? "Other"}</td>
-                        <td className="px-3 py-3">{order.proposedRate ?? "0"}</td>
-                        <td className="px-3 py-3">{order.week}</td>
-                        <td className="px-3 py-3">{order.planType}</td>
-                        <td className="px-3 py-3">{order.traffic}</td>
-                        <td className="px-3 py-3">{order.startLocation}</td>
-                        <td className="px-3 py-3">{order.endLocation}</td>
-                        <td className="px-3 py-3">{order.startDateTime}</td>
-                        <td className="px-3 py-3">{order.endDateTime}</td>
-                        <td className="px-3 py-3">{order.day}</td>
-                        <td className="px-3 py-3">{order.kit}</td>
-                        <td className="px-3 py-3">{order.dvsRequired ?? "No"}</td>
-                        <td className="px-3 py-3">{order.region}</td>
-                        <td className="px-3 py-3">{order.dutySchedule}</td>
-                        <td className="px-3 py-3">{order.miles}</td>
-                        <td className="px-3 py-3">{order.asDirected}</td>
-                        <td className="px-3 py-3">{order.rmResponsiblePersonEmail ?? "rhc.team@royalmail.com"}</td>
+                        {rhcJobTemplateColumns.map((column) => (
+                          <td
+                            key={`${order.id}-${order.submittedAt ?? "saved"}-${column.header}`}
+                            className={jobTemplateColumnClass(
+                              column.header,
+                              column.header === "Duty Number" ? "font-black text-[#111827]" : "",
+                            )}
+                          >
+                            {formatTableCell(column.value(order))}
+                          </td>
+                        ))}
                       </tr>
                     ))
                   )}
@@ -383,6 +370,20 @@ function FilterSelect({
       </select>
     </label>
   );
+}
+
+function jobTemplateColumnClass(header: string, extra = "") {
+  return [
+    "px-3 py-3",
+    hiddenUiJobTemplateHeaders.has(header) ? "hidden" : "",
+    extra,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function formatTableCell(value: string | number | boolean | undefined) {
+  return String(value ?? "");
 }
 
 function exportOrdersToExcel(orders: RhcOrder[], fileName: string) {

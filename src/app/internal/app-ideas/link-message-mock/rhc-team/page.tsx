@@ -3166,6 +3166,15 @@ const rhcJobTemplateColumns: {
   { header: "RMResponsiblePersonEmail", value: (order) => order.rmResponsiblePersonEmail },
 ];
 
+const hiddenUiJobTemplateHeaders = new Set([
+  "(Do Not Modify) Job",
+  "(Do Not Modify) Row Checksum",
+  "(Do Not Modify) Modified On",
+  "Account",
+  "Proposed Rate Category For Preferred Haulier",
+  "Proposed Rate For Preferred Haulier",
+]);
+
 
 export default function RhcTeamPage() {
   const [selectedDuty, setSelectedDuty] = useState(() => defaultDuty?.duty ?? "");
@@ -3309,7 +3318,11 @@ export default function RhcTeamPage() {
     saveOrdersToHistory(submittedOrders);
     setHoldingOrders((current) => current.filter((order) => !selectedHoldingIds.includes(order.id)));
     setSelectedHoldingIds([]);
-    setSuccessPopup(`${submittedOrders.length} RHC request${submittedOrders.length === 1 ? "" : "s"} successfully sent to the RHC Team and added to RHC Team History.`);
+    const sentSummary = submittedOrders
+      .map((order) => `${order.duty} (${order.startDateTime} to ${order.endDateTime})`)
+      .join("; ");
+
+    setSuccessPopup(`${submittedOrders.length} RHC request${submittedOrders.length === 1 ? "" : "s"} successfully sent to the RHC Team and added to RHC Team History. ${sentSummary}`);
     setConfirmation(`${submittedOrders.length} RHC request${submittedOrders.length === 1 ? "" : "s"} sent successfully and added to RHC Team History.`);
   }
 
@@ -3560,6 +3573,9 @@ export default function RhcTeamPage() {
                       318 Data
                     </label>
                   </div>
+                  <p className="mt-2 rounded-md border border-[#f59e0b] bg-[#fffbeb] px-2 py-1 text-[11px] font-black leading-5 text-[#92400e]">
+                    318 file names must match the selected duty number.
+                  </p>
                 </section>
 
                 <button
@@ -3579,7 +3595,7 @@ export default function RhcTeamPage() {
                     onChange={(event) => {
                       const files = Array.from(event.currentTarget.files ?? []).map((file: File) => file.name);
                       setManifestFileNames(files);
-                      setConfirmation(files.length > 0 ? `${files.length} 318 file${files.length === 1 ? "" : "s"} selected. File names must match the selected duty numbers.` : "");
+                      setConfirmation(files.length > 0 ? `${files.length} 318 file${files.length === 1 ? "" : "s"} selected.` : "");
                     }}
                   />
                 </label>
@@ -3594,10 +3610,6 @@ export default function RhcTeamPage() {
               </div>
             </div>
 
-            <p className="mt-3 rounded-lg border border-[#f59e0b] bg-[#fffbeb] px-3 py-2 text-xs font-black text-[#92400e]">
-              Warning: the 318&apos;s must use the same file name as the duty number before the selected request can be sent.
-            </p>
-
             {manifestFileNames.length > 0 && (
               <p className="mt-3 rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-3 py-2 text-xs font-black text-[#6b7280]">
                 318 file{manifestFileNames.length === 1 ? "" : "s"} uploaded: {manifestFileNames.join(", ")}
@@ -3605,37 +3617,22 @@ export default function RhcTeamPage() {
             )}
 
             <div className="mt-4 overflow-x-auto rounded-lg border border-[#d9dee6]">
-              <table className="min-w-[2300px] w-full border-collapse text-left text-sm">
+              <table className="min-w-[2000px] w-full border-collapse text-left text-sm">
                 <thead className="bg-[#f8fafc] text-xs font-black uppercase tracking-[0.1em] text-[#6b7280]">
                   <tr>
                     <th className="px-3 py-3">Send</th>
-                    <th className="px-3 py-3">Duty Number</th>
-                    <th className="px-3 py-3">JobTier</th>
-                    <th className="px-3 py-3">Account</th>
-                    <th className="px-3 py-3">Proposed Rate Category For Preferred Haulier</th>
-                    <th className="px-3 py-3">Proposed Rate For Preferred Haulier</th>
-                    <th className="px-3 py-3">Week Number</th>
-                    <th className="px-3 py-3">Plan Type</th>
-                    <th className="px-3 py-3">Traffic</th>
-                    <th className="px-3 py-3">Start Location</th>
-                    <th className="px-3 py-3">Final Destination</th>
-                    <th className="px-3 py-3">Start Date And Time</th>
-                    <th className="px-3 py-3">End Time</th>
-                    <th className="px-3 py-3">Day Of Week</th>
-                    <th className="px-3 py-3">Kit</th>
-                    <th className="px-3 py-3">DVS Required</th>
-                    <th className="px-3 py-3">Region</th>
-                    <th className="px-3 py-3">Duty Schedule</th>
-                    <th className="px-3 py-3">Miles</th>
-                    <th className="px-3 py-3">As Directed/Flex Time</th>
-                    <th className="px-3 py-3">RMResponsiblePersonEmail</th>
+                    {rhcJobTemplateColumns.map((column) => (
+                      <th key={column.header} className={jobTemplateColumnClass(column.header)}>
+                        {column.header}
+                      </th>
+                    ))}
                     <th className="px-3 py-3">Remove</th>
                   </tr>
                 </thead>
                 <tbody>
                   {holdingOrders.length === 0 ? (
                     <tr>
-                      <td colSpan={22} className="px-3 py-8 text-center text-sm font-bold text-[#6b7280]">
+                      <td colSpan={rhcJobTemplateColumns.length + 2} className="px-3 py-8 text-center text-sm font-bold text-[#6b7280]">
                         No duties in the holding area yet.
                       </td>
                     </tr>
@@ -3650,26 +3647,17 @@ export default function RhcTeamPage() {
                             className="h-4 w-4"
                           />
                         </td>
-                        <td className="px-3 py-3 font-black text-[#111827]">{order.duty}</td>
-                        <td className="px-3 py-3">{order.jobTier}</td>
-                        <td className="px-3 py-3">{order.account}</td>
-                        <td className="px-3 py-3">{order.proposedRateCategory}</td>
-                        <td className="px-3 py-3">{order.proposedRate}</td>
-                        <td className="px-3 py-3">{order.week}</td>
-                        <td className="px-3 py-3">{order.planType}</td>
-                        <td className="px-3 py-3">{order.traffic}</td>
-                        <td className="px-3 py-3">{order.startLocation}</td>
-                        <td className="px-3 py-3">{order.endLocation}</td>
-                        <td className="px-3 py-3">{order.startDateTime}</td>
-                        <td className="px-3 py-3">{order.endDateTime}</td>
-                        <td className="px-3 py-3">{order.day}</td>
-                        <td className="px-3 py-3">{order.kit}</td>
-                        <td className="px-3 py-3">{order.dvsRequired}</td>
-                        <td className="px-3 py-3">{order.region}</td>
-                        <td className="px-3 py-3">{order.dutySchedule}</td>
-                        <td className="px-3 py-3">{order.miles}</td>
-                        <td className="px-3 py-3">{order.asDirected}</td>
-                        <td className="px-3 py-3">{order.rmResponsiblePersonEmail}</td>
+                        {rhcJobTemplateColumns.map((column) => (
+                          <td
+                            key={`${order.id}-${column.header}`}
+                            className={jobTemplateColumnClass(
+                              column.header,
+                              column.header === "Duty Number" ? "font-black text-[#111827]" : "",
+                            )}
+                          >
+                            {formatTableCell(column.value(order))}
+                          </td>
+                        ))}
                         <td className="px-3 py-3">
                           <button
                             type="button"
@@ -3877,6 +3865,20 @@ function DataPackageCard({
   );
 }
 
+
+function jobTemplateColumnClass(header: string, extra = "") {
+  return [
+    "px-3 py-3",
+    hiddenUiJobTemplateHeaders.has(header) ? "hidden" : "",
+    extra,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function formatTableCell(value: string | number | boolean | undefined) {
+  return String(value ?? "");
+}
 
 function hasMatching318File(duty: string, fileNames: string[]) {
   const dutyName = normalise318FileName(duty);
