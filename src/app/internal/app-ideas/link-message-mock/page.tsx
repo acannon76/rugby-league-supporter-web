@@ -6,6 +6,8 @@ import { useMemo, useState } from "react";
 type SideButton = {
   label: string;
   icon: string;
+  href?: string;
+  alertCount?: number;
 };
 
 type DutyAction = {
@@ -33,6 +35,22 @@ const sideButtons: SideButton[] = [
   { label: "Vehicle view", icon: "🚛" },
   { label: "Trailer view", icon: "▰" },
   { label: "Fleet view", icon: "▱" },
+  {
+    label: "Comms",
+    icon: "💬",
+    href: "/internal/app-ideas/link-message-mock/comms",
+    alertCount: 4,
+  },
+  {
+    label: "Debrief",
+    icon: "🧾",
+    href: "/internal/app-ideas/link-message-mock/debrief",
+  },
+  {
+    label: "RHC Team",
+    icon: "RHC",
+    href: "/internal/app-ideas/link-message-mock/rhc-team",
+  },
 ];
 
 const dutyActions: DutyAction[] = [
@@ -324,6 +342,35 @@ export default function LinkMessageMockPage() {
         <aside className="flex min-h-[calc(100vh-64px)] w-[68px] flex-col bg-[#252c33] text-white">
           {sideButtons.map((button) => {
             const isActive = button.label === activeSideButton;
+            const buttonClasses = `relative flex h-[64px] items-center justify-center border-b border-white/10 transition ${
+              button.icon.length > 2 ? "text-sm font-black" : "text-3xl"
+            } ${
+              isActive ? "bg-[#11171d] text-white" : "text-white/75 hover:bg-[#11171d] hover:text-white"
+            }`;
+            const buttonContent = (
+              <>
+                <span>{button.icon}</span>
+                {button.alertCount ? (
+                  <span className="absolute bottom-2 right-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#e40000] px-1 text-[11px] font-black leading-none text-white ring-2 ring-[#252c33]">
+                    {button.alertCount}
+                  </span>
+                ) : null}
+              </>
+            );
+
+            if (button.href) {
+              return (
+                <Link
+                  key={button.label}
+                  href={button.href}
+                  className={`${buttonClasses} no-underline`}
+                  aria-label={button.label}
+                  title={button.label}
+                >
+                  {buttonContent}
+                </Link>
+              );
+            }
 
             return (
               <button
@@ -333,13 +380,11 @@ export default function LinkMessageMockPage() {
                   setActiveSideButton(button.label);
                   setSelectedDetail(`${button.label} left menu button clicked.`);
                 }}
-                className={`flex h-[64px] items-center justify-center border-b border-white/10 text-3xl transition ${
-                  isActive ? "bg-[#11171d] text-white" : "text-white/75 hover:bg-[#11171d] hover:text-white"
-                }`}
+                className={buttonClasses}
                 aria-label={button.label}
                 title={button.label}
               >
-                {button.icon}
+                {buttonContent}
               </button>
             );
           })}
