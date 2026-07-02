@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 
 type SideButton = {
   label: string;
@@ -62,7 +62,7 @@ const dutyActions: DutyAction[] = [
   { label: "Add action", icon: "+", colour: "bg-[#202733]" },
 ];
 
-const duties: DutyRow[] = [
+const dutySegmentPatterns: DutyRow[] = [
   {
     duty: "AC001",
     segments: [
@@ -214,6 +214,19 @@ const duties: DutyRow[] = [
   },
 ];
 
+const duties: DutyRow[] = Array.from({ length: 30 }, (_, index) => {
+  const pattern = dutySegmentPatterns[index % dutySegmentPatterns.length];
+  const offset = ((index % 5) - 2) * 1.1;
+
+  return {
+    duty: `NWH${String(index + 1).padStart(3, "0")}`,
+    segments: pattern.segments.map((segment) => ({
+      ...segment,
+      start: Math.min(94, Math.max(1, Number((segment.start + offset).toFixed(1)))),
+    })),
+  };
+});
+
 const timeLabels = Array.from({ length: 16 }, (_, index) => `${String(index + 1).padStart(2, "0")}:00`);
 
 function getMonday(date: Date) {
@@ -275,6 +288,8 @@ export default function LinkMessageMockPage() {
     "Ready. Click a duty icon, left menu button or Gantt segment to test the mock interaction.",
   );
   const [rhcPopupDuty, setRhcPopupDuty] = useState<DutyRow | null>(null);
+  const [rhcHoldingOrders, setRhcHoldingOrders] = useState<RhcOrder[]>([]);
+  const [selectedRhcHoldingIds, setSelectedRhcHoldingIds] = useState<string[]>([]);
 
   const today = useMemo(() => new Date(), []);
   const weekStart = useMemo(() => getMonday(today), [today]);
@@ -660,6 +675,10 @@ export default function LinkMessageMockPage() {
       {rhcPopupDuty && (
         <RhcDutyCoverPopup
           dutyRow={rhcPopupDuty}
+          holdingOrders={rhcHoldingOrders}
+          selectedHoldingIds={selectedRhcHoldingIds}
+          setHoldingOrders={setRhcHoldingOrders}
+          setSelectedHoldingIds={setSelectedRhcHoldingIds}
           onClose={() => setRhcPopupDuty(null)}
         />
       )}
@@ -842,9 +861,17 @@ const hiddenUiJobTemplateHeaders = new Set([
 
 function RhcDutyCoverPopup({
   dutyRow,
+  holdingOrders,
+  selectedHoldingIds,
+  setHoldingOrders,
+  setSelectedHoldingIds,
   onClose,
 }: {
   dutyRow: DutyRow;
+  holdingOrders: RhcOrder[];
+  selectedHoldingIds: string[];
+  setHoldingOrders: Dispatch<SetStateAction<RhcOrder[]>>;
+  setSelectedHoldingIds: Dispatch<SetStateAction<string[]>>;
   onClose: () => void;
 }) {
   const [selectedDate, setSelectedDate] = useState(getTodayDateInput());
@@ -863,8 +890,6 @@ function RhcDutyCoverPopup({
   const tier = "Tier 1";
   const [kit, setKit] = useState(kitOptions[0]);
   const [dutySchedule] = useState(dutyScheduleOptions[0]);
-  const [holdingOrders, setHoldingOrders] = useState<RhcOrder[]>([]);
-  const [selectedHoldingIds, setSelectedHoldingIds] = useState<string[]>([]);
   const [confirmation, setConfirmation] = useState("");
   const [manifestFileNames, setManifestFileNames] = useState<string[]>([]);
   const [actionPopup, setActionPopup] = useState<RhcActionPopup | null>(null);
