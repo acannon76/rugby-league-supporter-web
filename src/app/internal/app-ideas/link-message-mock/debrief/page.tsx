@@ -21,10 +21,12 @@ const sidebarItems = [
 
 type DebriefStatus = "Awaiting Debrief" | "In Review" | "Debriefed" | "Action Required";
 type DebriefOutcome = "Complete" | "Part Complete" | "Failed" | "Cancelled";
+type Division = "Letters" | "Network" | "Contractor";
 
 type DebriefRow = {
   id: string;
   dutyNumber: string;
+  division: Division;
   dutyDate: string;
   weekNumber: number;
   driverName: string;
@@ -123,15 +125,6 @@ const debriefStatuses: DebriefStatus[] = ["Awaiting Debrief", "In Review", "Debr
 const debriefOutcomes: DebriefOutcome[] = ["Complete", "Part Complete", "Failed", "Cancelled"];
 const podStatuses = ["Received", "Pending Upload", "Missing", "Not Required", "Query"];
 
-const bestPracticeItems = [
-  "Confirm the duty actually completed and whether any part was failed, cancelled or covered differently.",
-  "Compare planned start/finish against actual times, then capture a clear late or early reason.",
-  "Check GPS/geofence evidence so the office can see whether the driver was at the right location.",
-  "Validate 318/POD evidence, York/barcode information, asset counts, seals and any missing paperwork.",
-  "Record vehicle/trailer defects, trailer swaps, breakdowns, RTCs, tacho/break queries and fuel/AdBlue issues.",
-  "Create a follow-up owner and date where the debrief needs action rather than leaving it as free text.",
-];
-
 export default function DebriefPage() {
   const [rows, setRows] = useState<DebriefRow[]>(() => buildInitialDebriefRows());
   const [searchTerm, setSearchTerm] = useState("");
@@ -155,6 +148,7 @@ export default function DebriefPage() {
         query.length === 0 ||
         [
           row.dutyNumber,
+          row.division,
           row.driverName,
           row.userId,
           row.vehicle,
@@ -264,17 +258,6 @@ export default function DebriefPage() {
               <SummaryCard label="Late completed" value={String(lateCount)} />
               <SummaryCard label="318 / POD outstanding" value={String(missing318Count)} />
             </div>
-
-            <div className="mt-4 grid gap-3 lg:grid-cols-3">
-              {bestPracticeItems.map((item, index) => (
-                <div key={item} className="rounded-lg border border-[#d6dee8] bg-[#f8fafc] p-3">
-                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#64748b]">
-                    Check {index + 1}
-                  </p>
-                  <p className="mt-2 text-sm font-bold leading-5 text-[#374151]">{item}</p>
-                </div>
-              ))}
-            </div>
           </section>
 
           <section className="mt-4 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
@@ -339,7 +322,7 @@ export default function DebriefPage() {
 
           <section className="mt-4 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[2840px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+              <table className="min-w-[2280px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
                   <tr>
                     <DebriefHeader label="Debrief Action" headerClass="bg-[#cfeefa]" widthClass="w-[105px]" />
@@ -347,11 +330,10 @@ export default function DebriefPage() {
                     <DebriefHeader label="Duty Date" headerClass="bg-[#cfeefa]" widthClass="w-[88px]" />
                     <DebriefHeader label="Week Number" headerClass="bg-[#cfeefa]" widthClass="w-[78px]" />
                     <DebriefHeader label="Duty Number" headerClass="bg-[#cfeefa]" widthClass="w-[95px]" />
+                    <DebriefHeader label="Division" headerClass="bg-[#cfeefa]" widthClass="w-[95px]" />
                     <DebriefHeader label="Driver" headerClass="bg-[#cfeefa]" widthClass="w-[135px]" />
                     <DebriefHeader label="Vehicle" headerClass="bg-[#cfeefa]" widthClass="w-[92px]" />
                     <DebriefHeader label="Trailer Number" headerClass="bg-[#cfeefa]" widthClass="w-[105px]" />
-                    <DebriefHeader label="JobTier" headerClass="bg-[#fde7c7]" widthClass="w-[72px]" />
-                    <DebriefHeader label="Plan Type" headerClass="bg-[#fde7c7]" widthClass="w-[86px]" />
                     <DebriefHeader label="Traffic" headerClass="bg-[#fde7c7]" widthClass="w-[78px]" />
                     <DebriefHeader label="Departure Location" headerClass="bg-[#f2e8c9]" widthClass="w-[120px]" />
                     <DebriefHeader label="Planned Start" headerClass="bg-[#f2e8c9]" widthClass="w-[125px]" />
@@ -365,10 +347,6 @@ export default function DebriefPage() {
                     <DebriefHeader label="Arr Assets" headerClass="bg-[#d9f1d5]" widthClass="w-[78px]" />
                     <DebriefHeader label="Issue Category" headerClass="bg-[#fde7c7]" widthClass="w-[130px]" />
                     <DebriefHeader label="Driver Notes" headerClass="bg-[#fde7c7]" widthClass="w-[220px]" />
-                    <DebriefHeader label="318 / POD" headerClass="bg-[#ead5ea]" widthClass="w-[95px]" />
-                    <DebriefHeader label="GPS Departure" headerClass="bg-[#ead5ea]" widthClass="w-[145px]" />
-                    <DebriefHeader label="GPS Arrival" headerClass="bg-[#ead5ea]" widthClass="w-[145px]" />
-                    <DebriefHeader label="York Barcode" headerClass="bg-[#ead5ea]" widthClass="w-[130px]" />
                     <DebriefHeader label="Outcome" headerClass="bg-[#ead5ea]" widthClass="w-[105px]" />
                     <DebriefHeader label="Follow-up Owner" headerClass="bg-[#ead5ea]" widthClass="w-[130px]" />
                     <DebriefHeader label="Follow-up Date" headerClass="bg-[#ead5ea]" widthClass="w-[105px]" />
@@ -378,7 +356,7 @@ export default function DebriefPage() {
                 <tbody>
                   {filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={30} className="border border-black px-4 py-10 text-center text-sm font-black text-[#64748b]">
+                      <td colSpan={25} className="border border-black px-4 py-10 text-center text-sm font-black text-[#64748b]">
                         No duties match the selected debrief filters.
                       </td>
                     </tr>
@@ -400,11 +378,10 @@ export default function DebriefPage() {
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{formatDate(row.dutyDate)}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal">{row.weekNumber}</td>
                         <td className="border border-black px-1 py-2 text-center font-black whitespace-nowrap">{row.dutyNumber}</td>
+                        <td className="border border-black px-1 py-2 text-center font-black whitespace-nowrap">{row.division}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.driverName}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.vehicle}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.trailerNumber}</td>
-                        <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.jobTier}</td>
-                        <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.planType}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.traffic}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.startLocation}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{formatDateTime(row.plannedStartTs)}</td>
@@ -426,10 +403,6 @@ export default function DebriefPage() {
                         <td className="border border-black px-1 py-2 text-center font-bold whitespace-nowrap">{row.arrAssets}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.issueCategory}</td>
                         <td className="border border-black px-1 py-2 font-normal break-words">{row.driverNotes || "-"}</td>
-                        <td className="border border-black px-1 py-2 text-center font-bold break-words">{row.pod318Status}</td>
-                        <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsDeparture}</td>
-                        <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsArrival}</td>
-                        <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.yorkBarcode}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.debriefOutcome}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.actionOwner || "-"}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.followUpDate ? formatDate(row.followUpDate) : "-"}</td>
@@ -558,6 +531,7 @@ function DebriefModal({
 
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <ReadOnlyBox label="Duty number" value={row.dutyNumber} />
+                <ReadOnlyBox label="Division" value={row.division} />
                 <ReadOnlyBox label="Driver" value={row.driverName} />
                 <ReadOnlyBox label="Vehicle" value={row.vehicle} />
                 <ReadOnlyBox label="Trailer" value={row.trailerNumber} />
@@ -964,10 +938,12 @@ function buildInitialDebriefRows(): DebriefRow[] {
     const actionRequired = issueCategory !== "No Issue" && index % 3 === 0;
     const debriefStatus = actionRequired ? "Action Required" : statusPattern[index % statusPattern.length];
     const pod318Status = index % 9 === 0 ? "Missing" : index % 6 === 0 ? "Pending Upload" : "Received";
+    const division = getMockDivision(index);
 
     return {
       id: dutyNumber,
       dutyNumber,
+      division,
       dutyDate,
       weekNumber: 14 + Math.floor(index / 10),
       driverName: drivers[index % drivers.length],
@@ -1010,6 +986,18 @@ function buildInitialDebriefRows(): DebriefRow[] {
       checks: buildInitialChecks(debriefStatus, pod318Status),
     };
   });
+}
+
+function getMockDivision(index: number): Division {
+  if (index === 4) {
+    return "Letters";
+  }
+
+  if (index === 9) {
+    return "Contractor";
+  }
+
+  return "Network";
 }
 
 function buildInitialChecks(status: DebriefStatus, pod318Status: string): DebriefChecks {
@@ -1099,7 +1087,16 @@ function readDebriefRowsFromStorage() {
 
   try {
     const raw = window.localStorage.getItem(DEBRIEF_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as DebriefRow[]) : buildInitialDebriefRows();
+
+    if (!raw) {
+      return buildInitialDebriefRows();
+    }
+
+    const parsedRows = JSON.parse(raw) as DebriefRow[];
+    return parsedRows.map((row, index) => ({
+      ...row,
+      division: row.division ?? getMockDivision(index),
+    }));
   } catch {
     return buildInitialDebriefRows();
   }
@@ -1232,11 +1229,10 @@ function downloadDebriefRowsAsExcel(rows: DebriefRow[]) {
     "Duty Date",
     "Week Number",
     "Duty Number",
+    "Division",
     "Driver",
     "Vehicle",
     "Trailer Number",
-    "JobTier",
-    "Plan Type",
     "Traffic",
     "Departure Location",
     "Planned Start",
@@ -1250,10 +1246,6 @@ function downloadDebriefRowsAsExcel(rows: DebriefRow[]) {
     "Arr Assets",
     "Issue Category",
     "Driver Notes",
-    "318 / POD",
-    "GPS Departure",
-    "GPS Arrival",
-    "York Barcode",
     "Outcome",
     "Follow-up Owner",
     "Follow-up Date",
@@ -1266,11 +1258,10 @@ function downloadDebriefRowsAsExcel(rows: DebriefRow[]) {
     formatDate(row.dutyDate),
     row.weekNumber,
     row.dutyNumber,
+    row.division,
     row.driverName,
     row.vehicle,
     row.trailerNumber,
-    row.jobTier,
-    row.planType,
     row.traffic,
     row.startLocation,
     formatDateTime(row.plannedStartTs),
@@ -1284,10 +1275,6 @@ function downloadDebriefRowsAsExcel(rows: DebriefRow[]) {
     row.arrAssets,
     row.issueCategory,
     row.driverNotes,
-    row.pod318Status,
-    row.gpsDeparture,
-    row.gpsArrival,
-    row.yorkBarcode,
     row.debriefOutcome,
     row.actionOwner,
     row.followUpDate ? formatDate(row.followUpDate) : "",
