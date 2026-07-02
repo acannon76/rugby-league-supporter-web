@@ -770,7 +770,7 @@ type RhcOrder = {
   submittedAt?: string;
 };
 
-const DUTY_EXECUTION_RHC_STORAGE_KEY = "mock-duty-execution-rhc-orders";
+const DUTY_EXECUTION_RHC_STORAGE_KEY = "mock-rhc-team-history";
 const WEEK_ONE_START_DATE = "2026-03-30";
 const orderTypeOptions = ["Order", "Amend", "Cancel"];
 const rmPfwOptions = ["RM", "PFW"];
@@ -880,9 +880,9 @@ function RhcDutyCoverPopup({
   const [orderType, setOrderType] = useState(orderTypeOptions[0]);
   const [admName, setAdmName] = useState(admOptions[0]);
   const [rmPfw, setRmPfw] = useState(rmPfwOptions[0]);
-  const [requestedBy, setRequestedBy] = useState("");
-  const [billingCentre, setBillingCentre] = useState("");
-  const [siteContactNumber, setSiteContactNumber] = useState("");
+  const [requestedBy, setRequestedBy] = useState("Peter Finch");
+  const [billingCentre, setBillingCentre] = useState("NWH");
+  const [siteContactNumber, setSiteContactNumber] = useState("01925 765432");
   const [primaryReason, setPrimaryReason] = useState(reasonOptions[1]);
   const [secondReason, setSecondReason] = useState(reasonOptions[1]);
   const [region, setRegion] = useState("North West");
