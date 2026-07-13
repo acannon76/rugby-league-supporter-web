@@ -1545,13 +1545,11 @@ export const fixturesData: FixtureDay[] = [
     sortDate: "2026-07-16",
     games: [
       {
-        status: "LIVE",
+        status: "20:00",
         kickOff: "20:00",
         home: "Bradford Bulls",
         away: "Wakefield Trinity",
-        venue: "Odsal Stadium",
-        homeScore: 2,
-        awayScore: 0
+        venue: "Odsal Stadium"
       }
     ]
   },
