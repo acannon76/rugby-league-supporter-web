@@ -396,7 +396,7 @@ function sortResults(a: DisplayGame, b: DisplayGame) {
     return dateCompare;
   }
 
-  return getKickOffSortValue(b.kickOff) - getKickOffSortValue(a.kickOff);
+  return getKickOffSortValue(a.kickOff) - getKickOffSortValue(b.kickOff);
 }
 
 function getKickOffSortValue(kickOff: string) {
