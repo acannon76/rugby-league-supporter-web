@@ -1,3 +1,6 @@
+// This file is generated from src/data/superLeagueMatches.xlsx.
+// Update the Excel sheet, then run: npm run update-rugby-data
+
 export type LeagueTableRow = {
   position: number;
   team: string;

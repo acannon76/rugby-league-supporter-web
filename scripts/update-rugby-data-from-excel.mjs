@@ -1,0 +1,455 @@
+import { createRequire } from "node:module";
+import fs from "node:fs";
+import path from "node:path";
+
+const require = createRequire(import.meta.url);
+
+let XLSX;
+try {
+  XLSX = require("xlsx");
+} catch {
+  console.error("");
+  console.error("The Excel reader package is not installed yet.");
+  console.error("Run this once in the project folder:");
+  console.error("");
+  console.error("  npm install xlsx");
+  console.error("");
+  console.error("Then run:");
+  console.error("");
+  console.error("  npm run update-rugby-data");
+  console.error("");
+  process.exit(1);
+}
+
+const projectRoot = process.cwd();
+const workbookPath = path.join(projectRoot, "src", "data", "superLeagueMatches.xlsx");
+const fixturesOutputPath = path.join(projectRoot, "src", "data", "fixturesData.ts");
+const tableOutputPath = path.join(projectRoot, "src", "data", "leagueTableData.ts");
+
+const teamAliases = new Map([
+  ["bradford bulls", "Bradford Bulls"],
+  ["castleford tigers", "Castleford Tigers"],
+  ["catalans dragons", "Catalans Dragons"],
+  ["huddersfield giants", "Huddersfield Giants"],
+  ["hull fc", "Hull FC"],
+  ["hull f.c.", "Hull FC"],
+  ["hull kr", "Hull KR"],
+  ["hull k r", "Hull KR"],
+  ["hull kingston rovers", "Hull KR"],
+  ["leeds rhinos", "Leeds Rhinos"],
+  ["leigh leopards", "Leigh Leopards"],
+  ["st helens", "St Helens"],
+  ["saints", "St Helens"],
+  ["toulouse", "Toulouse Olympique"],
+  ["toulouse olympique", "Toulouse Olympique"],
+  ["wakefield trinity", "Wakefield Trinity"],
+  ["warrington wolves", "Warrington Wolves"],
+  ["wigan warriors", "Wigan Warriors"],
+  ["york knights", "York Knights"],
+  ["tbc", "TBC"],
+]);
+
+const tableDisplayNameByTeam = {
+  "Bradford Bulls": "Bradford Bulls",
+  "Castleford Tigers": "Castleford Tigers",
+  "Catalans Dragons": "Catalans Dragons",
+  "Huddersfield Giants": "Huddersfield Giants",
+  "Hull FC": "Hull FC",
+  "Hull KR": "Hull Kingston Rovers",
+  "Leeds Rhinos": "Leeds Rhinos",
+  "Leigh Leopards": "Leigh Leopards",
+  "St Helens": "St Helens",
+  "Toulouse Olympique": "Toulouse",
+  "Wakefield Trinity": "Wakefield Trinity",
+  "Warrington Wolves": "Warrington Wolves",
+  "Wigan Warriors": "Wigan Warriors",
+  "York Knights": "York Knights",
+};
+
+const slugByTeam = {
+  "Bradford Bulls": "bradford-bulls",
+  "Castleford Tigers": "castleford-tigers",
+  "Catalans Dragons": "catalans-dragons",
+  "Huddersfield Giants": "huddersfield-giants",
+  "Hull FC": "hull-fc",
+  "Hull KR": "hull-kingston-rovers",
+  "Leeds Rhinos": "leeds-rhinos",
+  "Leigh Leopards": "leigh-leopards",
+  "St Helens": "st-helens",
+  "Toulouse Olympique": "toulouse",
+  "Wakefield Trinity": "wakefield-trinity",
+  "Warrington Wolves": "warrington-wolves",
+  "Wigan Warriors": "wigan-warriors",
+  "York Knights": "york-knights",
+};
+
+const orderedTeams = Object.keys(slugByTeam);
+
+if (!fs.existsSync(workbookPath)) {
+  throw new Error(`Cannot find Excel file: ${workbookPath}`);
+}
+
+const workbook = XLSX.readFile(workbookPath, { cellDates: true });
+const sheet = workbook.Sheets["Matches"] || workbook.Sheets[workbook.SheetNames[0]];
+
+if (!sheet) {
+  throw new Error("The workbook does not contain a sheet to read.");
+}
+
+const rawRows = XLSX.utils.sheet_to_json(sheet, {
+  defval: "",
+  raw: false,
+  dateNF: "yyyy-mm-dd",
+});
+
+const rows = rawRows
+  .map((row, index) => normaliseRow(row, index + 2))
+  .filter(Boolean)
+  .sort((a, b) => {
+    const dateCompare = a.date.localeCompare(b.date);
+    if (dateCompare !== 0) return dateCompare;
+    return kickOffSort(a.kickOff) - kickOffSort(b.kickOff);
+  });
+
+validateRows(rows);
+
+const fixturesData = buildFixturesData(rows);
+const leagueTableData = buildLeagueTable(rows);
+
+fs.writeFileSync(fixturesOutputPath, generateFixturesFile(fixturesData));
+fs.writeFileSync(tableOutputPath, generateLeagueTableFile(leagueTableData));
+
+console.log(`Updated ${path.relative(projectRoot, fixturesOutputPath)}`);
+console.log(`Updated ${path.relative(projectRoot, tableOutputPath)}`);
+console.log(`Read ${rows.length} rows from ${path.relative(projectRoot, workbookPath)}`);
+console.log("Next step: npm run build");
+
+function normaliseRow(row, rowNumber) {
+  const date = parseDate(row["Date"]);
+
+  if (!date && isBlankRow(row)) {
+    return null;
+  }
+
+  if (!date) {
+    throw new Error(`Row ${rowNumber}: Date is missing or invalid.`);
+  }
+
+  const home = normaliseTeam(row["Home Team"], rowNumber, "Home Team");
+  const away = normaliseTeam(row["Away Team"], rowNumber, "Away Team");
+  const homeScore = parseScore(row["Home Score"], rowNumber, "Home Score");
+  const awayScore = parseScore(row["Away Score"], rowNumber, "Away Score");
+  const kickOff = cleanText(row["Kick Off"]) || "TBC";
+  let status = cleanText(row["Status"]);
+
+  if (!status && homeScore !== null && awayScore !== null) {
+    status = "FT";
+  }
+
+  if (!status) {
+    status = kickOff || "TBC";
+  }
+
+  return {
+    rowNumber,
+    date,
+    kickOff,
+    home,
+    away,
+    homeScore,
+    awayScore,
+    status,
+    venue: cleanText(row["Venue"]) || "To be confirmed",
+  };
+}
+
+function validateRows(rows) {
+  for (const row of rows) {
+    if (row.home === "TBC" || row.away === "TBC") {
+      continue;
+    }
+
+    if (row.home === row.away) {
+      throw new Error(`Row ${row.rowNumber}: Home Team and Away Team are the same.`);
+    }
+
+    const isFullTime = row.status.toUpperCase() === "FT";
+    const hasOneScore = row.homeScore !== null || row.awayScore !== null;
+    const hasBothScores = row.homeScore !== null && row.awayScore !== null;
+
+    if (isFullTime && !hasBothScores) {
+      throw new Error(`Row ${row.rowNumber}: FT rows need both Home Score and Away Score.`);
+    }
+
+    if (!isFullTime && hasOneScore && !hasBothScores) {
+      throw new Error(`Row ${row.rowNumber}: enter both scores or leave both scores blank.`);
+    }
+  }
+}
+
+function parseDate(value) {
+  const text = cleanText(value);
+
+  if (!text) return "";
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return text;
+  }
+
+  const dmy = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmy) {
+    const [, day, month, year] = dmy;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+
+  const parsed = new Date(text);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+
+  return "";
+}
+
+function parseScore(value, rowNumber, columnName) {
+  const text = cleanText(value);
+  if (!text) return null;
+
+  const score = Number(text);
+
+  if (!Number.isInteger(score) || score < 0) {
+    throw new Error(`Row ${rowNumber}: ${columnName} must be a whole number.`);
+  }
+
+  return score;
+}
+
+function normaliseTeam(value, rowNumber, columnName) {
+  const text = cleanText(value);
+  if (!text) {
+    throw new Error(`Row ${rowNumber}: ${columnName} is missing.`);
+  }
+
+  const team = teamAliases.get(text.toLowerCase());
+
+  if (!team) {
+    const validTeams = [...new Set([...teamAliases.values()])]
+      .filter((item) => item !== "TBC")
+      .sort()
+      .join(", ");
+
+    throw new Error(
+      `Row ${rowNumber}: ${columnName} "${text}" is not recognised.\nValid teams: ${validTeams}`
+    );
+  }
+
+  return team;
+}
+
+function cleanText(value) {
+  return String(value ?? "").trim();
+}
+
+function isBlankRow(row) {
+  return Object.values(row).every((value) => cleanText(value) === "");
+}
+
+function buildFixturesData(rows) {
+  const groups = new Map();
+
+  for (const row of rows) {
+    if (!groups.has(row.date)) {
+      groups.set(row.date, {
+        date: formatDateHeading(row.date),
+        sortDate: row.date,
+        games: [],
+      });
+    }
+
+    const game = {
+      status: row.status,
+      kickOff: row.kickOff,
+      home: row.home,
+      away: row.away,
+      venue: row.venue,
+    };
+
+    if (row.homeScore !== null && row.awayScore !== null) {
+      game.homeScore = row.homeScore;
+      game.awayScore = row.awayScore;
+    }
+
+    groups.get(row.date).games.push(game);
+  }
+
+  return [...groups.values()];
+}
+
+function buildLeagueTable(rows) {
+  const records = Object.fromEntries(
+    orderedTeams.map((team) => [
+      team,
+      {
+        team,
+        played: 0,
+        won: 0,
+        lost: 0,
+        drawn: 0,
+        pointsFor: 0,
+        pointsAgainst: 0,
+        points: 0,
+      },
+    ])
+  );
+
+  for (const row of rows) {
+    if (row.status.toUpperCase() !== "FT") continue;
+    if (row.home === "TBC" || row.away === "TBC") continue;
+    if (row.homeScore === null || row.awayScore === null) continue;
+
+    const home = records[row.home];
+    const away = records[row.away];
+
+    home.played += 1;
+    away.played += 1;
+
+    home.pointsFor += row.homeScore;
+    home.pointsAgainst += row.awayScore;
+    away.pointsFor += row.awayScore;
+    away.pointsAgainst += row.homeScore;
+
+    if (row.homeScore > row.awayScore) {
+      home.won += 1;
+      away.lost += 1;
+      home.points += 2;
+    } else if (row.homeScore < row.awayScore) {
+      away.won += 1;
+      home.lost += 1;
+      away.points += 2;
+    } else {
+      home.drawn += 1;
+      away.drawn += 1;
+      home.points += 1;
+      away.points += 1;
+    }
+  }
+
+  return Object.values(records)
+    .sort((a, b) => {
+      const pointsCompare = b.points - a.points;
+      if (pointsCompare !== 0) return pointsCompare;
+
+      const pointsDifferenceCompare =
+        getPointsDifference(b) - getPointsDifference(a);
+      if (pointsDifferenceCompare !== 0) return pointsDifferenceCompare;
+
+      const pointsForCompare = b.pointsFor - a.pointsFor;
+      if (pointsForCompare !== 0) return pointsForCompare;
+
+      return a.team.localeCompare(b.team);
+    })
+    .map((row, index) => ({
+      position: index + 1,
+      team: tableDisplayNameByTeam[row.team] || row.team,
+      slug: slugByTeam[row.team],
+      played: row.played,
+      won: row.won,
+      lost: row.lost,
+      drawn: row.drawn,
+      pointsFor: row.pointsFor,
+      pointsAgainst: row.pointsAgainst,
+      points: row.points,
+    }));
+}
+
+function getPointsDifference(row) {
+  return row.pointsFor - row.pointsAgainst;
+}
+
+function generateFixturesFile(days) {
+  return `${AUTO_GENERATED_HEADER}export type Game = {
+  status: "FT" | "LIVE" | "TBC" | string;
+  kickOff: string;
+  home: string;
+  away: string;
+  venue: string;
+  homeScore?: number;
+  awayScore?: number;
+};
+
+export type FixtureDay = {
+  date: string;
+  sortDate: string;
+  games: Game[];
+};
+
+export const fixturesData: FixtureDay[] = ${toTs(days)};
+`;
+}
+
+function generateLeagueTableFile(rows) {
+  return `${AUTO_GENERATED_HEADER}export type LeagueTableRow = {
+  position: number;
+  team: string;
+  slug: string;
+  played: number;
+  won: number;
+  lost: number;
+  drawn: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  points: number;
+};
+
+export const leagueTableData: LeagueTableRow[] = ${toTs(rows)};
+`;
+}
+
+function toTs(value) {
+  return JSON.stringify(value, null, 2)
+    .replace(/"([^"]+)":/g, "$1:")
+    .replace(/"FT" \| "LIVE" \| "TBC" \| string/g, '"FT" | "LIVE" | "TBC" | string');
+}
+
+function kickOffSort(kickOff) {
+  if (!kickOff || kickOff.toUpperCase() === "TBC") return 9999;
+
+  const [hours, minutes] = kickOff.split(":").map(Number);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return 9999;
+
+  return hours * 60 + minutes;
+}
+
+function formatDateHeading(isoDate) {
+  const date = new Date(`${isoDate}T12:00:00Z`);
+  const day = date.getUTCDate();
+  const month = date.toLocaleString("en-GB", { month: "long", timeZone: "UTC" });
+  const weekday = date.toLocaleString("en-GB", {
+    weekday: "long",
+    timeZone: "UTC",
+  });
+
+  return `${weekday} ${ordinal(day)} ${month}`;
+}
+
+function ordinal(day) {
+  const mod100 = day % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${day}th`;
+
+  switch (day % 10) {
+    case 1:
+      return `${day}st`;
+    case 2:
+      return `${day}nd`;
+    case 3:
+      return `${day}rd`;
+    default:
+      return `${day}th`;
+  }
+}
+
+const AUTO_GENERATED_HEADER = `// This file is generated by scripts/update-rugby-data-from-excel.mjs.
+// Update src/data/superLeagueMatches.xlsx, then run:
+// npm run update-rugby-data
+
+`;
