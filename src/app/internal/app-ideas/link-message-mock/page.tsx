@@ -976,10 +976,16 @@ function RhcDutyCoverPopup({
     setSelectedHoldingIds((current) => current.filter((id) => !selectedIds.includes(id)));
 
     const sentDutyList = submittedOrders.map((order) => order.duty).join(", ");
-    const message = `${submittedOrders.length} RHC request${submittedOrders.length === 1 ? "" : "s"} submitted from Duty Execution: ${sentDutyList}.${mockUploadWarning ? ` ${mockUploadWarning}` : ""}`;
+    const summary = buildRhcWeeklySubmissionSummary(submittedOrders);
+    const message = buildRhcSubmissionPopupMessage({
+      orders: submittedOrders,
+      sentDutyList,
+      summary,
+      mockUploadWarning,
+    });
 
     setActionPopup({ title: "Duty Execution RHC request submitted", message, tone: "success" });
-    setConfirmation(message);
+    setConfirmation(`${submittedOrders.length} RHC request${submittedOrders.length === 1 ? "" : "s"} submitted from Duty Execution: ${sentDutyList}.`);
   }
 
   function exportHoldingArea() {
@@ -1211,7 +1217,7 @@ function RhcDutyCoverPopup({
       {actionPopup && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4">
           <section
-            className={`w-full max-w-lg rounded-2xl border-2 bg-white p-6 shadow-2xl ${
+            className={`w-full max-w-2xl rounded-2xl border-2 bg-white p-6 shadow-2xl ${
               actionPopup.tone === "success" ? "border-[#157347]" : "border-[#f59e0b]"
             }`}
           >
@@ -1225,7 +1231,7 @@ function RhcDutyCoverPopup({
             <h2 className="mt-3 text-2xl font-black text-[#111827]">
               {actionPopup.tone === "success" ? "Requests sent successfully" : "Action needed"}
             </h2>
-            <p className="mt-3 text-sm font-bold leading-6 text-[#374151]">{actionPopup.message}</p>
+            <p className="mt-3 whitespace-pre-line text-sm font-bold leading-6 text-[#374151]">{actionPopup.message}</p>
             <button
               type="button"
               onClick={() => setActionPopup(null)}
@@ -1392,6 +1398,72 @@ function exportOrdersToExcel(orders: RhcOrder[], fileName: string) {
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
+}
+
+function buildRhcWeeklySubmissionSummary(orders: RhcOrder[]) {
+  const weeklySummary = new Map<number, { duties: number; minutes: number }>();
+
+  orders.forEach((order) => {
+    const current = weeklySummary.get(order.week) ?? { duties: 0, minutes: 0 };
+    weeklySummary.set(order.week, {
+      duties: current.duties + 1,
+      minutes: current.minutes + parseRhcTotalTimeToMinutes(order.totalTime),
+    });
+  });
+
+  return [...weeklySummary.entries()]
+    .sort(([weekA], [weekB]) => weekA - weekB)
+    .map(([week, summary]) => ({ week, ...summary }));
+}
+
+function buildRhcSubmissionPopupMessage({
+  orders,
+  sentDutyList,
+  summary,
+  mockUploadWarning,
+}: {
+  orders: RhcOrder[];
+  sentDutyList: string;
+  summary: { week: number; duties: number; minutes: number }[];
+  mockUploadWarning: string;
+}) {
+  const orderCountLabel = `${orders.length} dut${orders.length === 1 ? "y" : "ies"}`;
+  const summaryLines = summary
+    .map((item) => `Week ${item.week}: ${item.duties} dut${item.duties === 1 ? "y" : "ies"} • ${formatRhcMinutesAsHours(item.minutes)}`)
+    .join("\n");
+
+  const lines = [
+    "The duties will be sent directly to the RHC Portal.",
+    "The RHC Team will assume this is authorised by your ADM and process the order.",
+    "",
+    `Submission summary: ${orderCountLabel}`,
+    summaryLines,
+    "",
+    `Duties selected: ${sentDutyList}.`,
+  ];
+
+  if (mockUploadWarning) {
+    lines.push("", mockUploadWarning);
+  }
+
+  return lines.join("\n");
+}
+
+function parseRhcTotalTimeToMinutes(totalTime: string) {
+  const match = totalTime.match(/(\d+)h\s*(\d+)m/i);
+
+  if (!match) {
+    return 0;
+  }
+
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function formatRhcMinutesAsHours(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${hours}h ${String(minutes).padStart(2, "0")}m`;
 }
 
 function escapeExcelCell(value: string | number | boolean | undefined) {
