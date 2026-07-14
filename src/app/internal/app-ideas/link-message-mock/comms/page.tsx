@@ -776,7 +776,8 @@ export default function LinkCommsDashboardPage() {
               <div>
                 <h2 className="text-lg font-black text-[#111827]">Driver communications queue</h2>
                 <p className="text-sm font-bold text-[#6b7280]">
-                  Click any row to open the office action popup and respond to the driver.
+                  Click any row to open the office action popup and respond to the driver. Any communications will
+                  automatically be moved into History once the driver is de-allocated.
                 </p>
               </div>
 
