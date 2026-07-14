@@ -29,6 +29,7 @@ type DebriefRow = {
   division: Division;
   dutyDate: string;
   weekNumber: number;
+  dutyOrder: number;
   driverName: string;
   userId: string;
   jobTier: string;
@@ -161,9 +162,11 @@ export default function DebriefPage() {
           .toLowerCase()
           .includes(query);
       const matchesStatus = statusFilter === "All" || row.debriefStatus === statusFilter;
+      const matchesAwaitingTimingException =
+        statusFilter !== "Awaiting Debrief" || hasActualTimingException(row);
       const matchesIssue = issueFilter === "All" || row.issueCategory === issueFilter;
 
-      return matchesSearch && matchesStatus && matchesIssue;
+      return matchesSearch && matchesStatus && matchesAwaitingTimingException && matchesIssue;
     });
   }, [rows, searchTerm, statusFilter, issueFilter]);
 
@@ -322,13 +325,14 @@ export default function DebriefPage() {
 
           <section className="mt-4 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[2280px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+              <table className="min-w-[2380px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
                   <tr>
                     <DebriefHeader label="Debrief Action" headerClass="bg-[#cfeefa]" widthClass="w-[105px]" />
                     <DebriefHeader label="Debrief Status" headerClass="bg-[#cfeefa]" widthClass="w-[120px]" />
                     <DebriefHeader label="Duty Date" headerClass="bg-[#cfeefa]" widthClass="w-[88px]" />
                     <DebriefHeader label="Week Number" headerClass="bg-[#cfeefa]" widthClass="w-[78px]" />
+                    <DebriefHeader label="Duty Order" headerClass="bg-[#cfeefa]" widthClass="w-[78px]" />
                     <DebriefHeader label="Duty Number" headerClass="bg-[#cfeefa]" widthClass="w-[95px]" />
                     <DebriefHeader label="Division" headerClass="bg-[#cfeefa]" widthClass="w-[95px]" />
                     <DebriefHeader label="Driver" headerClass="bg-[#cfeefa]" widthClass="w-[135px]" />
@@ -356,7 +360,7 @@ export default function DebriefPage() {
                 <tbody>
                   {filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={25} className="border border-black px-4 py-10 text-center text-sm font-black text-[#64748b]">
+                      <td colSpan={26} className="border border-black px-4 py-10 text-center text-sm font-black text-[#64748b]">
                         No duties match the selected debrief filters.
                       </td>
                     </tr>
@@ -377,6 +381,7 @@ export default function DebriefPage() {
                         </td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{formatDate(row.dutyDate)}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal">{row.weekNumber}</td>
+                        <td className="border border-black px-1 py-2 text-center font-black">{row.dutyOrder}</td>
                         <td className="border border-black px-1 py-2 text-center font-black whitespace-nowrap">{row.dutyNumber}</td>
                         <td className="border border-black px-1 py-2 text-center font-black whitespace-nowrap">{row.division}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.driverName}</td>
@@ -531,6 +536,7 @@ function DebriefModal({
 
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <ReadOnlyBox label="Duty number" value={row.dutyNumber} />
+                <ReadOnlyBox label="Duty order" value={String(row.dutyOrder)} />
                 <ReadOnlyBox label="Division" value={row.division} />
                 <ReadOnlyBox label="Driver" value={row.driverName} />
                 <ReadOnlyBox label="Vehicle" value={row.vehicle} />
@@ -939,6 +945,7 @@ function buildInitialDebriefRows(): DebriefRow[] {
     const debriefStatus = actionRequired ? "Action Required" : statusPattern[index % statusPattern.length];
     const pod318Status = index % 9 === 0 ? "Missing" : index % 6 === 0 ? "Pending Upload" : "Received";
     const division = getMockDivision(index);
+    const dutyOrder = getMockDutyOrder(index);
 
     return {
       id: dutyNumber,
@@ -946,6 +953,7 @@ function buildInitialDebriefRows(): DebriefRow[] {
       division,
       dutyDate,
       weekNumber: 14 + Math.floor(index / 10),
+      dutyOrder,
       driverName: drivers[index % drivers.length],
       userId: `${drivers[index % drivers.length].toLowerCase().replaceAll(" ", ".")}@mock.driver`,
       jobTier: "Tier 1",
@@ -986,6 +994,10 @@ function buildInitialDebriefRows(): DebriefRow[] {
       checks: buildInitialChecks(debriefStatus, pod318Status),
     };
   });
+}
+
+function getMockDutyOrder(index: number) {
+  return ((index * 5) % 8) + 1;
 }
 
 function getMockDivision(index: number): Division {
@@ -1096,6 +1108,7 @@ function readDebriefRowsFromStorage() {
     return parsedRows.map((row, index) => ({
       ...row,
       division: row.division ?? getMockDivision(index),
+      dutyOrder: row.dutyOrder ?? getMockDutyOrder(index),
     }));
   } catch {
     return buildInitialDebriefRows();
@@ -1189,6 +1202,10 @@ function getPositiveDelayMinutes(plannedTs: string, actualTs: string) {
   return Math.round((actual - planned) / 60000);
 }
 
+function hasActualTimingException(row: DebriefRow) {
+  return isLate(row.plannedStartTs, row.actualStartTs) || isLate(row.plannedEndTs, row.actualEndTs);
+}
+
 function isLate(plannedTs: string, actualTs: string) {
   return getPositiveDelayMinutes(plannedTs, actualTs) > 0;
 }
@@ -1228,6 +1245,7 @@ function downloadDebriefRowsAsExcel(rows: DebriefRow[]) {
     "Debrief Status",
     "Duty Date",
     "Week Number",
+    "Duty Order",
     "Duty Number",
     "Division",
     "Driver",
@@ -1257,6 +1275,7 @@ function downloadDebriefRowsAsExcel(rows: DebriefRow[]) {
     row.debriefStatus,
     formatDate(row.dutyDate),
     row.weekNumber,
+    row.dutyOrder,
     row.dutyNumber,
     row.division,
     row.driverName,
