@@ -16,6 +16,72 @@ type AppButton = {
   isMessaging?: boolean;
 };
 
+type MessageLevel = "none" | "normal" | "high" | "critical";
+
+type MessageLevelConfig = {
+  level: Exclude<MessageLevel, "none">;
+  label: string;
+  buttonLabel: string;
+  heading: string;
+  text: string;
+  icon: string;
+  borderClass: string;
+  panelClass: string;
+  textClass: string;
+  mutedTextClass: string;
+  iconClass: string;
+  buttonClass: string;
+  buttonHoverClass: string;
+};
+
+const messageLevelConfigs: Record<Exclude<MessageLevel, "none">, MessageLevelConfig> = {
+  normal: {
+    level: "normal",
+    label: "Normal",
+    buttonLabel: "Normal Message",
+    heading: "Normal Message From NWH Transport",
+    text: "Routine operational message received. Please check your messages when safe to do so.",
+    icon: "✉",
+    borderClass: "border-[#1d4ed8]",
+    panelClass: "bg-[#dbeafe]",
+    textClass: "text-[#1d4ed8]",
+    mutedTextClass: "text-[#1e3a8a]",
+    iconClass: "bg-[#1d4ed8]",
+    buttonClass: "bg-[#1d4ed8] text-white",
+    buttonHoverClass: "hover:bg-[#1e40af]",
+  },
+  high: {
+    level: "high",
+    label: "High",
+    buttonLabel: "High Message",
+    heading: "High Priority Message From NWH Transport",
+    text: "High priority operational message received. Please review before continuing your duty.",
+    icon: "▲",
+    borderClass: "border-[#d97706]",
+    panelClass: "bg-[#fef3c7]",
+    textClass: "text-[#b45309]",
+    mutedTextClass: "text-[#92400e]",
+    iconClass: "bg-[#d97706]",
+    buttonClass: "bg-[#d97706] text-white",
+    buttonHoverClass: "hover:bg-[#b45309]",
+  },
+  critical: {
+    level: "critical",
+    label: "Critical",
+    buttonLabel: "Critical Message",
+    heading: "Critical Message From NWH Transport",
+    text: "Critical operational message received. Stop when safe and contact Transport Office immediately.",
+    icon: "!",
+    borderClass: "border-[#dc2626]",
+    panelClass: "bg-[#fee2e2]",
+    textClass: "text-[#b91c1c]",
+    mutedTextClass: "text-[#7f1d1d]",
+    iconClass: "bg-[#dc2626]",
+    buttonClass: "bg-[#dc2626] text-white",
+    buttonHoverClass: "hover:bg-[#b91c1c]",
+  },
+};
+
 const appButtons: AppButton[] = [
   {
     title: "Vehicle Checks",
@@ -76,16 +142,31 @@ const appButtons: AppButton[] = [
 ];
 
 export default function HgvDriverPdaMockupClient() {
-  const [messageActive, setMessageActive] = useState(false);
+  const [messageLevel, setMessageLevel] = useState<MessageLevel>("none");
+  const messageConfig = messageLevel === "none" ? null : messageLevelConfigs[messageLevel];
 
   function handleResetAllMocks() {
     resetAllDriverPdaMocks();
-    setMessageActive(false);
+    setMessageLevel("none");
     window.alert("All Driver PDA mock journeys have been reset.");
   }
 
   function handleMockMessage() {
-    setMessageActive((current) => !current);
+    setMessageLevel((current) => {
+      if (current === "none") {
+        return "normal";
+      }
+
+      if (current === "normal") {
+        return "high";
+      }
+
+      if (current === "high") {
+        return "critical";
+      }
+
+      return "none";
+    });
   }
 
   return (
@@ -120,15 +201,37 @@ export default function HgvDriverPdaMockupClient() {
         </div>
       </header>
 
-      {messageActive && (
+      {messageConfig && (
         <section className="px-4 pt-5 sm:px-6 lg:px-10">
-          <div className="mx-auto max-w-[1280px] rounded-[18px] border-2 border-[#067a35] bg-[#d9f7e5] px-5 py-4 text-[#067a35] shadow-sm">
-            <p className="text-xs font-black uppercase tracking-[0.16em]">
-              Message From NWH Transport
-            </p>
-            <p className="mt-2 text-base font-black">
-              Please check your operational messages before continuing your duty.
-            </p>
+          <div
+            className={`mx-auto flex max-w-[1280px] flex-col gap-4 rounded-[18px] border-2 px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between ${messageConfig.borderClass} ${messageConfig.panelClass} ${messageConfig.textClass}`}
+          >
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.16em]">
+                {messageConfig.heading}
+              </p>
+              <p className="mt-2 text-base font-black">{messageConfig.text}</p>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2" aria-label="Message priority options">
+              {Object.values(messageLevelConfigs).map((levelConfig) => {
+                const isActiveLevel = levelConfig.level === messageConfig.level;
+
+                return (
+                  <div
+                    key={levelConfig.level}
+                    title={`${levelConfig.label} priority`}
+                    className={`flex h-12 w-12 items-center justify-center rounded-2xl border text-xl font-black transition ${
+                      isActiveLevel
+                        ? `${levelConfig.iconClass} border-transparent text-white shadow-md`
+                        : "border-white/70 bg-white/60 text-[#475569]"
+                    }`}
+                  >
+                    {levelConfig.icon}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
       )}
@@ -139,12 +242,12 @@ export default function HgvDriverPdaMockupClient() {
             <ActionCard
               key={button.title}
               button={button}
-              messageActive={messageActive}
+              messageConfig={messageConfig}
             />
           ))}
 
           <MessagingControls
-            messageActive={messageActive}
+            messageConfig={messageConfig}
             onResetAllMocks={handleResetAllMocks}
             onMockMessage={handleMockMessage}
           />
@@ -156,39 +259,39 @@ export default function HgvDriverPdaMockupClient() {
 
 function ActionCard({
   button,
-  messageActive,
+  messageConfig,
 }: {
   button: AppButton;
-  messageActive: boolean;
+  messageConfig: MessageLevelConfig | null;
 }) {
-  const isMessagingActive = button.isMessaging && messageActive;
+  const isMessagingActive = button.isMessaging && Boolean(messageConfig);
   const isInteractive = Boolean(button.href || button.externalHref);
 
   const cardClasses = `group flex h-full min-h-[270px] flex-col rounded-[28px] border p-6 text-left shadow-sm transition ${
     isInteractive ? "hover:-translate-y-1 hover:shadow-lg" : ""
   } ${
-    isMessagingActive
-      ? "border-[#067a35] bg-[#d9f7e5] text-[#064e3b]"
+    isMessagingActive && messageConfig
+      ? `${messageConfig.borderClass} ${messageConfig.panelClass} text-[#001b3a]`
       : "border-[#d0d7df] bg-white text-[#001b3a]"
   }`;
 
   const iconClasses = `mb-7 flex h-16 w-16 items-center justify-center rounded-3xl text-2xl font-black text-white ${
-    isMessagingActive ? "bg-[#067a35]" : "bg-[#c4002f]"
+    isMessagingActive && messageConfig ? messageConfig.iconClass : "bg-[#c4002f]"
   }`;
 
   const actionClasses = `mt-auto pt-8 text-xs font-black uppercase tracking-[0.16em] ${
-    isMessagingActive ? "text-[#067a35]" : "text-[#c4002f]"
+    isMessagingActive && messageConfig ? messageConfig.textClass : "text-[#c4002f]"
   }`;
 
   const content = (
     <>
-      <div className={iconClasses}>{button.icon}</div>
+      <div className={iconClasses}>{isMessagingActive && messageConfig ? messageConfig.icon : button.icon}</div>
 
       <h2 className="text-3xl font-black leading-tight">{button.title}</h2>
 
       <p
         className={`mt-5 text-base font-bold leading-7 ${
-          isMessagingActive ? "text-[#166534]" : "text-[#61748b]"
+          isMessagingActive && messageConfig ? messageConfig.mutedTextClass : "text-[#61748b]"
         }`}
       >
         {button.text}
@@ -201,7 +304,9 @@ function ActionCard({
       )}
 
       <div className={actionClasses}>
-        {isMessagingActive ? "MESSAGE RECEIVED" : button.actionText || "OPEN"}{" "}
+        {isMessagingActive && messageConfig
+          ? messageConfig.buttonLabel
+          : button.actionText || "OPEN"}{" "}
         {isInteractive && (
           <span className="transition group-hover:translate-x-1">→</span>
         )}
@@ -234,14 +339,22 @@ function ActionCard({
 }
 
 function MessagingControls({
-  messageActive,
+  messageConfig,
   onResetAllMocks,
   onMockMessage,
 }: {
-  messageActive: boolean;
+  messageConfig: MessageLevelConfig | null;
   onResetAllMocks: () => void;
   onMockMessage: () => void;
 }) {
+  const messageButtonClasses = messageConfig
+    ? `${messageConfig.buttonClass} ${messageConfig.buttonHoverClass}`
+    : "bg-[#e8f7ee] text-[#067a35] hover:bg-[#d9f7e5]";
+
+  const messageButtonLabel = messageConfig
+    ? `${messageConfig.label} Message`
+    : "Message";
+
   return (
     <div className="rounded-[18px] border border-[#d0d7df] bg-white p-2 shadow-sm sm:col-span-2 lg:col-span-4">
       <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4">
@@ -256,13 +369,9 @@ function MessagingControls({
         <button
           type="button"
           onClick={onMockMessage}
-          className={`flex min-h-[42px] w-full items-center justify-center rounded-[14px] px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.14em] transition ${
-            messageActive
-              ? "bg-[#067a35] text-white hover:bg-[#045c28]"
-              : "bg-[#e8f7ee] text-[#067a35] hover:bg-[#d9f7e5]"
-          }`}
+          className={`flex min-h-[42px] w-full items-center justify-center rounded-[14px] px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.14em] transition ${messageButtonClasses}`}
         >
-          Message
+          {messageButtonLabel}
         </button>
 
         <Link
