@@ -111,7 +111,7 @@ type DebriefFormState = {
   checks: DebriefChecks;
 };
 
-const DEBRIEF_STORAGE_KEY = "mock-driver-debrief-rows-v3";
+const DEBRIEF_STORAGE_KEY = "mock-driver-debrief-rows-v4";
 const baseDateInput = "2026-07-02";
 
 const issueCategories = [
@@ -291,7 +291,7 @@ export default function DebriefPage() {
               <SummaryCard label="318 / POD outstanding" value={String(missing318Count)} />
             </div>
 
-            <div className="mt-4 grid gap-3 xl:grid-cols-[440px_minmax(0,1fr)] xl:items-stretch">
+            <div className="mt-4 grid gap-3 xl:grid-cols-[520px_minmax(0,1fr)] xl:items-stretch">
               <ToTimeSummaryTable distribution={toTimeDistribution} />
               <ToTimeLegend />
             </div>
@@ -978,10 +978,10 @@ function CheckBox({
 }
 
 function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistributionSet }) {
-  const rowClassName = "border border-[#cbd5e1] px-3 py-2 text-center text-xs font-black text-[#172033]";
+  const rowClassName = "border border-[#cbd5e1] px-2 py-2 text-center text-[11px] font-black text-[#172033] whitespace-nowrap";
 
   return (
-    <section className="h-full rounded-[14px] border border-[#d9dee6] bg-white p-4 shadow-sm">
+    <section className="h-full rounded-[14px] border border-[#d9dee6] bg-white p-3 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#d6001c]">
@@ -992,8 +992,8 @@ function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistribution
         </div>
       </div>
 
-      <div className="mt-3 overflow-hidden rounded-xl border border-[#cbd5e1]">
-        <table className="w-full border-collapse text-xs">
+      <div className="mt-3 overflow-x-auto rounded-xl border border-[#cbd5e1]">
+        <table className="min-w-[480px] w-full border-collapse text-xs">
           <thead>
             <tr className="bg-[#eff4fb] text-[#475569]">
               <th className={`${rowClassName} text-left`}>Measure</th>
@@ -1016,9 +1016,9 @@ function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistribution
 function ToTimeSummaryRow({ label, values }: { label: string; values: ToTimeDistribution }) {
   return (
     <tr className="even:bg-[#f8fafc]">
-      <td className="border border-[#cbd5e1] bg-white px-3 py-2 text-left text-xs font-black text-[#172033]">{label}</td>
+      <td className="border border-[#cbd5e1] bg-white px-2 py-2 text-left text-[11px] font-black text-[#172033] whitespace-nowrap">{label}</td>
       {toTimeOptions.map((code) => (
-        <td key={`${label}-${code}`} className="border border-[#cbd5e1] bg-white px-3 py-2 text-center text-xs font-black text-[#172033]">
+        <td key={`${label}-${code}`} className="border border-[#cbd5e1] bg-white px-2 py-2 text-center text-[11px] font-black text-[#172033] whitespace-nowrap">
           {values[code].toFixed(2)}%
         </td>
       ))}
@@ -1028,7 +1028,7 @@ function ToTimeSummaryRow({ label, values }: { label: string; values: ToTimeDist
 
 function ToTimeLegend() {
   return (
-    <section className="h-full rounded-[14px] border border-[#d9dee6] bg-white p-4 shadow-sm">
+    <section className="h-full rounded-[14px] border border-[#d9dee6] bg-white p-3 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#d6001c]">
@@ -1039,7 +1039,7 @@ function ToTimeLegend() {
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <ToTimeLegendCard code="VE" description="Very Early" range="-00:31 to -02:00 (or earlier)" />
         <ToTimeLegendCard code="E" description="Early" range="-00:09 to -00:30" />
         <ToTimeLegendCard code="OT" description="On Time" range="-00:08 to +00:08" />
@@ -1053,13 +1053,13 @@ function ToTimeLegend() {
 
 function ToTimeLegendCard({ code, description, range }: { code: ToTimeCode; description: string; range: string }) {
   return (
-    <div className={`flex min-h-[88px] items-start gap-3 rounded-[12px] border px-3 py-3 ${getToTimeCardClass(code)}`}>
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-current text-xs font-black">
+    <div className={`flex min-h-[72px] items-start gap-2 rounded-[12px] border px-2.5 py-2 ${getToTimeCardClass(code)}`}>
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-current text-[11px] font-black">
         {code}
       </div>
       <div>
-        <p className="text-sm font-black leading-5">{description}</p>
-        <p className="mt-1 text-xs font-bold leading-5">{range}</p>
+        <p className="text-[13px] font-black leading-4">{description}</p>
+        <p className="mt-1 text-[11px] font-bold leading-4">{range}</p>
       </div>
     </div>
   );
@@ -1445,10 +1445,102 @@ function buildDebriefRowsFromManifestState(
 ) {
   const savedRowMap = new Map(savedRows.map((row) => [row.id, row]));
 
-  return manifestState.dctRows.map((manifestRow, index) => {
+  const linkedManifestRows = manifestState.dctRows.map((manifestRow, index) => {
     const rowId = `manifest-leg-${manifestRow.legNumber}`;
     const savedRow = savedRowMap.get(rowId);
     return buildDebriefRowFromManifestRow(manifestRow, index, savedRow);
+  });
+
+  return [...linkedManifestRows, ...buildDummyDebriefRows(savedRowMap)];
+}
+
+function buildDummyDebriefRows(savedRowMap: Map<string, DebriefRow>) {
+  const dutyDefinitions = [
+    { dutyNumber: "NWH426", legCount: 6, completedLegs: 2, dayOffset: 0 },
+    { dutyNumber: "NWH634", legCount: 6, completedLegs: 2, dayOffset: 0 },
+    { dutyNumber: "WAVOC016", legCount: 4, completedLegs: 4, dayOffset: 1 },
+    { dutyNumber: "TNW7034", legCount: 4, completedLegs: 4, dayOffset: 1 },
+    { dutyNumber: "TNW2156", legCount: 2, completedLegs: 1, dayOffset: 2 },
+    { dutyNumber: "NWH8801", legCount: 2, completedLegs: 1, dayOffset: 2 },
+  ] as const;
+
+  return dutyDefinitions.flatMap((definition, dutyIndex) => {
+    const dutyDate = addDaysToInputDate(baseDateInput, definition.dayOffset);
+    const baseStartMinutes = 80 + dutyIndex * 95;
+    const routeStops = [
+      "NORTH WEST HUB",
+      "MANCHESTER MAIL CENTRE",
+      "WARRINGTON VOC",
+      "CHESTER MAIL CENTRE",
+      "PRESTON MAIL CENTRE",
+      "NORTH WEST HUB",
+      "MANCHESTER VOC",
+    ];
+
+    return Array.from({ length: definition.legCount }, (_, legIndex) => {
+      const isCompleted = legIndex < definition.completedLegs;
+      const plannedStartMinutes = baseStartMinutes + legIndex * 72;
+      const travelMinutes = 42 + ((legIndex + dutyIndex) % 3) * 8;
+      const actualStartOffset = [0, 5, -6, 12, 0, -3][(dutyIndex + legIndex) % 6];
+      const actualFinishOffset = [4, 16, -8, 22, 3, -2][(dutyIndex + legIndex) % 6];
+      const startLocation = routeStops[legIndex % (routeStops.length - 1)];
+      const finalDestination = routeStops[(legIndex + 1) % routeStops.length];
+      const plannedStartTs = buildTimestamp(dutyDate, plannedStartMinutes);
+      const plannedEndTs = buildTimestamp(dutyDate, plannedStartMinutes + travelMinutes);
+      const actualStartTs = isCompleted ? buildTimestamp(dutyDate, plannedStartMinutes + actualStartOffset) : "";
+      const actualEndTs = isCompleted ? buildTimestamp(dutyDate, plannedStartMinutes + travelMinutes + actualFinishOffset) : "";
+      const issueCategory = !isCompleted ? "" : actualFinishOffset >= 15 ? "Late Arrival" : actualStartOffset >= 9 ? "Late Departure" : "No Issue";
+      const rowId = `dummy-${definition.dutyNumber}-leg-${legIndex + 1}`;
+      const savedRow = savedRowMap.get(rowId);
+      const overlayAllowed = isCompleted && savedRow;
+
+      return {
+        id: rowId,
+        dutyNumber: definition.dutyNumber,
+        division: "Network" as Division,
+        dutyDate,
+        weekNumber: getWeekNumberFromInputDate(dutyDate),
+        dutyOrder: legIndex + 1,
+        driverName: DRIVER_NAME,
+        userId: `network.${definition.dutyNumber.toLowerCase()}@royalmail.com`,
+        jobTier: "Current Week",
+        planType: "Planned",
+        traffic: "NWH",
+        vehicle: ["PE68UHD", "PN21XHD", "MX70RHA", "DK19RHC", "YX72NWH", "PK68MTE"][(dutyIndex + legIndex) % 6],
+        trailerNumber: isCompleted ? ["5320233", "24163445", "7320234", "4330123", "5320456", "24164567"][(dutyIndex + legIndex) % 6] : "",
+        trailerType: ["49 Artic", "49 Artic T/L", "75 Artic DD", "95 Artic DD", "110 Artic DD", "95 Artic DD"][legIndex % 6],
+        startLocation,
+        finalDestination,
+        plannedStartTs,
+        actualStartTs,
+        plannedEndTs,
+        actualEndTs,
+        depAssets: 34 + ((dutyIndex * 7 + legIndex * 9) % 55),
+        arrAssets: 34 + ((dutyIndex * 5 + legIndex * 7) % 55),
+        issueCategory,
+        driverNotes: isCompleted ? buildDriverNotes(issueCategory || "No Issue", "Network") : "",
+        gpsDeparture: isCompleted ? `${startLocation} • ${formatDateTime(actualStartTs)}` : "",
+        gpsArrival: isCompleted ? `${finalDestination} • ${formatDateTime(actualEndTs)}` : "",
+        yorkBarcode: isCompleted ? `YRK${String(70000 + dutyIndex * 100 + legIndex * 11).padStart(6, "0")}` : "",
+        pod318Status: isCompleted ? "Received" : "",
+        routeChange: "",
+        trailerChange: "",
+        vehicleDefect: "",
+        rtcBreakdown: "",
+        tachoBreak: isCompleted ? "Checked" : "",
+        fuelPurchased: isCompleted ? "No" : "",
+        sealNumber: isCompleted ? `SEAL${String(9500 + dutyIndex * 10 + legIndex)}` : "",
+        debriefStatus: overlayAllowed ? savedRow.debriefStatus : "Awaiting Debrief" as DebriefStatus,
+        debriefOutcome: overlayAllowed ? savedRow.debriefOutcome : issueCategory && issueCategory !== "No Issue" ? "Part Complete" : "Complete",
+        debriefedBy: overlayAllowed ? savedRow.debriefedBy : "",
+        debriefedAt: overlayAllowed ? savedRow.debriefedAt : "",
+        actionOwner: overlayAllowed ? savedRow.actionOwner : issueCategory && issueCategory !== "No Issue" ? "Transport Office" : "",
+        followUpDate: overlayAllowed ? savedRow.followUpDate : "",
+        lateReason: overlayAllowed ? savedRow.lateReason : isCompleted ? buildLateReason(issueCategory || "No Issue") : "",
+        officeNotes: overlayAllowed ? savedRow.officeNotes : issueCategory && issueCategory !== "No Issue" ? "Requires debrief follow-up." : "",
+        checks: overlayAllowed ? savedRow.checks : buildInitialChecks("Awaiting Debrief", isCompleted ? "Received" : ""),
+      };
+    });
   });
 }
 
@@ -1526,16 +1618,8 @@ function buildDebriefRowFromManifestRow(
   };
 }
 
-function getLinkedDivision(index: number): Division {
-  if (index < 4) {
-    return "Contractor";
-  }
-
-  if (index === 4) {
-    return "Letters";
-  }
-
-  return "Network";
+function getLinkedDivision(_index: number): Division {
+  return "Contractor";
 }
 
 function saveDebriefRowsToStorage(rows: DebriefRow[]) {
