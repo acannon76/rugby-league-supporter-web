@@ -1558,7 +1558,9 @@ function buildDummyDebriefRows(savedRowMap: Map<string, DebriefRow>) {
         jobTier: "Current Week",
         planType: "Planned",
         traffic: "NWH",
-        vehicle: ["PE68UHD", "PN21XHD", "MX70RHA", "DK19RHC", "YX72NWH", "PK68MTE"][(dutyIndex + legIndex) % 6],
+        vehicle: isCompleted || isInProgress
+          ? ["PE68UHD", "PN21XHD", "MX70RHA", "DK19RHC", "YX72NWH", "PK68MTE"][(dutyIndex + legIndex) % 6]
+          : "",
         trailerNumber: isCompleted || isInProgress ? ["5320233", "24163445", "7320234", "4330123", "5320456", "24164567"][(dutyIndex + legIndex) % 6] : "",
         trailerType: ["49 Artic", "49 Artic T/L", "75 Artic DD", "95 Artic DD", "110 Artic DD", "95 Artic DD"][legIndex % 6],
         startLocation,
@@ -1612,7 +1614,6 @@ function buildDebriefRowFromManifestRow(
   const defaultDebriefStatus: DebriefStatus = completed ? "Awaiting Debrief" : "Awaiting Debrief";
   const depAssets = [34, 43, 52, 61, 70, 79][index % 6];
   const arrAssets = [34, 41, 48, 55, 62, 69][index % 6];
-  const vehicle = ["PE68UHD", "PN21XHD", "MX70RHA", "DK19RHC", "YX72NWH", "PK68MTE"][index % 6];
   const hasSavedOverlay = completed && savedRow;
 
   return {
@@ -1627,7 +1628,7 @@ function buildDebriefRowFromManifestRow(
     jobTier: "Current Week",
     planType: division === "Contractor" ? "Road Haulage" : "Planned",
     traffic: manifestRow.operator,
-    vehicle,
+    vehicle: manifestRow.departureActualTs ? "PE68UHD" : "",
     trailerNumber: manifestRow.trailerNumber || "",
     trailerType: manifestRow.trailerType,
     startLocation: manifestRow.departureLocation,
