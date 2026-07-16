@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import {
+  DRIVER_NAME,
+  DctRow,
+  StoredManifestState,
+  readStoredManifestState,
+} from "../../driverPdaManifestData";
 
 const sidebarItems = [
   { label: "Duty Execution", icon: "⚙", href: "/internal/app-ideas/link-message-mock" },
@@ -105,7 +111,7 @@ type DebriefFormState = {
   checks: DebriefChecks;
 };
 
-const DEBRIEF_STORAGE_KEY = "mock-driver-debrief-rows-v2";
+const DEBRIEF_STORAGE_KEY = "mock-driver-debrief-rows-v3";
 const baseDateInput = "2026-07-02";
 
 const issueCategories = [
@@ -129,7 +135,7 @@ const podStatuses = ["Received", "Pending Upload", "Missing", "Not Required", "Q
 const toTimeOptions: ToTimeCode[] = ["VE", "E", "OT", "L", "VL", "F"];
 
 export default function DebriefPage() {
-  const [rows, setRows] = useState<DebriefRow[]>(() => buildInitialDebriefRows());
+  const [rows, setRows] = useState<DebriefRow[]>(() => loadDebriefRows());
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | DebriefStatus>("All");
   const [issueFilter, setIssueFilter] = useState("All");
@@ -138,11 +144,27 @@ export default function DebriefPage() {
   const [selectedRow, setSelectedRow] = useState<DebriefRow | null>(null);
 
   useEffect(() => {
-    const refreshRows = window.setTimeout(() => {
-      setRows(readDebriefRowsFromStorage());
-    }, 0);
+    const syncRows = () => {
+      setRows(loadDebriefRows());
+    };
 
-    return () => window.clearTimeout(refreshRows);
+    const refreshRows = window.setTimeout(syncRows, 0);
+    const refreshInterval = window.setInterval(syncRows, 1200);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        syncRows();
+      }
+    };
+
+    window.addEventListener("storage", syncRows);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearTimeout(refreshRows);
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("storage", syncRows);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   const filteredRows = useMemo(() => {
@@ -190,7 +212,7 @@ export default function DebriefPage() {
   }
 
   function resetMockup() {
-    const nextRows = buildInitialDebriefRows();
+    const nextRows = buildDebriefRowsFromManifestState(readStoredManifestState(), []);
     setRows(nextRows);
     setSelectedRow(null);
     saveDebriefRowsToStorage(nextRows);
@@ -213,7 +235,7 @@ export default function DebriefPage() {
                 <div>
                   <h1 className="text-2xl font-black text-[#111827]">Driver Debrief Dashboard</h1>
                   <p className="text-sm font-bold text-[#6b7280]">
-                    DCT-style mockup for reviewing completed duties and recording office debrief actions.
+                    DCT-style mockup for reviewing completed duties and recording office debrief actions. Duty detail fields now populate from the Driver PDA Manifest / 318 mock as each leg is completed.
                   </p>
                 </div>
               </div>
@@ -269,7 +291,7 @@ export default function DebriefPage() {
               <SummaryCard label="318 / POD outstanding" value={String(missing318Count)} />
             </div>
 
-            <div className="mt-4 grid gap-3 xl:grid-cols-[500px_minmax(0,1fr)] xl:items-stretch">
+            <div className="mt-4 grid gap-3 xl:grid-cols-[440px_minmax(0,1fr)] xl:items-stretch">
               <ToTimeSummaryTable distribution={toTimeDistribution} />
               <ToTimeLegend />
             </div>
@@ -956,7 +978,7 @@ function CheckBox({
 }
 
 function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistributionSet }) {
-  const rowClassName = "border border-[#cbd5e1] px-1.5 py-2 text-center text-[11px] font-black text-[#172033]";
+  const rowClassName = "border border-[#cbd5e1] px-3 py-2 text-center text-xs font-black text-[#172033]";
 
   return (
     <section className="h-full rounded-[14px] border border-[#d9dee6] bg-white p-4 shadow-sm">
@@ -971,7 +993,7 @@ function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistribution
       </div>
 
       <div className="mt-3 overflow-hidden rounded-xl border border-[#cbd5e1]">
-        <table className="w-full table-fixed border-collapse text-[11px]">
+        <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-[#eff4fb] text-[#475569]">
               <th className={`${rowClassName} text-left`}>Measure</th>
@@ -994,9 +1016,9 @@ function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistribution
 function ToTimeSummaryRow({ label, values }: { label: string; values: ToTimeDistribution }) {
   return (
     <tr className="even:bg-[#f8fafc]">
-      <td className="border border-[#cbd5e1] bg-white px-2 py-2 text-left text-[11px] font-black text-[#172033]">{label}</td>
+      <td className="border border-[#cbd5e1] bg-white px-3 py-2 text-left text-xs font-black text-[#172033]">{label}</td>
       {toTimeOptions.map((code) => (
-        <td key={`${label}-${code}`} className="border border-[#cbd5e1] bg-white px-1.5 py-2 text-center text-[11px] font-black text-[#172033]">
+        <td key={`${label}-${code}`} className="border border-[#cbd5e1] bg-white px-3 py-2 text-center text-xs font-black text-[#172033]">
           {values[code].toFixed(2)}%
         </td>
       ))}
@@ -1017,7 +1039,7 @@ function ToTimeLegend() {
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         <ToTimeLegendCard code="VE" description="Very Early" range="-00:31 to -02:00 (or earlier)" />
         <ToTimeLegendCard code="E" description="Early" range="-00:09 to -00:30" />
         <ToTimeLegendCard code="OT" description="On Time" range="-00:08 to +00:08" />
@@ -1031,13 +1053,13 @@ function ToTimeLegend() {
 
 function ToTimeLegendCard({ code, description, range }: { code: ToTimeCode; description: string; range: string }) {
   return (
-    <div className={`flex min-h-[64px] items-start gap-2 rounded-[10px] border px-2.5 py-2.5 ${getToTimeCardClass(code)}`}>
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-current text-[10px] font-black">
+    <div className={`flex min-h-[88px] items-start gap-3 rounded-[12px] border px-3 py-3 ${getToTimeCardClass(code)}`}>
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-current text-xs font-black">
         {code}
       </div>
       <div>
-        <p className="text-xs font-black leading-4">{description}</p>
-        <p className="mt-0.5 text-[10px] font-bold leading-4">{range}</p>
+        <p className="text-sm font-black leading-5">{description}</p>
+        <p className="mt-1 text-xs font-bold leading-5">{range}</p>
       </div>
     </div>
   );
@@ -1053,14 +1075,26 @@ type ToTimeDistributionSet = {
 function buildToTimeDistribution(rows: DebriefRow[]): ToTimeDistributionSet {
   const dttCounts = buildZeroToTimeCounts();
   const attCounts = buildZeroToTimeCounts();
+  let dttTotal = 0;
+  let attTotal = 0;
 
   rows.forEach((row) => {
-    dttCounts[getStartToTimeCode(row)] += 1;
-    attCounts[getFinishToTimeCode(row)] += 1;
+    const dttCode = getStartToTimeCode(row);
+    const attCode = getFinishToTimeCode(row);
+
+    if (dttCode) {
+      dttCounts[dttCode] += 1;
+      dttTotal += 1;
+    }
+
+    if (attCode) {
+      attCounts[attCode] += 1;
+      attTotal += 1;
+    }
   });
 
-  const dtt = convertCountsToPercentages(dttCounts, rows.length);
-  const att = convertCountsToPercentages(attCounts, rows.length);
+  const dtt = convertCountsToPercentages(dttCounts, dttTotal);
+  const att = convertCountsToPercentages(attCounts, attTotal);
   const mtt = buildZeroToTimeCounts();
   toTimeOptions.forEach((code) => {
     mtt[code] = Number(((dtt[code] + att[code]) / 2).toFixed(2));
@@ -1082,11 +1116,11 @@ function convertCountsToPercentages(counts: ToTimeDistribution, totalRows: numbe
   return percentages;
 }
 
-function getStartToTimeCode(row: DebriefRow): ToTimeCode {
+function getStartToTimeCode(row: DebriefRow): ToTimeCode | "" {
   return classifyToTime(getDifferenceInMinutes(row.plannedStartTs, row.actualStartTs));
 }
 
-function getFinishToTimeCode(row: DebriefRow): ToTimeCode {
+function getFinishToTimeCode(row: DebriefRow): ToTimeCode | "" {
   return classifyToTime(getDifferenceInMinutes(row.plannedEndTs, row.actualEndTs));
 }
 
@@ -1095,13 +1129,17 @@ function getDifferenceInMinutes(plannedTs: string, actualTs: string) {
   const actual = new Date(actualTs).getTime();
 
   if (Number.isNaN(planned) || Number.isNaN(actual)) {
-    return 0;
+    return Number.NaN;
   }
 
   return Math.round((actual - planned) / 60000);
 }
 
-function classifyToTime(diffMinutes: number): ToTimeCode {
+function classifyToTime(diffMinutes: number): ToTimeCode | "" {
+  if (!Number.isFinite(diffMinutes)) {
+    return "";
+  }
+
   if (diffMinutes >= 120) {
     return "F";
   }
@@ -1137,7 +1175,11 @@ function getToTimeCardClass(code: ToTimeCode) {
   return "border-[#15803d] bg-[#ecfdf3] text-[#166534]";
 }
 
-function getToTimeCellClass(code: ToTimeCode) {
+function getToTimeCellClass(code: ToTimeCode | "") {
+  if (!code) {
+    return "bg-[#f3f4f6] text-[#6b7280]";
+  }
+
   if (code === "F") {
     return "bg-[#fecaca] text-[#7f1d1d]";
   }
@@ -1373,27 +1415,127 @@ function buildFormState(row: DebriefRow): DebriefFormState {
   };
 }
 
+function loadDebriefRows() {
+  const savedRows = readDebriefRowsFromStorage();
+  const manifestState = readStoredManifestState();
+  return buildDebriefRowsFromManifestState(manifestState, savedRows);
+}
+
 function readDebriefRowsFromStorage() {
   if (typeof window === "undefined") {
-    return buildInitialDebriefRows();
+    return [] as DebriefRow[];
   }
 
   try {
     const raw = window.localStorage.getItem(DEBRIEF_STORAGE_KEY);
 
     if (!raw) {
-      return buildInitialDebriefRows();
+      return [] as DebriefRow[];
     }
 
-    const parsedRows = JSON.parse(raw) as DebriefRow[];
-    return parsedRows.map((row, index) => ({
-      ...row,
-      division: row.division ?? getMockDivision(index),
-      dutyOrder: row.dutyOrder ?? getMockDutyOrder(index),
-    }));
+    return JSON.parse(raw) as DebriefRow[];
   } catch {
-    return buildInitialDebriefRows();
+    return [] as DebriefRow[];
   }
+}
+
+function buildDebriefRowsFromManifestState(
+  manifestState: StoredManifestState,
+  savedRows: DebriefRow[] = []
+) {
+  const savedRowMap = new Map(savedRows.map((row) => [row.id, row]));
+
+  return manifestState.dctRows.map((manifestRow, index) => {
+    const rowId = `manifest-leg-${manifestRow.legNumber}`;
+    const savedRow = savedRowMap.get(rowId);
+    return buildDebriefRowFromManifestRow(manifestRow, index, savedRow);
+  });
+}
+
+function buildDebriefRowFromManifestRow(
+  manifestRow: DctRow,
+  index: number,
+  savedRow?: DebriefRow
+): DebriefRow {
+  const rowId = `manifest-leg-${manifestRow.legNumber}`;
+  const dutyDate = toInputDateFromDisplay(manifestRow.startDate);
+  const weekNumber = getWeekNumberFromInputDate(dutyDate);
+  const division = getLinkedDivision(index);
+  const completed = manifestRow.status === "Complete" || Boolean(manifestRow.arrivalActualTs);
+  const issueCategory = manifestRow.issueCategory || (completed ? "No Issue" : "");
+  const driverNotes = manifestRow.issues || (completed ? buildDriverNotes(issueCategory || "No Issue", division) : "");
+  const pod318Status = completed ? "Received" : "";
+  const defaultDebriefStatus: DebriefStatus = completed ? "Awaiting Debrief" : "Awaiting Debrief";
+  const depAssets = [34, 43, 52, 61, 70, 79][index % 6];
+  const arrAssets = [34, 41, 48, 55, 62, 69][index % 6];
+  const vehicle = ["PE68UHD", "PN21XHD", "MX70RHA", "DK19RHC", "YX72NWH", "PK68MTE"][index % 6];
+  const hasSavedOverlay = completed && savedRow;
+
+  return {
+    id: rowId,
+    dutyNumber: manifestRow.dutyId,
+    division,
+    dutyDate,
+    weekNumber,
+    dutyOrder: manifestRow.dutyOrder || manifestRow.legNumber,
+    driverName: DRIVER_NAME,
+    userId: manifestRow.userId,
+    jobTier: "Current Week",
+    planType: division === "Contractor" ? "Road Haulage" : "Planned",
+    traffic: manifestRow.operator,
+    vehicle,
+    trailerNumber: manifestRow.trailerNumber || "",
+    trailerType: manifestRow.trailerType,
+    startLocation: manifestRow.departureLocation,
+    finalDestination: manifestRow.arrivalLocation,
+    plannedStartTs: new Date(manifestRow.plannedDepartureTs).toISOString(),
+    actualStartTs: manifestRow.departureActualTs ? new Date(manifestRow.departureActualTs).toISOString() : "",
+    plannedEndTs: new Date(manifestRow.plannedArrivalTs).toISOString(),
+    actualEndTs: manifestRow.arrivalActualTs ? new Date(manifestRow.arrivalActualTs).toISOString() : "",
+    depAssets,
+    arrAssets,
+    issueCategory,
+    driverNotes,
+    gpsDeparture: manifestRow.gpsDeparture,
+    gpsArrival: manifestRow.gpsArrival,
+    yorkBarcode: completed ? `YBK${String(9000 + index * 11)}` : "",
+    pod318Status,
+    routeChange: completed && issueCategory === "Route Change" ? "Alternative route taken." : "",
+    trailerChange: completed && issueCategory === "Trailer Issue" ? "Trailer swap recorded." : "",
+    vehicleDefect: completed && issueCategory === "Vehicle Defect" ? "Defect reported during duty." : "",
+    rtcBreakdown:
+      completed && ["RTC", "Breakdown"].includes(issueCategory)
+        ? manifestRow.issues || `${issueCategory} recorded on duty.`
+        : "",
+    tachoBreak: completed ? "Checked" : "",
+    fuelPurchased: completed ? "No" : "",
+    sealNumber: completed ? `SL${String(4000 + index * 7)}` : "",
+    debriefStatus: hasSavedOverlay ? savedRow.debriefStatus : defaultDebriefStatus,
+    debriefOutcome: hasSavedOverlay
+      ? savedRow.debriefOutcome
+      : issueCategory && issueCategory !== "No Issue"
+        ? "Part Complete"
+        : "Complete",
+    debriefedBy: hasSavedOverlay ? savedRow.debriefedBy : "",
+    debriefedAt: hasSavedOverlay ? savedRow.debriefedAt : "",
+    actionOwner: hasSavedOverlay ? savedRow.actionOwner : completed && issueCategory && issueCategory !== "No Issue" ? "Transport Office" : "",
+    followUpDate: hasSavedOverlay ? savedRow.followUpDate : "",
+    lateReason: hasSavedOverlay ? savedRow.lateReason : completed ? buildLateReason(issueCategory || "No Issue") : "",
+    officeNotes: hasSavedOverlay ? savedRow.officeNotes : completed && issueCategory && issueCategory !== "No Issue" ? "Requires debrief follow-up." : "",
+    checks: hasSavedOverlay ? savedRow.checks : buildInitialChecks(defaultDebriefStatus, pod318Status),
+  };
+}
+
+function getLinkedDivision(index: number): Division {
+  if (index < 4) {
+    return "Contractor";
+  }
+
+  if (index === 4) {
+    return "Letters";
+  }
+
+  return "Network";
 }
 
 function saveDebriefRowsToStorage(rows: DebriefRow[]) {
@@ -1402,6 +1544,24 @@ function saveDebriefRowsToStorage(rows: DebriefRow[]) {
   }
 
   window.localStorage.setItem(DEBRIEF_STORAGE_KEY, JSON.stringify(rows));
+}
+
+function toInputDateFromDisplay(displayDate: string) {
+  const [day, month, year] = displayDate.split("/");
+  if (!day || !month || !year) {
+    return baseDateInput;
+  }
+
+  return `${year}-${month}-${day}`;
+}
+
+function getWeekNumberFromInputDate(dateInput: string) {
+  const date = parseInputDate(dateInput);
+  const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = utcDate.getUTCDay() || 7;
+  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1));
+  return Math.ceil((((utcDate.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
 
 function buildTimestamp(dateInput: string, minutesFromStart: number) {
@@ -1492,6 +1652,13 @@ function isLate(plannedTs: string, actualTs: string) {
 }
 
 function getTimingCellClass(plannedTs: string, actualTs: string) {
+  const planned = new Date(plannedTs).getTime();
+  const actual = new Date(actualTs).getTime();
+
+  if (Number.isNaN(planned) || Number.isNaN(actual)) {
+    return "bg-[#f3f4f6] text-[#6b7280]";
+  }
+
   const diff = getPositiveDelayMinutes(plannedTs, actualTs);
 
   if (diff > 0) {
