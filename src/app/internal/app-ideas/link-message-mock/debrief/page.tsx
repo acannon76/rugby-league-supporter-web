@@ -470,6 +470,9 @@ export default function DebriefPage() {
                         <td className={`${getDebriefStatusCellClass(row.debriefStatus)} border border-black px-1 py-2 font-bold text-black`}>
                           {row.debriefStatus}
                         </td>
+                        <td className={`${getLegStateCellClass(getLegState(row))} border border-black px-1 py-2 text-center font-black whitespace-nowrap`}>
+                          {getLegState(row)}
+                        </td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{formatDate(row.dutyDate)}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal">{row.weekNumber}</td>
                         <td className="border border-black px-1 py-2 text-center font-black">{row.dutyOrder}</td>
