@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import DriverName, { useDriverName } from "../../../DriverName";
-import { CURRENT_DRIVER_PLACEHOLDER, resolveCurrentDriverName } from "../../../driverPdaSession";
 
 type CommsSource = "RTC" | "Breakdown" | "Messaging" | "PMT Confirmation";
-type CommsStatus = "New" | "Office review" | "Actioned";
+type CommsStatus = "New" | "Office review" | "Awaiting driver read" | "Actioned";
 type Priority = "Critical" | "High" | "Normal";
 
 type MessageThreadEntry = {
@@ -82,6 +80,13 @@ type CommsItem = {
   breakdown?: BreakdownDetails;
   message?: MessageDetails;
   messageThread?: MessageThreadEntry[];
+  retainUntilDriverRead?: boolean;
+  driverReadConfirmed?: boolean;
+  readConfirmedAt?: string;
+  pendingAction?: ActionType;
+  pendingManager?: string;
+  pendingReplyText?: string;
+  pendingReplyPriority?: Priority;
 };
 
 type CommsHistoryRecord = {
@@ -113,7 +118,7 @@ const COMMS_OPEN_STORAGE_KEY = "link-message-comms-open-items";
 const MANAGER_NAME = "Harry Smith";
 
 const driverNames = [
-  CURRENT_DRIVER_PLACEHOLDER,
+  "Andrew Cannon",
   "Sarah Green",
   "John Smith",
   "Peter Jones",
@@ -137,7 +142,7 @@ const initialCommsItems: CommsItem[] = [
     priority: "Critical",
     status: "New",
     duty: "NWH426",
-    driver: CURRENT_DRIVER_PLACEHOLDER,
+    driver: "Andrew Cannon",
     vehicle: "PE68UHD",
     trailer: "7338014",
     received: "12:08",
@@ -469,7 +474,7 @@ const initialCommsItems: CommsItem[] = [
     priority: "Normal",
     status: "New",
     duty: "WAVOC8834",
-    driver: CURRENT_DRIVER_PLACEHOLDER,
+    driver: "Andrew Cannon",
     vehicle: "PE68UHD",
     trailer: "7338014",
     received: "09:10",
@@ -531,49 +536,69 @@ const sidebarItems = [
 ];
 
 export default function LinkCommsDashboardPage() {
-  const currentDriverName = useDriverName();
-  const availableDriverNames = useMemo(
-    () => driverNames.map((name) => resolveCurrentDriverName(name, currentDriverName)),
-    [currentDriverName],
-  );
   const [items, setItems] = useState<CommsItem[]>(() => readOpenItems());
-  const [selectedSource, setSelectedSource] = useState<CommsSource | "All">("All");
+  const [selectedSource, setSelectedSource] = useState<CommsSource | "All" | "Unread messages">("All");
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<CommsStatus | "All">("All");
+  const [selectedPriorityFilter, setSelectedPriorityFilter] = useState<Priority | "All">("All");
+  const [driverSearch, setDriverSearch] = useState("");
+  const [dutySearch, setDutySearch] = useState("");
+  const [showRetainedOnly, setShowRetainedOnly] = useState(false);
   const [activeItem, setActiveItem] = useState<CommsItem | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replyPriority, setReplyPriority] = useState<Priority>("Normal");
+  const [retainUntilRead, setRetainUntilRead] = useState(false);
   const [managerName, setManagerName] = useState(MANAGER_NAME);
   const [summaryPopup, setSummaryPopup] = useState<{ title: string; detail: string } | null>(null);
   const [newMessageModalOpen, setNewMessageModalOpen] = useState(false);
-  const [newMessageDriver, setNewMessageDriver] = useState(CURRENT_DRIVER_PLACEHOLDER);
+  const [newMessageDriver, setNewMessageDriver] = useState(driverNames[0]);
   const [newMessageDuty, setNewMessageDuty] = useState("NWH426");
   const [newMessageText, setNewMessageText] = useState("");
   const [newMessagePriority, setNewMessagePriority] = useState<Priority>("Normal");
-
-  const resolvedItems = useMemo(
-    () =>
-      items.map((item) => ({
-        ...item,
-        driver: resolveCurrentDriverName(item.driver, currentDriverName),
-      })),
-    [items, currentDriverName],
-  );
-  const resolvedNewMessageDriver = resolveCurrentDriverName(newMessageDriver, currentDriverName);
+  const [newMessageRetainUntilRead, setNewMessageRetainUntilRead] = useState(false);
 
   const filteredItems = useMemo(() => {
-    if (selectedSource === "All") {
-      return resolvedItems;
-    }
+    return items.filter((item) => {
+      if (selectedSource === "Unread messages" && !isUnreadOfficeMessage(item)) {
+        return false;
+      }
 
-    return resolvedItems.filter((item) => item.source === selectedSource);
-  }, [resolvedItems, selectedSource]);
+      if (selectedSource !== "All" && selectedSource !== "Unread messages" && item.source !== selectedSource) {
+        return false;
+      }
 
-  const openCount = resolvedItems.filter((item) => item.status !== "Actioned").length;
+      if (selectedStatusFilter !== "All" && item.status !== selectedStatusFilter) {
+        return false;
+      }
+
+      if (selectedPriorityFilter !== "All" && item.priority !== selectedPriorityFilter) {
+        return false;
+      }
+
+      if (showRetainedOnly && !item.retainUntilDriverRead) {
+        return false;
+      }
+
+      if (driverSearch.trim() && !item.driver.toLowerCase().includes(driverSearch.trim().toLowerCase())) {
+        return false;
+      }
+
+      if (dutySearch.trim() && !item.duty.toLowerCase().includes(dutySearch.trim().toLowerCase())) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [items, selectedSource, selectedStatusFilter, selectedPriorityFilter, showRetainedOnly, driverSearch, dutySearch]);
+
+  const openCount = items.filter((item) => item.status !== "Actioned").length;
+  const unreadCount = items.filter((item) => isUnreadOfficeMessage(item)).length;
 
   function openCommunication(item: CommsItem) {
     setActiveItem(item);
-    setReplyText(defaultReplyForItem(item));
-    setReplyPriority("Normal");
-    setManagerName(MANAGER_NAME);
+    setReplyText(item.pendingReplyText || defaultReplyForItem(item));
+    setReplyPriority(item.pendingReplyPriority || "Normal");
+    setRetainUntilRead(Boolean(item.retainUntilDriverRead));
+    setManagerName(item.pendingManager || MANAGER_NAME);
   }
 
   function persistOpenItems(nextItems: CommsItem[]) {
@@ -581,34 +606,103 @@ export default function LinkCommsDashboardPage() {
     writeOpenItems(nextItems);
   }
 
-  function saveHistoryRecord(item: CommsItem, action: ActionType) {
+
+  function clearFilters() {
+    setSelectedSource("All");
+    setSelectedStatusFilter("All");
+    setSelectedPriorityFilter("All");
+    setDriverSearch("");
+    setDutySearch("");
+    setShowRetainedOnly(false);
+  }
+
+  function queueAwaitingDriverRead(item: CommsItem, action: ActionType) {
     const actionedAt = new Date().toLocaleString("en-GB");
     const manager = managerName.trim() || MANAGER_NAME;
     const driverMessage = getDriverMessage(item, action, replyText);
     const messageThread = buildActionedThread(item, action, replyText, replyPriority, manager, actionedAt);
-    const record: CommsHistoryRecord = {
-      id: `${item.id}-${Date.now()}`,
-      source: item.source,
-      duty: item.duty,
-      driver: item.driver,
-      vehicle: item.vehicle,
-      trailer: item.trailer,
-      priority: item.priority,
-      received: item.received,
-      receivedDate: item.receivedDate,
-      title: item.title,
-      summary: item.summary,
-      manager,
+    const replyForHistory = getReplyTextForHistory(action, replyText, driverMessage);
+
+    const nextItems = items.map((currentItem) =>
+      currentItem.id === item.id
+        ? {
+            ...currentItem,
+            status: "Awaiting driver read" as CommsStatus,
+            summary:
+              action === "Reply sent"
+                ? "Office message sent and retained in Comms until the driver reads and confirms it."
+                : "Action completed but retained in Comms until the driver reads and confirms the office message.",
+            messageThread,
+            retainUntilDriverRead: true,
+            driverReadConfirmed: false,
+            pendingAction: action,
+            pendingManager: manager,
+            pendingReplyText: replyForHistory,
+            pendingReplyPriority: replyPriority,
+          }
+        : currentItem,
+    );
+
+    persistOpenItems(nextItems);
+    setActiveItem(null);
+    setSummaryPopup({
+      title: `${item.duty} retained until driver read confirmation`,
+      detail: `The office message has been kept in the Comms queue. It will remain visible even if the duty is completed until the driver confirms that the message has been read via the mock popup.`,
+    });
+  }
+
+  function confirmDriverRead(item: CommsItem) {
+    const confirmedAt = new Date().toLocaleString("en-GB");
+    const threadWithConfirmation = [
+      ...getMessageThread(item),
+      createThreadEntry({
+        sender: "Driver",
+        senderName: item.driver,
+        message: "Driver has confirmed that the office message has been read in the mockup.",
+        priority: item.pendingReplyPriority || item.priority,
+        direction: "Driver to office",
+        timestamp: confirmedAt,
+      }),
+    ];
+
+    const historyRecord = createHistoryRecord({
+      item: { ...item, driverReadConfirmed: true, readConfirmedAt: confirmedAt, messageThread: threadWithConfirmation },
+      action: item.pendingAction || "Reply sent",
+      replyText: item.pendingReplyText || "",
+      replyPriority: item.pendingReplyPriority || item.priority,
+      manager: item.pendingManager || MANAGER_NAME,
+      actionedAt: confirmedAt,
+      messageThread: threadWithConfirmation,
+    });
+
+    const existing = readHistoryRecords();
+    localStorage.setItem(COMMS_HISTORY_STORAGE_KEY, JSON.stringify([historyRecord, ...existing]));
+
+    const nextItems = items.filter((currentItem) => currentItem.id !== item.id);
+    persistOpenItems(nextItems);
+    setActiveItem(null);
+    setSummaryPopup({
+      title: `${item.duty} read confirmation received`,
+      detail: `The driver has confirmed the message has been read. The retained item has now been removed from the open Comms queue and moved into Comms History.`,
+    });
+  }
+
+  function saveHistoryRecord(item: CommsItem, action: ActionType) {
+    if (retainUntilRead && action !== "Marked actioned") {
+      queueAwaitingDriverRead(item, action);
+      return;
+    }
+
+    const actionedAt = new Date().toLocaleString("en-GB");
+    const manager = managerName.trim() || MANAGER_NAME;
+    const record = createHistoryRecord({
+      item,
       action,
-      replyToDriver: getReplyTextForHistory(action, replyText, driverMessage),
-      actionedAt,
-      finalStatus: "Actioned",
-      driverMessage,
+      replyText,
       replyPriority,
-      detailSummary: buildDetailSummary(item),
-      messageThread,
-      messageThreadSummary: buildThreadSummary(messageThread),
-    };
+      manager,
+      actionedAt,
+    });
 
     const existing = readHistoryRecords();
     localStorage.setItem(COMMS_HISTORY_STORAGE_KEY, JSON.stringify([record, ...existing]));
@@ -619,11 +713,16 @@ export default function LinkCommsDashboardPage() {
     setActiveItem(null);
     setSummaryPopup({
       title: `${item.duty} actioned by ${record.manager}`,
-      detail: `${item.source} item has been marked as Actioned, removed from the Comms queue, saved to Comms History and updated with the full message thread. ${driverMessage}`,
+      detail: `${item.source} item has been marked as Actioned, removed from the Comms queue, saved to Comms History and updated with the full message thread. ${record.driverMessage}`,
     });
   }
 
   function sendDriverReplyOnly(item: CommsItem) {
+    if (retainUntilRead) {
+      queueAwaitingDriverRead(item, "Reply sent");
+      return;
+    }
+
     const reply = replyText.trim() || defaultReplyForItem(item);
     const replyEntry = createThreadEntry({
       sender: "Office",
@@ -640,6 +739,12 @@ export default function LinkCommsDashboardPage() {
             status: "Office review" as CommsStatus,
             summary: `${currentItem.summary} Latest office reply (${replyPriority}): ${reply}`,
             messageThread: [...getMessageThread(currentItem), replyEntry],
+            retainUntilDriverRead: false,
+            driverReadConfirmed: false,
+            pendingAction: undefined,
+            pendingManager: undefined,
+            pendingReplyText: undefined,
+            pendingReplyPriority: undefined,
           }
         : currentItem,
     );
@@ -654,51 +759,65 @@ export default function LinkCommsDashboardPage() {
 
   function createManualDriverMessage() {
     const now = new Date();
+    const manualMessage = newMessageText.trim() || "Please contact the transport office when safe to do so.";
     const newItem: CommsItem = {
       id: `MANUAL-${Date.now()}`,
       source: "Messaging",
       priority: newMessagePriority,
-      status: "Office review",
+      status: newMessageRetainUntilRead ? "Awaiting driver read" : "Office review",
       duty: newMessageDuty.trim() || "NWH426",
-      driver: resolvedNewMessageDriver,
+      driver: newMessageDriver,
       vehicle: "PE68UHD",
       trailer: "7338014",
       received: now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
       receivedDate: now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" }),
       title: "Office message to driver",
-      summary: `Mock office message created for ${resolvedNewMessageDriver}. Awaiting actioned confirmation.`,
+      summary: newMessageRetainUntilRead
+        ? `Mock office message created for ${newMessageDriver}. Awaiting driver read confirmation.`
+        : `Mock office message created for ${newMessageDriver}. Awaiting actioned confirmation.`,
       message: {
         route: "Office Communications > Message Driver",
         direction: "Office to driver",
-        messageText: newMessageText.trim() || "Please contact the transport office when safe to do so.",
+        messageText: manualMessage,
       },
       messageThread: [
         createThreadEntry({
           sender: "Office",
           senderName: MANAGER_NAME,
-          message: newMessageText.trim() || "Please contact the transport office when safe to do so.",
+          message: manualMessage,
           priority: newMessagePriority,
           direction: "Office to driver",
         }),
       ],
+      retainUntilDriverRead: newMessageRetainUntilRead,
+      driverReadConfirmed: false,
+      pendingAction: "Reply sent",
+      pendingManager: MANAGER_NAME,
+      pendingReplyText: manualMessage,
+      pendingReplyPriority: newMessagePriority,
     };
 
     persistOpenItems([newItem, ...items]);
     setNewMessageModalOpen(false);
     setNewMessageText("");
     setNewMessagePriority("Normal");
+    setNewMessageRetainUntilRead(false);
     setSummaryPopup({
-      title: `Message created for ${resolvedNewMessageDriver}`,
-      detail: `${newItem.duty} has been added to the Comms queue and will remain there until actioned.`,
+      title: `Message created for ${newMessageDriver}`,
+      detail: newMessageRetainUntilRead
+        ? `${newItem.duty} has been added to the Comms queue and will stay there until the driver reads and confirms the message.`
+        : `${newItem.duty} has been added to the Comms queue and will remain there until actioned.`,
     });
   }
 
   function resetMock() {
     localStorage.removeItem(COMMS_OPEN_STORAGE_KEY);
     localStorage.removeItem(COMMS_HISTORY_STORAGE_KEY);
-    setItems(initialCommsItems.map(normaliseCommsItem));
-    setSelectedSource("All");
+    setItems(initialCommsItems);
+    clearFilters();
     setActiveItem(null);
+    setRetainUntilRead(false);
+    setNewMessageRetainUntilRead(false);
     setSummaryPopup({
       title: "Comms mock reset",
       detail: "The Comms queue has been restored to the original 16 mock examples and Comms History has been cleared.",
@@ -725,7 +844,7 @@ export default function LinkCommsDashboardPage() {
                 <div>
                   <h1 className="text-2xl font-black text-[#111827]">Office Communications</h1>
                   <p className="text-sm font-bold text-[#6b7280]">
-                    Driver PDA messages, RTC reports, breakdown requests and PMT confirmations in one office queue.
+                    Driver PDA messages, RTC reports, breakdown requests, PMT confirmations and retained unread office messages in one office queue.
                   </p>
                 </div>
               </div>
@@ -761,7 +880,7 @@ export default function LinkCommsDashboardPage() {
             </div>
           </section>
 
-          <section className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-4">
+          <section className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-5">
             {sourceCards.map((card) => {
               const count = items.filter((item) => item.source === card.source && item.status !== "Actioned").length;
               return (
@@ -786,6 +905,24 @@ export default function LinkCommsDashboardPage() {
                 </button>
               );
             })}
+            <button
+              type="button"
+              onClick={() => setSelectedSource((current) => (current === "Unread messages" ? "All" : "Unread messages"))}
+              className={`rounded-md border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#e40000] hover:shadow-md ${
+                selectedSource === "Unread messages" ? "border-[#e40000] bg-[#fff5f5]" : "border-[#d9dee6] bg-white"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#111827] text-lg font-black text-white">
+                  ✓
+                </div>
+                <span className="rounded-full bg-[#e40000] px-3 py-1 text-xs font-black text-white">
+                  {unreadCount}
+                </span>
+              </div>
+              <h2 className="mt-4 text-xl font-black text-[#111827]">Unread messages</h2>
+              <p className="mt-2 text-sm font-bold leading-6 text-[#6b7280]">Office messages retained in Comms until the driver reads and confirms them.</p>
+            </button>
           </section>
 
           <section className="mt-4 overflow-hidden rounded-md border border-[#d9dee6] bg-white shadow-sm">
@@ -793,22 +930,99 @@ export default function LinkCommsDashboardPage() {
               <div>
                 <h2 className="text-lg font-black text-[#111827]">Driver communications queue</h2>
                 <p className="text-sm font-bold text-[#6b7280]">
-                  Click any row to open the office action popup and respond to the driver. Any communications will
-                  automatically be moved into History once the driver is de-allocated.
+                  Click any row to open the office action popup and respond to the driver. Retained messages stay in
+                  the Comms queue until the driver confirms they have read the message, even if the duty has completed.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedSource("All")}
-                className="rounded-lg border border-[#ccd5e2] bg-white px-4 py-2 text-sm font-black text-[#4b5563] transition hover:border-[#e40000]"
-              >
-                Show all open messages
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSource("All")}
+                  className="rounded-lg border border-[#ccd5e2] bg-white px-4 py-2 text-sm font-black text-[#4b5563] transition hover:border-[#e40000]"
+                >
+                  Show all open messages
+                </button>
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="rounded-lg border border-[#ccd5e2] bg-white px-4 py-2 text-sm font-black text-[#4b5563] transition hover:border-[#e40000]"
+                >
+                  Clear filters
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 border-b border-[#d9dee6] bg-white px-4 py-4 md:grid-cols-2 xl:grid-cols-6">
+              <label>
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">Status</span>
+                <select
+                  value={selectedStatusFilter}
+                  onChange={(event) => setSelectedStatusFilter(event.target.value as CommsStatus | "All")}
+                  className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+                >
+                  <option value="All">All statuses</option>
+                  <option value="New">New</option>
+                  <option value="Office review">Office review</option>
+                  <option value="Awaiting driver read">Awaiting driver read</option>
+                </select>
+              </label>
+
+              <label>
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">Priority</span>
+                <select
+                  value={selectedPriorityFilter}
+                  onChange={(event) => setSelectedPriorityFilter(event.target.value as Priority | "All")}
+                  className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+                >
+                  <option value="All">All priorities</option>
+                  <option value="Critical">Critical</option>
+                  <option value="High">High</option>
+                  <option value="Normal">Normal</option>
+                </select>
+              </label>
+
+              <label>
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">Driver</span>
+                <input
+                  value={driverSearch}
+                  onChange={(event) => setDriverSearch(event.target.value)}
+                  placeholder="Search driver"
+                  className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+                />
+              </label>
+
+              <label>
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">Duty</span>
+                <input
+                  value={dutySearch}
+                  onChange={(event) => setDutySearch(event.target.value)}
+                  placeholder="Search duty"
+                  className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-bold text-[#111827] outline-none focus:border-[#e40000]"
+                />
+              </label>
+
+              <label className="flex items-end">
+                <span className="flex h-11 w-full items-center gap-3 rounded-lg border border-[#ccd5e2] bg-[#f8fafc] px-3 text-sm font-bold text-[#111827]">
+                  <input
+                    type="checkbox"
+                    checked={showRetainedOnly}
+                    onChange={(event) => setShowRetainedOnly(event.target.checked)}
+                    className="h-4 w-4 rounded border-[#ccd5e2]"
+                  />
+                  Retained / read-confirmation only
+                </span>
+              </label>
+
+              <div className="flex items-end">
+                <div className="w-full rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-3 py-2 text-sm font-bold text-[#4b5563]">
+                  Showing <span className="font-black text-[#111827]">{filteredItems.length}</span> filtered message(s)
+                </div>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1100px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[1320px] border-collapse text-left text-sm">
                 <thead className="bg-white text-xs uppercase tracking-[0.12em] text-[#6b7280]">
                   <tr>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Source</th>
@@ -816,6 +1030,7 @@ export default function LinkCommsDashboardPage() {
                     <th className="border-b border-[#d9dee6] px-4 py-3">Driver</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Priority</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Status</th>
+                    <th className="border-b border-[#d9dee6] px-4 py-3">Driver read</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Received</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Summary</th>
                   </tr>
@@ -832,6 +1047,7 @@ export default function LinkCommsDashboardPage() {
                       <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#374151]">{item.driver}</td>
                       <td className="border-b border-[#edf0f4] px-4 py-3"><PriorityBadge priority={item.priority} /></td>
                       <td className="border-b border-[#edf0f4] px-4 py-3"><StatusBadge status={item.status} /></td>
+                      <td className="border-b border-[#edf0f4] px-4 py-3"><ReadConfirmationBadge item={item} /></td>
                       <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#374151]">{item.received}</td>
                       <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#4b5563]">{item.summary}</td>
                     </tr>
@@ -849,26 +1065,31 @@ export default function LinkCommsDashboardPage() {
           managerName={managerName}
           replyText={replyText}
           replyPriority={replyPriority}
+          retainUntilRead={retainUntilRead}
           onManagerNameChange={setManagerName}
           onReplyTextChange={setReplyText}
           onReplyPriorityChange={setReplyPriority}
+          onRetainUntilReadChange={setRetainUntilRead}
           onClose={() => setActiveItem(null)}
           onSaveHistory={saveHistoryRecord}
           onReplyOnly={sendDriverReplyOnly}
+          onConfirmDriverRead={confirmDriverRead}
         />
       )}
 
       {newMessageModalOpen && (
         <NewDriverMessageModal
-          driverNames={availableDriverNames}
-          selectedDriver={resolvedNewMessageDriver}
+          driverNames={driverNames}
+          selectedDriver={newMessageDriver}
           duty={newMessageDuty}
           message={newMessageText}
           priority={newMessagePriority}
+          retainUntilRead={newMessageRetainUntilRead}
           onDriverChange={setNewMessageDriver}
           onDutyChange={setNewMessageDuty}
           onMessageChange={setNewMessageText}
           onPriorityChange={setNewMessagePriority}
+          onRetainUntilReadChange={setNewMessageRetainUntilRead}
           onClose={() => setNewMessageModalOpen(false)}
           onCreate={createManualDriverMessage}
         />
@@ -890,23 +1111,29 @@ function CommunicationModal({
   managerName,
   replyText,
   replyPriority,
+  retainUntilRead,
   onManagerNameChange,
   onReplyTextChange,
   onReplyPriorityChange,
+  onRetainUntilReadChange,
   onClose,
   onSaveHistory,
   onReplyOnly,
+  onConfirmDriverRead,
 }: {
   item: CommsItem;
   managerName: string;
   replyText: string;
   replyPriority: Priority;
+  retainUntilRead: boolean;
   onManagerNameChange: (value: string) => void;
   onReplyTextChange: (value: string) => void;
   onReplyPriorityChange: (value: Priority) => void;
+  onRetainUntilReadChange: (value: boolean) => void;
   onClose: () => void;
   onSaveHistory: (item: CommsItem, action: ActionType) => void;
   onReplyOnly: (item: CommsItem) => void;
+  onConfirmDriverRead: (item: CommsItem) => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 px-4 py-8">
@@ -980,6 +1207,32 @@ function CommunicationModal({
               </select>
             </label>
 
+            <label className="mt-4 flex items-start gap-3 rounded-lg border border-[#d9dee6] bg-white p-3">
+              <input
+                type="checkbox"
+                checked={retainUntilRead}
+                onChange={(event) => onRetainUntilReadChange(event.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-[#ccd5e2]"
+              />
+              <span className="text-sm font-bold leading-6 text-[#4b5563]">
+                <span className="block font-black text-[#111827]">Retain message until driver reads and confirms</span>
+                Keep this office message in Comms even if the duty is completed. The item will only clear once the driver confirms they have read it via the mock popup.
+              </span>
+            </label>
+
+            {item.retainUntilDriverRead && !item.driverReadConfirmed ? (
+              <div className="mt-4 rounded-lg border border-[#2c80e5] bg-[#eef6ff] p-3 text-sm font-bold leading-6 text-[#1d4ed8]">
+                This item is currently being retained in Comms until the driver confirms that the office message has been read.
+                <button
+                  type="button"
+                  onClick={() => onConfirmDriverRead(item)}
+                  className="mt-3 w-full rounded-lg bg-[#2c80e5] px-4 py-3 text-sm font-black text-white transition hover:bg-[#1f66ba]"
+                >
+                  Mock driver has read and confirmed
+                </button>
+              </div>
+            ) : null}
+
             {item.source === "PMT Confirmation" ? (
               <div className="mt-4 grid grid-cols-1 gap-3">
                 <button
@@ -1024,7 +1277,7 @@ function CommunicationModal({
             )}
 
             <div className="mt-4 rounded-lg border border-[#d9dee6] bg-white px-4 py-3 text-sm font-bold leading-6 text-[#4b5563]">
-              Actioned items will be removed from Comms, saved to Comms History with a timestamp, and record {managerName || MANAGER_NAME} as the manager.
+              Actioned items will be removed from Comms, saved to Comms History with a timestamp, and record {managerName || MANAGER_NAME} as the manager. If the retain tick is used, the message will stay in Comms until the driver read confirmation is received.
             </div>
           </aside>
         </div>
@@ -1160,10 +1413,12 @@ function NewDriverMessageModal({
   duty,
   message,
   priority,
+  retainUntilRead,
   onDriverChange,
   onDutyChange,
   onMessageChange,
   onPriorityChange,
+  onRetainUntilReadChange,
   onClose,
   onCreate,
 }: {
@@ -1172,10 +1427,12 @@ function NewDriverMessageModal({
   duty: string;
   message: string;
   priority: Priority;
+  retainUntilRead: boolean;
   onDriverChange: (value: string) => void;
   onDutyChange: (value: string) => void;
   onMessageChange: (value: string) => void;
   onPriorityChange: (value: Priority) => void;
+  onRetainUntilReadChange: (value: boolean) => void;
   onClose: () => void;
   onCreate: () => void;
 }) {
@@ -1247,6 +1504,19 @@ function NewDriverMessageModal({
           />
         </label>
 
+        <label className="mt-4 flex items-start gap-3 rounded-lg border border-[#d9dee6] bg-[#f8fafc] p-3">
+          <input
+            type="checkbox"
+            checked={retainUntilRead}
+            onChange={(event) => onRetainUntilReadChange(event.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-[#ccd5e2]"
+          />
+          <span className="text-sm font-bold leading-6 text-[#4b5563]">
+            <span className="block font-black text-[#111827]">Retain in Comms until driver reads it</span>
+            Use this for office messages that must stay visible until the driver confirms they have read the message.
+          </span>
+        </label>
+
         <button
           type="button"
           onClick={onCreate}
@@ -1304,7 +1574,7 @@ function OfficeHeader({ title, subtitle }: { title: string; subtitle: string }) 
         </Link>
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl text-[#e40000]">●</div>
         <div className="hidden text-right sm:block">
-          <p className="text-base font-black"><DriverName /></p>
+          <p className="text-base font-black">Andrew Cannon</p>
           <p className="text-xs font-bold text-white/80">Mock dashboard user</p>
         </div>
       </div>
@@ -1361,9 +1631,28 @@ function StatusBadge({ status }: { status: CommsStatus }) {
       ? "bg-[#fff0f0] text-[#e40000]"
       : status === "Office review"
         ? "bg-[#fff7e6] text-[#a66900]"
-        : "bg-[#ecfdf3] text-[#157347]";
+        : status === "Awaiting driver read"
+          ? "bg-[#eef6ff] text-[#2c80e5]"
+          : "bg-[#ecfdf3] text-[#157347]";
 
   return <span className={`rounded-full px-3 py-1 text-xs font-black ${classes}`}>{status}</span>;
+}
+
+
+function ReadConfirmationBadge({ item }: { item: CommsItem }) {
+  if (item.retainUntilDriverRead) {
+    if (item.driverReadConfirmed) {
+      return <span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-black text-[#157347]">Read confirmed</span>;
+    }
+
+    return <span className="rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-black text-[#2c80e5]">Unread / retain</span>;
+  }
+
+  return <span className="rounded-full bg-[#f3f4f6] px-3 py-1 text-xs font-black text-[#6b7280]">No read tick</span>;
+}
+
+function isUnreadOfficeMessage(item: CommsItem) {
+  return Boolean(item.retainUntilDriverRead && !item.driverReadConfirmed);
 }
 
 function InfoBox({ label, value, tone }: { label: string; value: string; tone?: "red" | "amber" | "green" }) {
@@ -1391,6 +1680,51 @@ function DetailBlock({ label, value }: { label: string; value: string }) {
       <p className="mt-2 text-sm font-bold leading-6 text-[#111827]">{value}</p>
     </div>
   );
+}
+
+function createHistoryRecord({
+  item,
+  action,
+  replyText,
+  replyPriority,
+  manager,
+  actionedAt,
+  messageThread,
+}: {
+  item: CommsItem;
+  action: ActionType;
+  replyText: string;
+  replyPriority: Priority;
+  manager: string;
+  actionedAt: string;
+  messageThread?: MessageThreadEntry[];
+}): CommsHistoryRecord {
+  const driverMessage = getDriverMessage(item, action, replyText);
+  const finalThread = messageThread || buildActionedThread(item, action, replyText, replyPriority, manager, actionedAt);
+
+  return {
+    id: `${item.id}-${Date.now()}`,
+    source: item.source,
+    duty: item.duty,
+    driver: item.driver,
+    vehicle: item.vehicle,
+    trailer: item.trailer,
+    priority: item.priority,
+    received: item.received,
+    receivedDate: item.receivedDate,
+    title: item.title,
+    summary: item.summary,
+    manager,
+    action,
+    replyToDriver: getReplyTextForHistory(action, replyText, driverMessage),
+    actionedAt,
+    finalStatus: "Actioned",
+    driverMessage,
+    replyPriority,
+    detailSummary: buildDetailSummary(item),
+    messageThread: finalThread,
+    messageThreadSummary: buildThreadSummary(finalThread),
+  };
 }
 
 function defaultReplyForItem(item: CommsItem) {
@@ -1558,6 +1892,12 @@ function normaliseCommsItem(item: CommsItem): CommsItem {
   return {
     ...item,
     messageThread: getMessageThread(item),
+    retainUntilDriverRead: Boolean(item.retainUntilDriverRead),
+    driverReadConfirmed: Boolean(item.driverReadConfirmed),
+    pendingAction: item.pendingAction,
+    pendingManager: item.pendingManager,
+    pendingReplyText: item.pendingReplyText,
+    pendingReplyPriority: item.pendingReplyPriority,
   };
 }
 
