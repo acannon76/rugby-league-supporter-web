@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import DriverName from "../../DriverName";
 import { useEffect, useMemo, useState } from "react";
 
 type CheckStatus = "none" | "ok" | "vehicleIssue" | "defect";
@@ -36,7 +37,6 @@ type HistoryEntry = {
   notes: string;
 };
 
-const driverName = "Andrew Cannon";
 const registration = "PE68UHD";
 
 const vehicleCheckStatusStorageKey = "hgv-vehicle-check-status";
@@ -342,7 +342,7 @@ export default function VehicleCheckSummaryPage() {
               <p className="text-xs font-black uppercase tracking-widest text-[#ffd9df]">
                 Driver
               </p>
-              <p className="text-base font-black text-white">{driverName}</p>
+              <p className="text-base font-black text-white"><DriverName /></p>
             </div>
 
             <Link

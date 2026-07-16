@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import DriverName from "../../../../DriverName";
 import { useEffect, useMemo, useState } from "react";
 
 type CommsSource = "RTC" | "Breakdown" | "Messaging" | "PMT Confirmation";
@@ -336,7 +337,7 @@ function OfficeHeader({ title, subtitle }: { title: string; subtitle: string }) 
         </Link>
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl text-[#e40000]">●</div>
         <div className="hidden text-right sm:block">
-          <p className="text-base font-black">Andrew Cannon</p>
+          <p className="text-base font-black"><DriverName /></p>
           <p className="text-xs font-bold text-white/80">Mock dashboard user</p>
         </div>
       </div>

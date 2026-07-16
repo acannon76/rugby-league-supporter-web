@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import DriverName from "../DriverName";
+import { getStoredDriverUserId } from "../driverPdaSession";
 
 type LegStatus = "To do" | "In Progress" | "Completed";
 type MockupType = "flex" | "mockup2";
@@ -1085,7 +1087,7 @@ function OverviewCard({ dutyId = "NWH254" }: { dutyId?: string }) {
       <h2 className="text-2xl font-black text-[#222]">Overview</h2>
 
       <p className="mt-6 text-lg font-bold text-[#333]">
-        <span className="font-black">Driver name:</span> Andrew Cannon
+        <span className="font-black">Driver name:</span> <DriverName />
       </p>
 
       <p className="mt-4 text-lg font-bold text-[#333]">
@@ -2393,7 +2395,7 @@ function buildPlannedDctRows(mockupType: MockupType, dutyId: string) {
       startDate: formatDateOnly(baseDate.getTime()),
       dutyOrder: leg.number,
       vehicleId: "",
-      userId: "andrew.cannon1@royalmail.com",
+      userId: getStoredDriverUserId(),
       contractorCompanyName: "Pie Haulage",
       operator: "NWH",
       dutyId,

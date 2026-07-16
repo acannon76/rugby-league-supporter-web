@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import DriverName from "../../DriverName";
 import { useEffect, useMemo, useState } from "react";
 import {
-  DRIVER_NAME,
   DUTY_ID,
   DutyLeg,
   IssueCategory,
@@ -572,7 +572,7 @@ function OverviewCard() {
       <h2 className="text-2xl font-black text-[#222]">Overview</h2>
 
       <p className="mt-6 text-lg font-bold text-[#333]">
-        <span className="font-black">Driver name:</span> {DRIVER_NAME}
+        <span className="font-black">Driver name:</span> <DriverName />
       </p>
 
       <p className="mt-4 text-lg font-bold text-[#333]">

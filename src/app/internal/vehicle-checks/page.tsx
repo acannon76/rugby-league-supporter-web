@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import DriverName from "../DriverName";
 import { useEffect, useState } from "react";
 import VehicleCheckTimer from "./VehicleCheckTimer";
 
@@ -18,7 +19,6 @@ type VehicleDetail = {
   value: string;
 };
 
-const driverName = "Andrew Cannon";
 
 const vehicleDetails: VehicleDetail[] = [
   { label: "Registration", value: "PE68UHD" },
@@ -183,7 +183,7 @@ export default function VehicleChecksPage() {
               <p className="text-xs font-black uppercase tracking-widest text-[#ffd9df]">
                 Driver
               </p>
-              <p className="text-base font-black text-white">{driverName}</p>
+              <p className="text-base font-black text-white"><DriverName /></p>
             </div>
 
             <Link

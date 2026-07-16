@@ -1,4 +1,5 @@
 import Link from "next/link";
+import DriverName from "../../DriverName";
 import VehicleCheckTimer from "../../vehicle-checks/VehicleCheckTimer";
 
 type DrivingMetric = {
@@ -98,7 +99,7 @@ export default function DrivingStylePage() {
               <p className="text-xs font-black uppercase tracking-[0.16em]">
                 Driver
               </p>
-              <p className="text-base font-black">Andrew Cannon</p>
+              <p className="text-base font-black"><DriverName /></p>
             </div>
 
             <Link

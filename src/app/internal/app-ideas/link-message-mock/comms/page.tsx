@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import DriverName, { useDriverName } from "../../../DriverName";
+import { CURRENT_DRIVER_PLACEHOLDER, resolveCurrentDriverName } from "../../../driverPdaSession";
 
 type CommsSource = "RTC" | "Breakdown" | "Messaging" | "PMT Confirmation";
 type CommsStatus = "New" | "Office review" | "Actioned";
@@ -111,7 +113,7 @@ const COMMS_OPEN_STORAGE_KEY = "link-message-comms-open-items";
 const MANAGER_NAME = "Harry Smith";
 
 const driverNames = [
-  "Andrew Cannon",
+  CURRENT_DRIVER_PLACEHOLDER,
   "Sarah Green",
   "John Smith",
   "Peter Jones",
@@ -135,7 +137,7 @@ const initialCommsItems: CommsItem[] = [
     priority: "Critical",
     status: "New",
     duty: "NWH426",
-    driver: "Andrew Cannon",
+    driver: CURRENT_DRIVER_PLACEHOLDER,
     vehicle: "PE68UHD",
     trailer: "7338014",
     received: "12:08",
@@ -467,7 +469,7 @@ const initialCommsItems: CommsItem[] = [
     priority: "Normal",
     status: "New",
     duty: "WAVOC8834",
-    driver: "Andrew Cannon",
+    driver: CURRENT_DRIVER_PLACEHOLDER,
     vehicle: "PE68UHD",
     trailer: "7338014",
     received: "09:10",
@@ -529,6 +531,11 @@ const sidebarItems = [
 ];
 
 export default function LinkCommsDashboardPage() {
+  const currentDriverName = useDriverName();
+  const availableDriverNames = useMemo(
+    () => driverNames.map((name) => resolveCurrentDriverName(name, currentDriverName)),
+    [currentDriverName],
+  );
   const [items, setItems] = useState<CommsItem[]>(() => readOpenItems());
   const [selectedSource, setSelectedSource] = useState<CommsSource | "All">("All");
   const [activeItem, setActiveItem] = useState<CommsItem | null>(null);
@@ -537,20 +544,30 @@ export default function LinkCommsDashboardPage() {
   const [managerName, setManagerName] = useState(MANAGER_NAME);
   const [summaryPopup, setSummaryPopup] = useState<{ title: string; detail: string } | null>(null);
   const [newMessageModalOpen, setNewMessageModalOpen] = useState(false);
-  const [newMessageDriver, setNewMessageDriver] = useState(driverNames[0]);
+  const [newMessageDriver, setNewMessageDriver] = useState(CURRENT_DRIVER_PLACEHOLDER);
   const [newMessageDuty, setNewMessageDuty] = useState("NWH426");
   const [newMessageText, setNewMessageText] = useState("");
   const [newMessagePriority, setNewMessagePriority] = useState<Priority>("Normal");
 
+  const resolvedItems = useMemo(
+    () =>
+      items.map((item) => ({
+        ...item,
+        driver: resolveCurrentDriverName(item.driver, currentDriverName),
+      })),
+    [items, currentDriverName],
+  );
+  const resolvedNewMessageDriver = resolveCurrentDriverName(newMessageDriver, currentDriverName);
+
   const filteredItems = useMemo(() => {
     if (selectedSource === "All") {
-      return items;
+      return resolvedItems;
     }
 
-    return items.filter((item) => item.source === selectedSource);
-  }, [items, selectedSource]);
+    return resolvedItems.filter((item) => item.source === selectedSource);
+  }, [resolvedItems, selectedSource]);
 
-  const openCount = items.filter((item) => item.status !== "Actioned").length;
+  const openCount = resolvedItems.filter((item) => item.status !== "Actioned").length;
 
   function openCommunication(item: CommsItem) {
     setActiveItem(item);
@@ -643,13 +660,13 @@ export default function LinkCommsDashboardPage() {
       priority: newMessagePriority,
       status: "Office review",
       duty: newMessageDuty.trim() || "NWH426",
-      driver: newMessageDriver,
+      driver: resolvedNewMessageDriver,
       vehicle: "PE68UHD",
       trailer: "7338014",
       received: now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
       receivedDate: now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" }),
       title: "Office message to driver",
-      summary: `Mock office message created for ${newMessageDriver}. Awaiting actioned confirmation.`,
+      summary: `Mock office message created for ${resolvedNewMessageDriver}. Awaiting actioned confirmation.`,
       message: {
         route: "Office Communications > Message Driver",
         direction: "Office to driver",
@@ -671,7 +688,7 @@ export default function LinkCommsDashboardPage() {
     setNewMessageText("");
     setNewMessagePriority("Normal");
     setSummaryPopup({
-      title: `Message created for ${newMessageDriver}`,
+      title: `Message created for ${resolvedNewMessageDriver}`,
       detail: `${newItem.duty} has been added to the Comms queue and will remain there until actioned.`,
     });
   }
@@ -679,7 +696,7 @@ export default function LinkCommsDashboardPage() {
   function resetMock() {
     localStorage.removeItem(COMMS_OPEN_STORAGE_KEY);
     localStorage.removeItem(COMMS_HISTORY_STORAGE_KEY);
-    setItems(initialCommsItems);
+    setItems(initialCommsItems.map(normaliseCommsItem));
     setSelectedSource("All");
     setActiveItem(null);
     setSummaryPopup({
@@ -843,8 +860,8 @@ export default function LinkCommsDashboardPage() {
 
       {newMessageModalOpen && (
         <NewDriverMessageModal
-          driverNames={driverNames}
-          selectedDriver={newMessageDriver}
+          driverNames={availableDriverNames}
+          selectedDriver={resolvedNewMessageDriver}
           duty={newMessageDuty}
           message={newMessageText}
           priority={newMessagePriority}
@@ -1287,7 +1304,7 @@ function OfficeHeader({ title, subtitle }: { title: string; subtitle: string }) 
         </Link>
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl text-[#e40000]">●</div>
         <div className="hidden text-right sm:block">
-          <p className="text-base font-black">Andrew Cannon</p>
+          <p className="text-base font-black"><DriverName /></p>
           <p className="text-xs font-bold text-white/80">Mock dashboard user</p>
         </div>
       </div>

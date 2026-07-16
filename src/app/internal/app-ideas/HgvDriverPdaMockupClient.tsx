@@ -1,9 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import VehicleCheckTimer, { resetVehicleCheckMockup } from "../vehicle-checks/VehicleCheckTimer";
 import { resetDriverPdaManifestMockup } from "./driverPdaManifestData";
+import {
+  clearDriverSession,
+  saveDriverSession,
+} from "../driverPdaSession";
+import { useDriverSession } from "../DriverName";
 
 type AppButton = {
   title: string;
@@ -14,6 +19,7 @@ type AppButton = {
   icon: string;
   actionText?: string;
   isMessaging?: boolean;
+  isLogout?: boolean;
 };
 
 type MessageLevel = "none" | "normal" | "high" | "critical";
@@ -133,17 +139,27 @@ const appButtons: AppButton[] = [
     actionText: "TO BE ADDED",
   },
   {
-    title: "Contacts",
-    text: "Key contact numbers and operational support details.",
-    href: "/internal/app-ideas/contacts",
-    icon: "☎",
-    actionText: "OPEN",
+    title: "Log Out",
+    text: "End this mock session and return to the log on screen.",
+    icon: "↪",
+    actionText: "LOG OUT",
+    isLogout: true,
   },
 ];
 
 export default function HgvDriverPdaMockupClient() {
+  const { isLoggedIn, driverName } = useDriverSession();
   const [messageLevel, setMessageLevel] = useState<MessageLevel>("none");
   const messageConfig = messageLevel === "none" ? null : messageLevelConfigs[messageLevel];
+
+  function handleLogin(name: string) {
+    saveDriverSession(name);
+  }
+
+  function handleLogout() {
+    clearDriverSession();
+    setMessageLevel("none");
+  }
 
   function handleResetAllMocks() {
     resetAllDriverPdaMocks();
@@ -167,6 +183,10 @@ export default function HgvDriverPdaMockupClient() {
 
       return "none";
     });
+  }
+
+  if (!isLoggedIn) {
+    return <DriverLoginScreen onLogin={handleLogin} />;
   }
 
   return (
@@ -195,7 +215,7 @@ export default function HgvDriverPdaMockupClient() {
               <p className="text-xs font-black uppercase tracking-[0.16em]">
                 Driver
               </p>
-              <p className="text-base font-black">Andrew Cannon</p>
+              <p className="text-base font-black">{driverName}</p>
             </div>
           </div>
         </div>
@@ -243,6 +263,7 @@ export default function HgvDriverPdaMockupClient() {
               key={button.title}
               button={button}
               messageConfig={messageConfig}
+              onLogout={handleLogout}
             />
           ))}
 
@@ -260,12 +281,14 @@ export default function HgvDriverPdaMockupClient() {
 function ActionCard({
   button,
   messageConfig,
+  onLogout,
 }: {
   button: AppButton;
   messageConfig: MessageLevelConfig | null;
+  onLogout: () => void;
 }) {
   const isMessagingActive = button.isMessaging && Boolean(messageConfig);
-  const isInteractive = Boolean(button.href || button.externalHref);
+  const isInteractive = Boolean(button.href || button.externalHref || button.isLogout);
 
   const cardClasses = `group flex h-full min-h-[270px] flex-col rounded-[28px] border p-6 text-left shadow-sm transition ${
     isInteractive ? "hover:-translate-y-1 hover:shadow-lg" : ""
@@ -313,6 +336,14 @@ function ActionCard({
       </div>
     </>
   );
+
+  if (button.isLogout) {
+    return (
+      <button type="button" onClick={onLogout} className={cardClasses}>
+        {content}
+      </button>
+    );
+  }
 
   if (button.externalHref) {
     return (
@@ -389,6 +420,132 @@ function MessagingControls({
         </Link>
       </div>
     </div>
+  );
+}
+
+function DriverLoginScreen({ onLogin }: { onLogin: (driverName: string) => void }) {
+  const [name, setName] = useState("");
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+
+  function submitLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!name.trim()) {
+      setError("Enter a driver name to continue.");
+      return;
+    }
+
+    if (pin !== "00000") {
+      setError("The PIN is incorrect. Use 00000 for this mockup.");
+      return;
+    }
+
+    setError("");
+    onLogin(name.trim());
+  }
+
+  return (
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f4f1ec] px-4 py-10 font-sans text-[#001b3a] sm:px-6">
+      <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#c4002f]/10" />
+      <div className="pointer-events-none absolute -bottom-32 -right-20 h-96 w-96 rounded-full bg-[#001b3a]/[0.08]" />
+
+      <section className="relative w-full max-w-[980px] overflow-hidden rounded-[34px] border border-[#d0d7df] bg-white shadow-2xl">
+        <div className="grid min-h-[610px] lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="flex flex-col justify-between bg-[#c4002f] p-8 text-white sm:p-10 lg:p-12">
+            <div>
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-white text-lg font-black">
+                  HGV
+                </div>
+                <div>
+                  <h1 className="text-2xl font-black leading-none sm:text-3xl">Driver PDA</h1>
+                  <p className="mt-1 text-sm font-black uppercase tracking-[0.16em] text-white/80">
+                    Concept Mockup
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-16 max-w-sm">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-white/75">Driver access</p>
+                <h2 className="mt-4 text-4xl font-black leading-tight sm:text-5xl">Log on to begin your duty.</h2>
+                <p className="mt-6 text-base font-bold leading-7 text-white/80">
+                  Enter any driver name for the mockup. The name will be shown throughout the Driver PDA screens.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-12 flex items-center gap-3 rounded-2xl border border-white/25 bg-white/10 p-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-xl font-black text-[#c4002f]">✓</div>
+              <p className="text-sm font-bold leading-6 text-white/90">Mock access only — no real driver account is required.</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col justify-center p-8 sm:p-10 lg:p-14">
+            <div className="mx-auto w-full max-w-md">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#c4002f]">Welcome</p>
+              <h2 className="mt-3 text-3xl font-black sm:text-4xl">Driver log on</h2>
+              <p className="mt-3 text-base font-bold leading-7 text-[#61748b]">
+                Use your chosen name and the five-digit mock PIN.
+              </p>
+
+              <form onSubmit={submitLogin} className="mt-9 space-y-6">
+                <label className="block">
+                  <span className="text-sm font-black text-[#001b3a]">Driver name</span>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(event) => {
+                      setName(event.target.value);
+                      setError("");
+                    }}
+                    autoComplete="name"
+                    autoFocus
+                    placeholder="Enter your name"
+                    className="mt-2 h-14 w-full rounded-2xl border-2 border-[#d0d7df] bg-[#f8fafc] px-4 text-base font-bold outline-none transition placeholder:text-[#94a3b8] focus:border-[#c4002f] focus:bg-white focus:ring-4 focus:ring-[#c4002f]/10"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-black text-[#001b3a]">PIN</span>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={5}
+                    value={pin}
+                    onChange={(event) => {
+                      setPin(event.target.value.replace(/\D/g, "").slice(0, 5));
+                      setError("");
+                    }}
+                    autoComplete="off"
+                    placeholder="Enter 5-digit PIN"
+                    className="mt-2 h-14 w-full rounded-2xl border-2 border-[#d0d7df] bg-[#f8fafc] px-4 text-lg font-black tracking-[0.35em] outline-none transition placeholder:text-base placeholder:font-bold placeholder:tracking-normal placeholder:text-[#94a3b8] focus:border-[#c4002f] focus:bg-white focus:ring-4 focus:ring-[#c4002f]/10"
+                  />
+                </label>
+
+                {error && (
+                  <div role="alert" className="rounded-2xl border border-[#fecaca] bg-[#fff1f2] px-4 py-3 text-sm font-black text-[#b91c1c]">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="flex h-14 w-full items-center justify-center rounded-2xl bg-[#c4002f] px-6 text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-[#9f0026] focus:outline-none focus:ring-4 focus:ring-[#c4002f]/25"
+                >
+                  Log On <span className="ml-3 text-lg">→</span>
+                </button>
+              </form>
+
+              <p className="mt-8 text-center text-xs font-bold text-[#61748b]">
+                For this mockup, the PIN is <span className="font-black text-[#001b3a]">00000</span>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }
 

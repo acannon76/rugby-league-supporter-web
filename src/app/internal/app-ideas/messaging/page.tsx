@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import DriverName from "../../DriverName";
 import VehicleCheckTimer from "../../vehicle-checks/VehicleCheckTimer";
 
 type MessagingOption = {
@@ -91,7 +92,7 @@ export default function MessagingPage() {
               <p className="text-xs font-black uppercase tracking-[0.16em]">
                 Driver
               </p>
-              <p className="text-base font-black">Andrew Cannon</p>
+              <p className="text-base font-black"><DriverName /></p>
             </div>
 
             <Link

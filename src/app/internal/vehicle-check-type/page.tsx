@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import DriverName from "../DriverName";
 import VehicleCheckTimer, { startVehicleCheckTimer } from "../vehicle-checks/VehicleCheckTimer";
 
-const driverName = "Andrew Cannon";
 
 export default function VehicleCheckTypePage() {
   return (
@@ -32,7 +32,7 @@ export default function VehicleCheckTypePage() {
               <p className="text-xs font-black uppercase tracking-widest text-[#ffd9df]">
                 Driver
               </p>
-              <p className="text-base font-black text-white">{driverName}</p>
+              <p className="text-base font-black text-white"><DriverName /></p>
             </div>
 
             <Link

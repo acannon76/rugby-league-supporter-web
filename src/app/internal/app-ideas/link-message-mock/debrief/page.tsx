@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import DriverName from "../../../DriverName";
+import { getStoredDriverName, getStoredDriverUserId } from "../../../driverPdaSession";
 import { useEffect, useMemo, useState } from "react";
 
 const sidebarItems = [
@@ -703,7 +705,7 @@ function OfficeHeader({ title, subtitle }: { title: string; subtitle: string }) 
         </Link>
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl text-[#e40000]">●</div>
         <div className="hidden text-right sm:block">
-          <p className="text-base font-black">Andrew Cannon</p>
+          <p className="text-base font-black"><DriverName /></p>
           <p className="text-xs font-bold text-white/80">Mock dashboard user</p>
         </div>
       </div>
@@ -901,7 +903,7 @@ function CheckBox({
 
 function buildInitialDebriefRows(): DebriefRow[] {
   const drivers = [
-    "Andrew Cannon",
+    getStoredDriverName(),
     "Peter Finch",
     "John Smith",
     "Sarah Jones",
@@ -946,6 +948,7 @@ function buildInitialDebriefRows(): DebriefRow[] {
     const pod318Status = index % 9 === 0 ? "Missing" : index % 6 === 0 ? "Pending Upload" : "Received";
     const division = getMockDivision(index);
     const dutyOrder = getMockDutyOrder(index);
+    const driverName = drivers[index % drivers.length];
 
     return {
       id: dutyNumber,
@@ -954,8 +957,10 @@ function buildInitialDebriefRows(): DebriefRow[] {
       dutyDate,
       weekNumber: 14 + Math.floor(index / 10),
       dutyOrder,
-      driverName: drivers[index % drivers.length],
-      userId: `${drivers[index % drivers.length].toLowerCase().replaceAll(" ", ".")}@mock.driver`,
+      driverName,
+      userId: index % drivers.length === 0
+        ? getStoredDriverUserId()
+        : `${driverName.toLowerCase().replaceAll(" ", ".")}@mock.driver`,
       jobTier: "Tier 1",
       planType: index % 7 === 0 ? "FLEX" : "BAU",
       traffic: "NWH",
@@ -1109,6 +1114,8 @@ function readDebriefRowsFromStorage() {
       ...row,
       division: row.division ?? getMockDivision(index),
       dutyOrder: row.dutyOrder ?? getMockDutyOrder(index),
+      driverName: index % 8 === 0 ? getStoredDriverName() : row.driverName,
+      userId: index % 8 === 0 ? getStoredDriverUserId() : row.userId,
     }));
   } catch {
     return buildInitialDebriefRows();

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import DriverName from "../../DriverName";
 import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 
 type SideButton = {
@@ -340,7 +341,7 @@ export default function LinkMessageMockPage() {
             ●
           </button>
           <div className="hidden text-right sm:block">
-            <p className="text-base font-black">Andrew Cannon</p>
+            <p className="text-base font-black"><DriverName /></p>
             <p className="text-xs font-bold text-white/80">Mock dashboard user</p>
           </div>
           <button
