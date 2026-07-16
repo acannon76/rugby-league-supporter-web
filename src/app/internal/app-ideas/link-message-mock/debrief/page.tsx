@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import DriverName from "../../../DriverName";
-import { getStoredDriverName, getStoredDriverUserId } from "../../../driverPdaSession";
 import { useEffect, useMemo, useState } from "react";
 
 const sidebarItems = [
@@ -24,6 +22,7 @@ const sidebarItems = [
 type DebriefStatus = "Awaiting Debrief" | "In Review" | "Debriefed" | "Action Required";
 type DebriefOutcome = "Complete" | "Part Complete" | "Failed" | "Cancelled";
 type Division = "Letters" | "Network" | "Contractor";
+type ToTimeCode = "VE" | "E" | "OT" | "L" | "VL" | "F";
 
 type DebriefRow = {
   id: string;
@@ -106,7 +105,7 @@ type DebriefFormState = {
   checks: DebriefChecks;
 };
 
-const DEBRIEF_STORAGE_KEY = "mock-driver-debrief-rows-v1";
+const DEBRIEF_STORAGE_KEY = "mock-driver-debrief-rows-v2";
 const baseDateInput = "2026-07-02";
 
 const issueCategories = [
@@ -127,12 +126,15 @@ const issueCategories = [
 const debriefStatuses: DebriefStatus[] = ["Awaiting Debrief", "In Review", "Debriefed", "Action Required"];
 const debriefOutcomes: DebriefOutcome[] = ["Complete", "Part Complete", "Failed", "Cancelled"];
 const podStatuses = ["Received", "Pending Upload", "Missing", "Not Required", "Query"];
+const toTimeOptions: ToTimeCode[] = ["VE", "E", "OT", "L", "VL", "F"];
 
 export default function DebriefPage() {
   const [rows, setRows] = useState<DebriefRow[]>(() => buildInitialDebriefRows());
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | DebriefStatus>("All");
   const [issueFilter, setIssueFilter] = useState("All");
+  const [dttFilter, setDttFilter] = useState<"All" | ToTimeCode>("All");
+  const [attFilter, setAttFilter] = useState<"All" | ToTimeCode>("All");
   const [selectedRow, setSelectedRow] = useState<DebriefRow | null>(null);
 
   useEffect(() => {
@@ -151,7 +153,7 @@ export default function DebriefPage() {
         query.length === 0 ||
         [
           row.dutyNumber,
-          row.division,
+          formatDivisionCell(row),
           row.driverName,
           row.userId,
           row.vehicle,
@@ -167,15 +169,18 @@ export default function DebriefPage() {
       const matchesAwaitingTimingException =
         statusFilter !== "Awaiting Debrief" || hasActualTimingException(row);
       const matchesIssue = issueFilter === "All" || row.issueCategory === issueFilter;
+      const matchesDtt = dttFilter === "All" || getStartToTimeCode(row) === dttFilter;
+      const matchesAtt = attFilter === "All" || getFinishToTimeCode(row) === attFilter;
 
-      return matchesSearch && matchesStatus && matchesAwaitingTimingException && matchesIssue;
+      return matchesSearch && matchesStatus && matchesAwaitingTimingException && matchesIssue && matchesDtt && matchesAtt;
     });
-  }, [rows, searchTerm, statusFilter, issueFilter]);
+  }, [rows, searchTerm, statusFilter, issueFilter, dttFilter, attFilter]);
 
   const awaitingCount = rows.filter((row) => row.debriefStatus === "Awaiting Debrief").length;
   const actionRequiredCount = rows.filter((row) => row.debriefStatus === "Action Required").length;
   const lateCount = rows.filter((row) => isLate(row.plannedEndTs, row.actualEndTs)).length;
   const missing318Count = rows.filter((row) => row.pod318Status === "Missing" || row.pod318Status === "Pending Upload").length;
+  const toTimeDistribution = useMemo(() => buildToTimeDistribution(filteredRows), [filteredRows]);
 
   function saveRow(nextRow: DebriefRow) {
     const nextRows = rows.map((row) => (row.id === nextRow.id ? nextRow : row));
@@ -263,11 +268,14 @@ export default function DebriefPage() {
               <SummaryCard label="Late completed" value={String(lateCount)} />
               <SummaryCard label="318 / POD outstanding" value={String(missing318Count)} />
             </div>
+
+            <ToTimeSummaryTable distribution={toTimeDistribution} />
+            <ToTimeLegend />
           </section>
 
           <section className="mt-4 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_0.8fr_0.8fr_auto] xl:items-end">
-              <label className="block">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6 xl:items-end">
+              <label className="block xl:col-span-2">
                 <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">
                   Search debrief
                 </span>
@@ -311,14 +319,48 @@ export default function DebriefPage() {
                 </select>
               </label>
 
+              <label className="block">
+                <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">
+                  DTT value
+                </span>
+                <select
+                  value={dttFilter}
+                  onChange={(event) => setDttFilter(event.target.value as "All" | ToTimeCode)}
+                  className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
+                >
+                  <option>All</option>
+                  {toTimeOptions.map((code) => (
+                    <option key={code}>{code}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">
+                  ATT value
+                </span>
+                <select
+                  value={attFilter}
+                  onChange={(event) => setAttFilter(event.target.value as "All" | ToTimeCode)}
+                  className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
+                >
+                  <option>All</option>
+                  {toTimeOptions.map((code) => (
+                    <option key={code}>{code}</option>
+                  ))}
+                </select>
+              </label>
+
               <button
                 type="button"
                 onClick={() => {
                   setSearchTerm("");
                   setStatusFilter("All");
                   setIssueFilter("All");
+                  setDttFilter("All");
+                  setAttFilter("All");
                 }}
-                className="h-11 rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-5 text-sm font-black uppercase tracking-[0.12em] text-[#4b5563] transition hover:border-[#e40000]"
+                className="h-11 rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-5 text-sm font-black uppercase tracking-[0.12em] text-[#4b5563] transition hover:border-[#e40000] xl:col-span-6"
               >
                 Clear Filters
               </button>
@@ -345,11 +387,13 @@ export default function DebriefPage() {
                     <DebriefHeader label="Planned Start" headerClass="bg-[#f2e8c9]" widthClass="w-[125px]" />
                     <DebriefHeader label="Actual Start" headerClass="bg-[#f2e8c9]" widthClass="w-[125px]" />
                     <DebriefHeader label="Start Diff hh:mm" headerClass="bg-[#f2e8c9]" widthClass="w-[90px]" />
+                    <DebriefHeader label="DTT" headerClass="bg-[#f2e8c9]" widthClass="w-[68px]" />
                     <DebriefHeader label="Dep Assets" headerClass="bg-[#f2e8c9]" widthClass="w-[80px]" />
                     <DebriefHeader label="Final Destination" headerClass="bg-[#d9f1d5]" widthClass="w-[120px]" />
                     <DebriefHeader label="Planned Finish" headerClass="bg-[#d9f1d5]" widthClass="w-[125px]" />
                     <DebriefHeader label="Actual Finish" headerClass="bg-[#d9f1d5]" widthClass="w-[125px]" />
                     <DebriefHeader label="Finish Diff hh:mm" headerClass="bg-[#d9f1d5]" widthClass="w-[92px]" />
+                    <DebriefHeader label="ATT" headerClass="bg-[#d9f1d5]" widthClass="w-[68px]" />
                     <DebriefHeader label="Arr Assets" headerClass="bg-[#d9f1d5]" widthClass="w-[78px]" />
                     <DebriefHeader label="Issue Category" headerClass="bg-[#fde7c7]" widthClass="w-[130px]" />
                     <DebriefHeader label="Driver Notes" headerClass="bg-[#fde7c7]" widthClass="w-[220px]" />
@@ -362,7 +406,7 @@ export default function DebriefPage() {
                 <tbody>
                   {filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={26} className="border border-black px-4 py-10 text-center text-sm font-black text-[#64748b]">
+                      <td colSpan={28} className="border border-black px-4 py-10 text-center text-sm font-black text-[#64748b]">
                         No duties match the selected debrief filters.
                       </td>
                     </tr>
@@ -385,7 +429,7 @@ export default function DebriefPage() {
                         <td className="border border-black px-1 py-2 text-center font-normal">{row.weekNumber}</td>
                         <td className="border border-black px-1 py-2 text-center font-black">{row.dutyOrder}</td>
                         <td className="border border-black px-1 py-2 text-center font-black whitespace-nowrap">{row.dutyNumber}</td>
-                        <td className="border border-black px-1 py-2 text-center font-black whitespace-nowrap">{row.division}</td>
+                        <td className="border border-black px-1 py-2 text-center font-black whitespace-nowrap">{formatDivisionCell(row)}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.driverName}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.vehicle}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.trailerNumber}</td>
@@ -398,6 +442,9 @@ export default function DebriefPage() {
                         <td className={`${getTimingCellClass(row.plannedStartTs, row.actualStartTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
                           {formatTimeDifference(row.plannedStartTs, row.actualStartTs)}
                         </td>
+                        <td className={`${getToTimeCellClass(getStartToTimeCode(row))} border border-black px-1 py-2 text-center font-black whitespace-nowrap`}>
+                          {getStartToTimeCode(row)}
+                        </td>
                         <td className="border border-black px-1 py-2 text-center font-bold whitespace-nowrap">{row.depAssets}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.finalDestination}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{formatDateTime(row.plannedEndTs)}</td>
@@ -406,6 +453,9 @@ export default function DebriefPage() {
                         </td>
                         <td className={`${getTimingCellClass(row.plannedEndTs, row.actualEndTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
                           {formatTimeDifference(row.plannedEndTs, row.actualEndTs)}
+                        </td>
+                        <td className={`${getToTimeCellClass(getFinishToTimeCode(row))} border border-black px-1 py-2 text-center font-black whitespace-nowrap`}>
+                          {getFinishToTimeCode(row)}
                         </td>
                         <td className="border border-black px-1 py-2 text-center font-bold whitespace-nowrap">{row.arrAssets}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.issueCategory}</td>
@@ -539,7 +589,7 @@ function DebriefModal({
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <ReadOnlyBox label="Duty number" value={row.dutyNumber} />
                 <ReadOnlyBox label="Duty order" value={String(row.dutyOrder)} />
-                <ReadOnlyBox label="Division" value={row.division} />
+                <ReadOnlyBox label="Division" value={formatDivisionCell(row)} />
                 <ReadOnlyBox label="Driver" value={row.driverName} />
                 <ReadOnlyBox label="Vehicle" value={row.vehicle} />
                 <ReadOnlyBox label="Trailer" value={row.trailerNumber} />
@@ -550,7 +600,9 @@ function DebriefModal({
                 <ReadOnlyBox label="Planned finish" value={formatDateTime(row.plannedEndTs)} />
                 <ReadOnlyBox label="Actual finish" value={formatDateTime(row.actualEndTs)} />
                 <ReadOnlyBox label="Start difference" value={formatTimeDifference(row.plannedStartTs, row.actualStartTs)} />
+                <ReadOnlyBox label="DTT" value={getStartToTimeCode(row)} />
                 <ReadOnlyBox label="Finish difference" value={formatTimeDifference(row.plannedEndTs, row.actualEndTs)} />
+                <ReadOnlyBox label="ATT" value={getFinishToTimeCode(row)} />
               </div>
             </div>
 
@@ -705,7 +757,7 @@ function OfficeHeader({ title, subtitle }: { title: string; subtitle: string }) 
         </Link>
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl text-[#e40000]">●</div>
         <div className="hidden text-right sm:block">
-          <p className="text-base font-black"><DriverName /></p>
+          <p className="text-base font-black">Andrew Cannon</p>
           <p className="text-xs font-bold text-white/80">Mock dashboard user</p>
         </div>
       </div>
@@ -901,9 +953,187 @@ function CheckBox({
   );
 }
 
+function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistributionSet }) {
+  const rowClassName = "border border-[#0f172a] px-3 py-2 text-center text-xs font-black text-[#172033]";
+
+  return (
+    <div className="mt-4 overflow-x-auto rounded-[12px] border border-[#d9dee6] bg-[#f8fafc]">
+      <table className="min-w-[560px] border-collapse text-xs">
+        <thead>
+          <tr className="bg-white text-[#64748b]">
+            <th className={`${rowClassName} text-left`}>Measure</th>
+            {toTimeOptions.map((code) => (
+              <th key={code} className={rowClassName}>{code}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <ToTimeSummaryRow label="DTT" values={distribution.dtt} />
+          <ToTimeSummaryRow label="ATT" values={distribution.att} />
+          <ToTimeSummaryRow label="MTT" values={distribution.mtt} />
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ToTimeSummaryRow({ label, values }: { label: string; values: ToTimeDistribution }) {
+  return (
+    <tr>
+      <td className="border border-[#0f172a] bg-white px-3 py-2 text-left text-xs font-black text-[#172033]">{label}</td>
+      {toTimeOptions.map((code) => (
+        <td key={`${label}-${code}`} className="border border-[#0f172a] bg-white px-3 py-2 text-center text-xs font-black text-[#172033]">
+          {values[code].toFixed(2)}%
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function ToTimeLegend() {
+  return (
+    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+      <ToTimeLegendCard code="VE" description="Very Early" range="-00:31 to -02:00 (or earlier)" />
+      <ToTimeLegendCard code="E" description="Early" range="-00:09 to -00:30" />
+      <ToTimeLegendCard code="OT" description="On Time" range="-00:08 to +00:08" />
+      <ToTimeLegendCard code="L" description="Late" range="+00:09 to +00:30" />
+      <ToTimeLegendCard code="VL" description="Very Late" range="+00:31 to +01:59" />
+      <ToTimeLegendCard code="F" description="Failed" range="+02:00 or later" />
+    </div>
+  );
+}
+
+function ToTimeLegendCard({ code, description, range }: { code: ToTimeCode; description: string; range: string }) {
+  return (
+    <div className={`rounded-[12px] border p-3 ${getToTimeCardClass(code)}`}>
+      <p className="text-[11px] font-black uppercase tracking-[0.16em]">{code}</p>
+      <p className="mt-1 text-sm font-black">{description}</p>
+      <p className="mt-1 text-xs font-bold">{range}</p>
+    </div>
+  );
+}
+
+type ToTimeDistribution = Record<ToTimeCode, number>;
+type ToTimeDistributionSet = {
+  dtt: ToTimeDistribution;
+  att: ToTimeDistribution;
+  mtt: ToTimeDistribution;
+};
+
+function buildToTimeDistribution(rows: DebriefRow[]): ToTimeDistributionSet {
+  const dttCounts = buildZeroToTimeCounts();
+  const attCounts = buildZeroToTimeCounts();
+
+  rows.forEach((row) => {
+    dttCounts[getStartToTimeCode(row)] += 1;
+    attCounts[getFinishToTimeCode(row)] += 1;
+  });
+
+  const dtt = convertCountsToPercentages(dttCounts, rows.length);
+  const att = convertCountsToPercentages(attCounts, rows.length);
+  const mtt = buildZeroToTimeCounts();
+  toTimeOptions.forEach((code) => {
+    mtt[code] = Number(((dtt[code] + att[code]) / 2).toFixed(2));
+  });
+
+  return { dtt, att, mtt };
+}
+
+function buildZeroToTimeCounts(): ToTimeDistribution {
+  return { VE: 0, E: 0, OT: 0, L: 0, VL: 0, F: 0 };
+}
+
+function convertCountsToPercentages(counts: ToTimeDistribution, totalRows: number): ToTimeDistribution {
+  const safeTotal = totalRows || 1;
+  const percentages = buildZeroToTimeCounts();
+  toTimeOptions.forEach((code) => {
+    percentages[code] = Number(((counts[code] / safeTotal) * 100).toFixed(2));
+  });
+  return percentages;
+}
+
+function getStartToTimeCode(row: DebriefRow): ToTimeCode {
+  return classifyToTime(getDifferenceInMinutes(row.plannedStartTs, row.actualStartTs));
+}
+
+function getFinishToTimeCode(row: DebriefRow): ToTimeCode {
+  return classifyToTime(getDifferenceInMinutes(row.plannedEndTs, row.actualEndTs));
+}
+
+function getDifferenceInMinutes(plannedTs: string, actualTs: string) {
+  const planned = new Date(plannedTs).getTime();
+  const actual = new Date(actualTs).getTime();
+
+  if (Number.isNaN(planned) || Number.isNaN(actual)) {
+    return 0;
+  }
+
+  return Math.round((actual - planned) / 60000);
+}
+
+function classifyToTime(diffMinutes: number): ToTimeCode {
+  if (diffMinutes >= 120) {
+    return "F";
+  }
+
+  if (diffMinutes >= 31) {
+    return "VL";
+  }
+
+  if (diffMinutes >= 9) {
+    return "L";
+  }
+
+  if (diffMinutes >= -8) {
+    return "OT";
+  }
+
+  if (diffMinutes >= -30) {
+    return "E";
+  }
+
+  return "VE";
+}
+
+function getToTimeCardClass(code: ToTimeCode) {
+  if (code === "F") {
+    return "border-[#991b1b] bg-[#fee2e2] text-[#7f1d1d]";
+  }
+
+  if (code === "VL" || code === "L") {
+    return "border-[#f5a400] bg-[#fff7e6] text-[#8a5200]";
+  }
+
+  return "border-[#15803d] bg-[#ecfdf3] text-[#166534]";
+}
+
+function getToTimeCellClass(code: ToTimeCode) {
+  if (code === "F") {
+    return "bg-[#fecaca] text-[#7f1d1d]";
+  }
+
+  if (code === "VL") {
+    return "bg-[#ffd9b3] text-[#9a3412]";
+  }
+
+  if (code === "L") {
+    return "bg-[#fff1c1] text-[#8a5200]";
+  }
+
+  if (code === "OT") {
+    return "bg-[#d9f7e5] text-[#166534]";
+  }
+
+  return "bg-[#dcfce7] text-[#166534]";
+}
+
+function formatDivisionCell(row: DebriefRow) {
+  return row.division === "Contractor" ? "Pie Haulage" : row.division;
+}
+
 function buildInitialDebriefRows(): DebriefRow[] {
   const drivers = [
-    getStoredDriverName(),
+    "Andrew Cannon",
     "Peter Finch",
     "John Smith",
     "Sarah Jones",
@@ -931,13 +1161,30 @@ function buildInitialDebriefRows(): DebriefRow[] {
     "Debriefed",
   ];
 
+  const startDelayPattern = [
+    130, -45, -15, 15, 45,
+    -6, 0, 3, 7, -4,
+    8, -2, 5, 1, -7,
+    4, -3, 2, 6, 0,
+    -5, 8, -1, 4, 7,
+    -6, 3, 5, 2, -4,
+  ];
+  const endDelayPattern = [
+    125, -42, -12, 18, 38,
+    -4, 2, 0, 7, -6,
+    5, -3, 6, 1, -8,
+    4, -1, 3, 8, 0,
+    -5, 7, -2, 5, 6,
+    -4, 2, 4, 1, -7,
+  ];
+
   return Array.from({ length: 30 }, (_, index) => {
     const dutyNumber = `NWH${String(index + 1).padStart(3, "0")}`;
     const dutyDate = addDaysToInputDate(baseDateInput, Math.floor(index / 10));
     const startMinutes = 75 + ((index * 47) % 910);
     const durationMinutes = 280 + ((index * 35) % 310);
-    const actualStartDelay = [-6, 0, 8, 17, 28, -3, 12, 35][index % 8];
-    const actualEndDelay = [-4, 3, 15, 31, 48, 0, 22, 55][index % 8];
+    const actualStartDelay = startDelayPattern[index % startDelayPattern.length];
+    const actualEndDelay = endDelayPattern[index % endDelayPattern.length];
     const plannedStartTs = buildTimestamp(dutyDate, startMinutes);
     const actualStartTs = buildTimestamp(dutyDate, startMinutes + actualStartDelay);
     const plannedEndTs = buildTimestamp(dutyDate, startMinutes + durationMinutes);
@@ -948,7 +1195,6 @@ function buildInitialDebriefRows(): DebriefRow[] {
     const pod318Status = index % 9 === 0 ? "Missing" : index % 6 === 0 ? "Pending Upload" : "Received";
     const division = getMockDivision(index);
     const dutyOrder = getMockDutyOrder(index);
-    const driverName = drivers[index % drivers.length];
 
     return {
       id: dutyNumber,
@@ -957,10 +1203,8 @@ function buildInitialDebriefRows(): DebriefRow[] {
       dutyDate,
       weekNumber: 14 + Math.floor(index / 10),
       dutyOrder,
-      driverName,
-      userId: index % drivers.length === 0
-        ? getStoredDriverUserId()
-        : `${driverName.toLowerCase().replaceAll(" ", ".")}@mock.driver`,
+      driverName: drivers[index % drivers.length],
+      userId: `${drivers[index % drivers.length].toLowerCase().replaceAll(" ", ".")}@mock.driver`,
       jobTier: "Tier 1",
       planType: index % 7 === 0 ? "FLEX" : "BAU",
       traffic: "NWH",
@@ -976,7 +1220,7 @@ function buildInitialDebriefRows(): DebriefRow[] {
       depAssets: 34 + ((index * 9) % 55),
       arrAssets: 34 + ((index * 7) % 55),
       issueCategory,
-      driverNotes: buildDriverNotes(issueCategory),
+      driverNotes: buildDriverNotes(issueCategory, division),
       gpsDeparture: `${index % 2 === 0 ? "NWH Gate 2" : "NWH Dock 14"} • ${formatDateTime(actualStartTs)}`,
       gpsArrival: `${index % 4 === 0 ? "Manchester VOC" : "North West Hub"} • ${formatDateTime(actualEndTs)}`,
       yorkBarcode: `YRK${String(60000 + index * 37).padStart(6, "0")}`,
@@ -995,7 +1239,7 @@ function buildInitialDebriefRows(): DebriefRow[] {
       actionOwner: actionRequired ? "Transport Office" : "",
       followUpDate: actionRequired ? addDaysToInputDate(dutyDate, 1) : "",
       lateReason: actualEndDelay > 10 ? buildLateReason(issueCategory) : "On time or within tolerance.",
-      officeNotes: actionRequired ? "Requires office review before the duty can be fully closed." : "",
+      officeNotes: actionRequired ? `Requires office review before the duty can be fully closed.${division === "Contractor" ? " Pie Haulage contractor duty to be confirmed with RH." : ""}` : division === "Contractor" ? "Pie Haulage contractor duty." : "",
       checks: buildInitialChecks(debriefStatus, pod318Status),
     };
   });
@@ -1010,7 +1254,7 @@ function getMockDivision(index: number): Division {
     return "Letters";
   }
 
-  if (index === 9) {
+  if ([9, 14, 19, 24].includes(index)) {
     return "Contractor";
   }
 
@@ -1032,9 +1276,9 @@ function buildInitialChecks(status: DebriefStatus, pod318Status: string): Debrie
   };
 }
 
-function buildDriverNotes(issueCategory: string) {
+function buildDriverNotes(issueCategory: string, division: Division) {
   if (issueCategory === "No Issue") {
-    return "Driver confirmed duty completed as planned.";
+    return division === "Contractor" ? "Pie Haulage driver confirmed duty completed as planned." : "Driver confirmed duty completed as planned.";
   }
 
   if (issueCategory === "Late Departure") {
@@ -1061,7 +1305,9 @@ function buildDriverNotes(issueCategory: string) {
     return "Driver stated destination location differed from planned instruction.";
   }
 
-  return "Driver reported an exception that needs office review.";
+  return division === "Contractor"
+    ? "Pie Haulage driver reported an exception that needs office review."
+    : "Driver reported an exception that needs office review.";
 }
 
 function buildLateReason(issueCategory: string) {
@@ -1114,8 +1360,6 @@ function readDebriefRowsFromStorage() {
       ...row,
       division: row.division ?? getMockDivision(index),
       dutyOrder: row.dutyOrder ?? getMockDutyOrder(index),
-      driverName: index % 8 === 0 ? getStoredDriverName() : row.driverName,
-      userId: index % 8 === 0 ? getStoredDriverUserId() : row.userId,
     }));
   } catch {
     return buildInitialDebriefRows();
@@ -1263,11 +1507,13 @@ function downloadDebriefRowsAsExcel(rows: DebriefRow[]) {
     "Planned Start",
     "Actual Start",
     "Start Diff hh:mm",
+    "DTT",
     "Dep Assets",
     "Final Destination",
     "Planned Finish",
     "Actual Finish",
     "Finish Diff hh:mm",
+    "ATT",
     "Arr Assets",
     "Issue Category",
     "Driver Notes",
@@ -1284,7 +1530,7 @@ function downloadDebriefRowsAsExcel(rows: DebriefRow[]) {
     row.weekNumber,
     row.dutyOrder,
     row.dutyNumber,
-    row.division,
+    formatDivisionCell(row),
     row.driverName,
     row.vehicle,
     row.trailerNumber,
@@ -1293,11 +1539,13 @@ function downloadDebriefRowsAsExcel(rows: DebriefRow[]) {
     formatDateTime(row.plannedStartTs),
     formatDateTime(row.actualStartTs),
     formatTimeDifference(row.plannedStartTs, row.actualStartTs),
+    getStartToTimeCode(row),
     row.depAssets,
     row.finalDestination,
     formatDateTime(row.plannedEndTs),
     formatDateTime(row.actualEndTs),
     formatTimeDifference(row.plannedEndTs, row.actualEndTs),
+    getFinishToTimeCode(row),
     row.arrAssets,
     row.issueCategory,
     row.driverNotes,

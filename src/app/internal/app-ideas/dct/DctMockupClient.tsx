@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DctRow,
   formatDateTime,
@@ -13,6 +13,9 @@ import {
   resetDriverPdaManifestMockup,
   rowHasLateTiming,
 } from "../driverPdaManifestData";
+
+type ToTimeCode = "VE" | "E" | "OT" | "L" | "VL" | "F";
+const toTimeOptions: ToTimeCode[] = ["VE", "E", "OT", "L", "VL", "F"];
 
 export default function DctMockupClient() {
   const [rows, setRows] = useState<DctRow[]>(() => readStoredManifestState().dctRows);
@@ -47,9 +50,10 @@ function DctWebScreen({
   rows: DctRow[];
   onReset: () => void;
 }) {
-  const lateLegs = rows.filter((row) => rowHasLateTiming(row)).length;
-  const issuesRecorded = rows.filter((row) => row.issues.trim().length > 0).length;
-  const totalDelayMinutes = rows.reduce(
+  const displayRows = useMemo(() => buildMockReportingRows(rows), [rows]);
+  const lateLegs = displayRows.filter((row) => rowHasLateTiming(row)).length;
+  const issuesRecorded = displayRows.filter((row) => row.issues.trim().length > 0).length;
+  const totalDelayMinutes = displayRows.reduce(
     (total, row) =>
       total +
       getPositiveDelayMinutes(row.plannedDepartureTs, row.departureActualTs) +
@@ -80,11 +84,13 @@ function DctWebScreen({
     { key: "plannedDeparture", label: "Planned Departure Time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]" },
     { key: "departureActual", label: "Departure actual time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]" },
     { key: "departureDiff", label: "Departure Diff hh:mm", headerClass: "bg-[#f2e8c9]", widthClass: "w-[92px]" },
+    { key: "dtt", label: "DTT", headerClass: "bg-[#f2e8c9]", widthClass: "w-[62px]" },
     { key: "depAssets", label: "Dep Assets", headerClass: "bg-[#f2e8c9]", widthClass: "w-[82px]" },
     { key: "arrivalLocation", label: "Arrival Location", headerClass: "bg-[#d9f1d5]", widthClass: "w-[112px]" },
     { key: "plannedArrival", label: "Planned Arrival Time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]" },
     { key: "arrivalActual", label: "Arrival actual time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]" },
     { key: "arrivalDiff", label: "Arrival Diff hh:mm", headerClass: "bg-[#d9f1d5]", widthClass: "w-[92px]" },
+    { key: "att", label: "ATT", headerClass: "bg-[#d9f1d5]", widthClass: "w-[62px]" },
     { key: "arrAssets", label: "Arr Assets", headerClass: "bg-[#d9f1d5]", widthClass: "w-[82px]" },
     { key: "issueCategory", label: "Issue Category", headerClass: "bg-[#fde7c7]", widthClass: "w-[120px]" },
     { key: "issues", label: "Issues", headerClass: "bg-[#fde7c7]", widthClass: "w-[220px]" },
@@ -129,8 +135,8 @@ function DctWebScreen({
             <div className="flex flex-col gap-3 sm:flex-row xl:flex-col">
               <button
                 type="button"
-                onClick={() => downloadRowsAsExcel(rows)}
-                disabled={rows.length === 0}
+                onClick={() => downloadRowsAsExcel(displayRows)}
+                disabled={displayRows.length === 0}
                 className="rounded-full bg-[#001b3a] px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#0f2f57] disabled:cursor-not-allowed disabled:bg-[#94a3b8]"
               >
                 Download Excel
@@ -147,15 +153,18 @@ function DctWebScreen({
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <SummaryCard label="Rows shown" value={String(rows.length)} />
+            <SummaryCard label="Rows shown" value={String(displayRows.length)} />
             <SummaryCard
               label="Leg status completed"
-              value={String(rows.filter((row) => row.status === "Complete").length)}
+              value={String(displayRows.filter((row) => row.status === "Complete").length)}
             />
             <SummaryCard label="Late legs" value={String(lateLegs)} />
             <SummaryCard label="Issues recorded" value={String(issuesRecorded)} />
             <SummaryCard label="Total delay" value={formatDelayTotal(totalDelayMinutes)} />
           </div>
+
+          <ToTimeSummaryTable distribution={buildToTimeDistribution(displayRows)} />
+          <ToTimeLegend />
 
           <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]">
             <span className="rounded-full border border-[#1f7a34] bg-[#d9f7e5] px-3 py-2 text-[#166534]">
@@ -170,7 +179,7 @@ function DctWebScreen({
           </div>
         </section>
 
-        {rows.length === 0 ? (
+        {displayRows.length === 0 ? (
           <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white p-8 shadow-sm">
             <p className="text-lg font-black text-[#172033]">
               No DCT mockup data is available yet.
@@ -183,7 +192,7 @@ function DctWebScreen({
         ) : (
           <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[2990px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+              <table className="min-w-[3150px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
                   <tr>
                     {columns.map((column) => (
@@ -205,7 +214,7 @@ function DctWebScreen({
                 </thead>
 
                 <tbody>
-                  {rows.map((row, index) => (
+                  {displayRows.map((row, index) => (
                     <tr key={row.legNumber} className={index % 2 === 0 ? "bg-white" : "bg-[#fcfcfc]"}>
                       <td className={`${getDctStatusCellClass(row.status)} border border-black px-1 py-2 font-normal text-black`}>{row.status}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.startDate}</td>
@@ -213,7 +222,7 @@ function DctWebScreen({
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{getVehicleNumberForRow(row)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.trailerNumber || ""}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.userId}</td>
-                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.contractorCompanyName}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{formatDivisionLabel(row.contractorCompanyName)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.operator}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.dutyId}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.trailerType}</td>
@@ -225,7 +234,10 @@ function DctWebScreen({
                         {row.departureActualTs ? formatDateTime(row.departureActualTs) : "-"}
                       </td>
                       <td className={`${getTimingCellClass(row.plannedDepartureTs, row.departureActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
-                        {formatTimeDifference(row.plannedDepartureTs, row.departureActualTs)}
+                        {formatSignedDifference(row.plannedDepartureTs, row.departureActualTs)}
+                      </td>
+                      <td className={`${getToTimeCellClass(getDepartureToTimeCode(row))} border border-black px-1 py-2 text-center font-black whitespace-nowrap`}>
+                        {getDepartureToTimeCode(row)}
                       </td>
                       <td className="border border-black px-1 py-2 text-center font-bold whitespace-nowrap">{getAssetCountForRow(row)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.arrivalLocation}</td>
@@ -234,7 +246,10 @@ function DctWebScreen({
                         {row.arrivalActualTs ? formatDateTime(row.arrivalActualTs) : "-"}
                       </td>
                       <td className={`${getTimingCellClass(row.plannedArrivalTs, row.arrivalActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
-                        {formatTimeDifference(row.plannedArrivalTs, row.arrivalActualTs)}
+                        {formatSignedDifference(row.plannedArrivalTs, row.arrivalActualTs)}
+                      </td>
+                      <td className={`${getToTimeCellClass(getArrivalToTimeCode(row))} border border-black px-1 py-2 text-center font-black whitespace-nowrap`}>
+                        {getArrivalToTimeCode(row)}
                       </td>
                       <td className="border border-black px-1 py-2 text-center font-bold whitespace-nowrap">{getAssetCountForRow(row)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.issueCategory || "-"}</td>
@@ -263,6 +278,181 @@ function DctWebScreen({
   );
 }
 
+function buildMockReportingRows(rows: DctRow[]) {
+  const trailerNumbers = ["5320233", "24163445", "7320234", "4330123", "5320456", "24164567"];
+  const timingProfiles = [
+    { dep: -15, arr: -6 },
+    { dep: 0, arr: 4 },
+    { dep: 15, arr: 18 },
+    { dep: 45, arr: 38 },
+    { dep: 130, arr: 125 },
+    { dep: -45, arr: -12 },
+  ];
+
+  return rows.map((row, index) => {
+    const profile = timingProfiles[index % timingProfiles.length];
+    const departureActualTs = row.departureActualTs ?? row.plannedDepartureTs + profile.dep * 60000;
+    const arrivalActualTs = row.arrivalActualTs ?? row.plannedArrivalTs + profile.arr * 60000;
+    const isContractorDuty = index < 4;
+    const issueCategory = profile.arr >= 120 ? "Failed timing" : profile.arr >= 31 ? "Very late arrival" : profile.arr >= 9 ? "Late arrival" : profile.arr <= -31 ? "Very early arrival" : profile.arr <= -9 ? "Early arrival" : row.issueCategory || "No Issue";
+    const issues = issueCategory === "No Issue" ? "" : `Mock ${issueCategory.toLowerCase()} recorded for reporting.`;
+
+    return {
+      ...row,
+      status: "Complete" as const,
+      trailerNumber: row.trailerNumber || trailerNumbers[index % trailerNumbers.length],
+      contractorCompanyName: isContractorDuty ? "Pie Haulage" : index === 4 ? "Letters" : "Network",
+      departureActualTs,
+      arrivalActualTs,
+      departureDiff: formatSignedDifference(row.plannedDepartureTs, departureActualTs),
+      arrivalDiff: formatSignedDifference(row.plannedArrivalTs, arrivalActualTs),
+      issueCategory,
+      issues,
+    };
+  });
+}
+
+type ToTimeDistribution = Record<ToTimeCode, number>;
+type ToTimeDistributionSet = { dtt: ToTimeDistribution; att: ToTimeDistribution; mtt: ToTimeDistribution };
+
+function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistributionSet }) {
+  const cellClass = "border border-[#0f172a] px-3 py-2 text-center text-xs font-black text-[#172033]";
+  return (
+    <div className="mt-4 overflow-x-auto rounded-[12px] border border-[#d9dee6] bg-[#f8fafc]">
+      <table className="min-w-[560px] border-collapse text-xs">
+        <thead>
+          <tr className="bg-white text-[#64748b]">
+            <th className={`${cellClass} text-left`}>Measure</th>
+            {toTimeOptions.map((code) => (
+              <th key={code} className={cellClass}>{code}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <ToTimeSummaryRow label="DTT" values={distribution.dtt} />
+          <ToTimeSummaryRow label="ATT" values={distribution.att} />
+          <ToTimeSummaryRow label="MTT" values={distribution.mtt} />
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ToTimeSummaryRow({ label, values }: { label: string; values: ToTimeDistribution }) {
+  return (
+    <tr>
+      <td className="border border-[#0f172a] bg-white px-3 py-2 text-left text-xs font-black text-[#172033]">{label}</td>
+      {toTimeOptions.map((code) => (
+        <td key={`${label}-${code}`} className="border border-[#0f172a] bg-white px-3 py-2 text-center text-xs font-black text-[#172033]">{values[code].toFixed(2)}%</td>
+      ))}
+    </tr>
+  );
+}
+
+function ToTimeLegend() {
+  return (
+    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+      <ToTimeLegendCard code="VE" description="Very Early" range="-00:31 to -02:00 (or earlier)" />
+      <ToTimeLegendCard code="E" description="Early" range="-00:09 to -00:30" />
+      <ToTimeLegendCard code="OT" description="On Time" range="-00:08 to +00:08" />
+      <ToTimeLegendCard code="L" description="Late" range="+00:09 to +00:30" />
+      <ToTimeLegendCard code="VL" description="Very Late" range="+00:31 to +01:59" />
+      <ToTimeLegendCard code="F" description="Failed" range="+02:00 or later" />
+    </div>
+  );
+}
+
+function ToTimeLegendCard({ code, description, range }: { code: ToTimeCode; description: string; range: string }) {
+  return (
+    <div className={`rounded-[12px] border p-3 ${getToTimeCardClass(code)}`}>
+      <p className="text-[11px] font-black uppercase tracking-[0.16em]">{code}</p>
+      <p className="mt-1 text-sm font-black">{description}</p>
+      <p className="mt-1 text-xs font-bold">{range}</p>
+    </div>
+  );
+}
+
+function buildToTimeDistribution(rows: DctRow[]): ToTimeDistributionSet {
+  const dttCounts = buildZeroToTimeCounts();
+  const attCounts = buildZeroToTimeCounts();
+  rows.forEach((row) => {
+    dttCounts[getDepartureToTimeCode(row)] += 1;
+    attCounts[getArrivalToTimeCode(row)] += 1;
+  });
+  const dtt = convertCountsToPercentages(dttCounts, rows.length);
+  const att = convertCountsToPercentages(attCounts, rows.length);
+  const mtt = buildZeroToTimeCounts();
+  toTimeOptions.forEach((code) => {
+    mtt[code] = Number(((dtt[code] + att[code]) / 2).toFixed(2));
+  });
+  return { dtt, att, mtt };
+}
+
+function buildZeroToTimeCounts(): ToTimeDistribution {
+  return { VE: 0, E: 0, OT: 0, L: 0, VL: 0, F: 0 };
+}
+
+function convertCountsToPercentages(counts: ToTimeDistribution, totalRows: number): ToTimeDistribution {
+  const safeTotal = totalRows || 1;
+  const percentages = buildZeroToTimeCounts();
+  toTimeOptions.forEach((code) => {
+    percentages[code] = Number(((counts[code] / safeTotal) * 100).toFixed(2));
+  });
+  return percentages;
+}
+
+function getDepartureToTimeCode(row: DctRow): ToTimeCode {
+  return classifyToTime(getDifferenceInMinutes(row.plannedDepartureTs, row.departureActualTs));
+}
+
+function getArrivalToTimeCode(row: DctRow): ToTimeCode {
+  return classifyToTime(getDifferenceInMinutes(row.plannedArrivalTs, row.arrivalActualTs));
+}
+
+function getDifferenceInMinutes(plannedTs: number, actualTs: number | null) {
+  if (!actualTs) {
+    return 0;
+  }
+  return Math.round((actualTs - plannedTs) / 60000);
+}
+
+function classifyToTime(diffMinutes: number): ToTimeCode {
+  if (diffMinutes >= 120) return "F";
+  if (diffMinutes >= 31) return "VL";
+  if (diffMinutes >= 9) return "L";
+  if (diffMinutes >= -8) return "OT";
+  if (diffMinutes >= -30) return "E";
+  return "VE";
+}
+
+function formatSignedDifference(plannedTs: number, actualTs: number | null) {
+  if (!actualTs) return "-";
+  const diffMinutes = Math.round((actualTs - plannedTs) / 60000);
+  const sign = diffMinutes > 0 ? "+" : diffMinutes < 0 ? "-" : "";
+  const absMinutes = Math.abs(diffMinutes);
+  const hours = String(Math.floor(absMinutes / 60)).padStart(2, "0");
+  const minutes = String(absMinutes % 60).padStart(2, "0");
+  return `${sign}${hours}:${minutes}`;
+}
+
+function getToTimeCardClass(code: ToTimeCode) {
+  if (code === "F") return "border-[#991b1b] bg-[#fee2e2] text-[#7f1d1d]";
+  if (code === "VL" || code === "L") return "border-[#f5a400] bg-[#fff7e6] text-[#8a5200]";
+  return "border-[#15803d] bg-[#ecfdf3] text-[#166534]";
+}
+
+function getToTimeCellClass(code: ToTimeCode) {
+  if (code === "F") return "bg-[#fecaca] text-[#7f1d1d]";
+  if (code === "VL") return "bg-[#ffd9b3] text-[#9a3412]";
+  if (code === "L") return "bg-[#fff1c1] text-[#8a5200]";
+  if (code === "OT") return "bg-[#d9f7e5] text-[#166534]";
+  return "bg-[#dcfce7] text-[#166534]";
+}
+
+function formatDivisionLabel(value: string) {
+  return value;
+}
+
 function downloadRowsAsExcel(rows: DctRow[]) {
   if (typeof window === "undefined" || rows.length === 0) {
     return;
@@ -285,11 +475,13 @@ function downloadRowsAsExcel(rows: DctRow[]) {
     "Planned Departure Time",
     "Departure actual time",
     "Departure Diff hh:mm",
+    "DTT",
     "Dep Assets",
     "Arrival Location",
     "Planned Arrival Time",
     "Arrival actual time",
     "Arrival Diff hh:mm",
+    "ATT",
     "Arr Assets",
     "Issue Category",
     "Issues",
@@ -306,7 +498,7 @@ function downloadRowsAsExcel(rows: DctRow[]) {
     getVehicleNumberForRow(row),
     row.trailerNumber || "",
     row.userId,
-    row.contractorCompanyName,
+    formatDivisionLabel(row.contractorCompanyName),
     row.operator,
     row.dutyId,
     row.trailerType,
@@ -315,12 +507,14 @@ function downloadRowsAsExcel(rows: DctRow[]) {
     row.departureLocation,
     formatDateTime(row.plannedDepartureTs),
     row.departureActualTs ? formatDateTime(row.departureActualTs) : "-",
-    formatTimeDifference(row.plannedDepartureTs, row.departureActualTs),
+    formatSignedDifference(row.plannedDepartureTs, row.departureActualTs),
+    getDepartureToTimeCode(row),
     getAssetCountForRow(row),
     row.arrivalLocation,
     formatDateTime(row.plannedArrivalTs),
     row.arrivalActualTs ? formatDateTime(row.arrivalActualTs) : "-",
-    formatTimeDifference(row.plannedArrivalTs, row.arrivalActualTs),
+    formatSignedDifference(row.plannedArrivalTs, row.arrivalActualTs),
+    getArrivalToTimeCode(row),
     getAssetCountForRow(row),
     row.issueCategory || "-",
     row.issues || "-",
