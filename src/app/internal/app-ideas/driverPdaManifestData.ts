@@ -1,5 +1,3 @@
-import { getStoredDriverUserId } from "../driverPdaSession";
-
 export type LegStatus = "To do" | "In Progress" | "Completed";
 export type DctStatus = "Planned" | "In Progress" | "Complete";
 
@@ -65,8 +63,9 @@ export type DctRow = {
   issues: string;
 };
 
+export const DRIVER_NAME = "Andrew Cannon";
 export const DUTY_ID = "NWH254";
-export const STORAGE_KEY = "hgv-driver-pda-manifest-dct-data-v2";
+export const STORAGE_KEY = "hgv-driver-pda-manifest-dct-data-v3";
 
 export const manifestLegs: DutyLeg[] = [
   {
@@ -205,8 +204,8 @@ export function buildPlannedDctRows() {
       startDate: formatDateOnly(baseDate.getTime()),
       dutyOrder: leg.number,
       trailerNumber: "",
-      userId: getStoredDriverUserId(),
-      contractorCompanyName: "Pie Haulage",
+      userId: "andrew.cannon1@royalmail.com",
+      contractorCompanyName: leg.number <= 4 ? "Pie Haulage" : leg.number === 5 ? "Letters" : "Network",
       operator: "NWH",
       dutyId: DUTY_ID,
       departureLocation: leg.from,
@@ -393,14 +392,7 @@ export function readStoredManifestState(): StoredManifestState {
   }
 
   try {
-    const parsed = JSON.parse(saved) as StoredManifestState;
-    const currentUserId = getStoredDriverUserId();
-    const nextState = {
-      ...parsed,
-      dctRows: parsed.dctRows.map((row) => ({ ...row, userId: currentUserId })),
-    };
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
-    return nextState;
+    return JSON.parse(saved) as StoredManifestState;
   } catch {
     const startingState = buildInitialManifestState();
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(startingState));

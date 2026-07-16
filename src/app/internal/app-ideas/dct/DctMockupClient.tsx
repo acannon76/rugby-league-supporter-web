@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   DctRow,
+  type DctStatus,
   formatDateTime,
   formatDelayTotal,
-  formatTimeDifference,
   getPositiveDelayMinutes,
   getTimingCellClass,
   readStoredManifestState,
@@ -21,11 +21,17 @@ export default function DctMockupClient() {
   const [rows, setRows] = useState<DctRow[]>(() => readStoredManifestState().dctRows);
 
   useEffect(() => {
-    const refreshRows = window.setTimeout(() => {
-      setRows(readStoredManifestState().dctRows);
-    }, 0);
+    const refreshRows = () => setRows(readStoredManifestState().dctRows);
+    const initialRefresh = window.setTimeout(refreshRows, 0);
 
-    return () => window.clearTimeout(refreshRows);
+    window.addEventListener("focus", refreshRows);
+    window.addEventListener("storage", refreshRows);
+
+    return () => {
+      window.clearTimeout(initialRefresh);
+      window.removeEventListener("focus", refreshRows);
+      window.removeEventListener("storage", refreshRows);
+    };
   }, []);
 
   function completeReset() {
@@ -50,7 +56,49 @@ function DctWebScreen({
   rows: DctRow[];
   onReset: () => void;
 }) {
-  const displayRows = useMemo(() => buildMockReportingRows(rows), [rows]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"All" | DctStatus>("All");
+  const [divisionFilter, setDivisionFilter] = useState<"All" | "Pie Haulage" | "Letters" | "Network">("All");
+  const [dttFilter, setDttFilter] = useState<"All" | ToTimeCode>("All");
+  const [attFilter, setAttFilter] = useState<"All" | ToTimeCode>("All");
+  const [issueFilter, setIssueFilter] = useState<"All" | "With issue" | "No issue">("All");
+
+  const displayRows = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    return rows.filter((row) => {
+      const division = getDivisionForRow(row);
+      const dtt = getDepartureToTimeCode(row);
+      const att = getArrivalToTimeCode(row);
+      const hasIssue = row.issues.trim().length > 0;
+      const matchesSearch =
+        query.length === 0 ||
+        [
+          row.dutyId,
+          row.dutyOrder,
+          row.userId,
+          row.trailerNumber,
+          row.departureLocation,
+          row.arrivalLocation,
+          row.issueCategory,
+          row.issues,
+          division,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(query);
+      const matchesStatus = statusFilter === "All" || row.status === statusFilter;
+      const matchesDivision = divisionFilter === "All" || division === divisionFilter;
+      const matchesDtt = dttFilter === "All" || dtt === dttFilter;
+      const matchesAtt = attFilter === "All" || att === attFilter;
+      const matchesIssue =
+        issueFilter === "All" ||
+        (issueFilter === "With issue" ? hasIssue : !hasIssue);
+
+      return matchesSearch && matchesStatus && matchesDivision && matchesDtt && matchesAtt && matchesIssue;
+    });
+  }, [rows, searchTerm, statusFilter, divisionFilter, dttFilter, attFilter, issueFilter]);
+
   const lateLegs = displayRows.filter((row) => rowHasLateTiming(row)).length;
   const issuesRecorded = displayRows.filter((row) => row.issues.trim().length > 0).length;
   const totalDelayMinutes = displayRows.reduce(
@@ -60,6 +108,20 @@ function DctWebScreen({
       getPositiveDelayMinutes(row.plannedArrivalTs, row.arrivalActualTs),
     0
   );
+
+  function clearFilters() {
+    setSearchTerm("");
+    setStatusFilter("All");
+    setDivisionFilter("All");
+    setDttFilter("All");
+    setAttFilter("All");
+    setIssueFilter("All");
+  }
+
+  function resetAndClear() {
+    clearFilters();
+    onReset();
+  }
 
   const columns: {
     key: string;
@@ -127,8 +189,7 @@ function DctWebScreen({
               </h2>
               <p className="mt-3 max-w-[980px] text-sm font-bold leading-6 text-[#4b5563]">
                 This shows the output created from the Driver PDA Manifest mockup.
-                Planned values show first, and actual values populate as the
-                mock-up is run.
+                Planned values show first. Actual timings, DTT and ATT populate only as each Manifest / 318 leg is completed.
               </p>
             </div>
 
@@ -144,7 +205,7 @@ function DctWebScreen({
 
               <button
                 type="button"
-                onClick={onReset}
+                onClick={resetAndClear}
                 className="rounded-full bg-[#d6001c] px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#a90016]"
               >
                 Complete Reset
@@ -163,7 +224,7 @@ function DctWebScreen({
             <SummaryCard label="Total delay" value={formatDelayTotal(totalDelayMinutes)} />
           </div>
 
-          <div className="mt-4 grid gap-3 xl:grid-cols-[440px_minmax(0,1fr)] xl:items-stretch">
+          <div className="mt-4 grid gap-3 xl:grid-cols-[500px_minmax(0,1fr)] xl:items-stretch">
             <ToTimeSummaryTable distribution={buildToTimeDistribution(displayRows)} />
             <ToTimeLegend />
           </div>
@@ -181,14 +242,80 @@ function DctWebScreen({
           </div>
         </section>
 
+        <section className="mt-4 rounded-[14px] border border-[#cfd8e3] bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#d6001c]">DCT filters</p>
+              <h3 className="mt-1 text-lg font-black text-[#172033]">Filter the reporting output</h3>
+            </div>
+            <p className="text-xs font-bold text-[#64748b]">
+              Showing <span className="font-black text-[#172033]">{displayRows.length}</span> of {rows.length} leg(s)
+            </p>
+          </div>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-7 xl:items-end">
+            <label className="block xl:col-span-2">
+              <span className="text-[11px] font-black uppercase tracking-[0.12em] text-[#64748b]">Search DCT</span>
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Duty, location, trailer, user or issue"
+                className="mt-2 h-10 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm font-bold text-[#172033] outline-none focus:border-[#d6001c]"
+              />
+            </label>
+
+            <FilterSelect
+              label="Leg status"
+              value={statusFilter}
+              options={["All", "Planned", "In Progress", "Complete"]}
+              onChange={(value) => setStatusFilter(value as "All" | DctStatus)}
+            />
+            <FilterSelect
+              label="Division"
+              value={divisionFilter}
+              options={["All", "Pie Haulage", "Letters", "Network"]}
+              onChange={(value) => setDivisionFilter(value as typeof divisionFilter)}
+            />
+            <FilterSelect
+              label="DTT"
+              value={dttFilter}
+              options={["All", ...toTimeOptions]}
+              onChange={(value) => setDttFilter(value as "All" | ToTimeCode)}
+            />
+            <FilterSelect
+              label="ATT"
+              value={attFilter}
+              options={["All", ...toTimeOptions]}
+              onChange={(value) => setAttFilter(value as "All" | ToTimeCode)}
+            />
+            <FilterSelect
+              label="Issues"
+              value={issueFilter}
+              options={["All", "With issue", "No issue"]}
+              onChange={(value) => setIssueFilter(value as typeof issueFilter)}
+            />
+          </div>
+
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="rounded-lg border border-[#cbd5e1] bg-[#f8fafc] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#475569] transition hover:border-[#d6001c]"
+            >
+              Clear filters
+            </button>
+          </div>
+        </section>
+
         {displayRows.length === 0 ? (
           <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white p-8 shadow-sm">
             <p className="text-lg font-black text-[#172033]">
-              No DCT mockup data is available yet.
+              {rows.length === 0 ? "No DCT mockup data is available yet." : "No DCT rows match the selected filters."}
             </p>
             <p className="mt-3 text-sm font-bold leading-6 text-[#4b5563]">
-              Open Manifest from the Driver PDA dashboard first, then run one or
-              more legs. Return here to view the DCT-style output.
+              {rows.length === 0
+                ? "Open Manifest from the Driver PDA dashboard first, then run one or more legs. Return here to view the DCT-style output."
+                : "Clear or change the DCT filters to show the reporting rows again."}
             </p>
           </section>
         ) : (
@@ -224,7 +351,7 @@ function DctWebScreen({
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{getVehicleNumberForRow(row)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.trailerNumber || ""}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.userId}</td>
-                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{formatDivisionLabel(row.contractorCompanyName)}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{getDivisionForRow(row)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.operator}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.dutyId}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.trailerType}</td>
@@ -239,7 +366,7 @@ function DctWebScreen({
                         {formatSignedDifference(row.plannedDepartureTs, row.departureActualTs)}
                       </td>
                       <td className={`${getToTimeCellClass(getDepartureToTimeCode(row))} border border-black px-1 py-2 text-center font-black whitespace-nowrap`}>
-                        {getDepartureToTimeCode(row)}
+                        {getDepartureToTimeCode(row) || "-"}
                       </td>
                       <td className="border border-black px-1 py-2 text-center font-bold whitespace-nowrap">{getAssetCountForRow(row)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.arrivalLocation}</td>
@@ -251,7 +378,7 @@ function DctWebScreen({
                         {formatSignedDifference(row.plannedArrivalTs, row.arrivalActualTs)}
                       </td>
                       <td className={`${getToTimeCellClass(getArrivalToTimeCode(row))} border border-black px-1 py-2 text-center font-black whitespace-nowrap`}>
-                        {getArrivalToTimeCode(row)}
+                        {getArrivalToTimeCode(row) || "-"}
                       </td>
                       <td className="border border-black px-1 py-2 text-center font-bold whitespace-nowrap">{getAssetCountForRow(row)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.issueCategory || "-"}</td>
@@ -280,45 +407,11 @@ function DctWebScreen({
   );
 }
 
-function buildMockReportingRows(rows: DctRow[]) {
-  const trailerNumbers = ["5320233", "24163445", "7320234", "4330123", "5320456", "24164567"];
-  const timingProfiles = [
-    { dep: -15, arr: -6 },
-    { dep: 0, arr: 4 },
-    { dep: 15, arr: 18 },
-    { dep: 45, arr: 38 },
-    { dep: 130, arr: 125 },
-    { dep: -45, arr: -12 },
-  ];
-
-  return rows.map((row, index) => {
-    const profile = timingProfiles[index % timingProfiles.length];
-    const departureActualTs = row.departureActualTs ?? row.plannedDepartureTs + profile.dep * 60000;
-    const arrivalActualTs = row.arrivalActualTs ?? row.plannedArrivalTs + profile.arr * 60000;
-    const isContractorDuty = index < 4;
-    const issueCategory = profile.arr >= 120 ? "Failed timing" : profile.arr >= 31 ? "Very late arrival" : profile.arr >= 9 ? "Late arrival" : profile.arr <= -31 ? "Very early arrival" : profile.arr <= -9 ? "Early arrival" : row.issueCategory || "No Issue";
-    const issues = issueCategory === "No Issue" ? "" : `Mock ${issueCategory.toLowerCase()} recorded for reporting.`;
-
-    return {
-      ...row,
-      status: "Complete" as const,
-      trailerNumber: row.trailerNumber || trailerNumbers[index % trailerNumbers.length],
-      contractorCompanyName: isContractorDuty ? "Pie Haulage" : index === 4 ? "Letters" : "Network",
-      departureActualTs,
-      arrivalActualTs,
-      departureDiff: formatSignedDifference(row.plannedDepartureTs, departureActualTs),
-      arrivalDiff: formatSignedDifference(row.plannedArrivalTs, arrivalActualTs),
-      issueCategory,
-      issues,
-    };
-  });
-}
-
 type ToTimeDistribution = Record<ToTimeCode, number>;
 type ToTimeDistributionSet = { dtt: ToTimeDistribution; att: ToTimeDistribution; mtt: ToTimeDistribution };
 
 function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistributionSet }) {
-  const rowClassName = "border border-[#cbd5e1] px-3 py-2 text-center text-xs font-black text-[#172033]";
+  const rowClassName = "border border-[#cbd5e1] px-1.5 py-2 text-center text-[11px] font-black text-[#172033]";
 
   return (
     <section className="h-full rounded-[14px] border border-[#d9dee6] bg-white p-4 shadow-sm">
@@ -328,12 +421,12 @@ function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistribution
             Timing split summary
           </p>
           <h3 className="mt-1 text-lg font-black text-[#172033]">DTT / ATT / MTT overview</h3>
-          <p className="mt-1 text-xs font-bold text-[#64748b]">Percentage split across the six timing codes.</p>
+          <p className="mt-1 text-xs font-bold text-[#64748b]">Completed Manifest / 318 legs only; planned rows remain at 0.00%.</p>
         </div>
       </div>
 
       <div className="mt-3 overflow-hidden rounded-xl border border-[#cbd5e1]">
-        <table className="w-full border-collapse text-xs">
+        <table className="w-full table-fixed border-collapse text-[11px]">
           <thead>
             <tr className="bg-[#eff4fb] text-[#475569]">
               <th className={`${rowClassName} text-left`}>Measure</th>
@@ -356,9 +449,9 @@ function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistribution
 function ToTimeSummaryRow({ label, values }: { label: string; values: ToTimeDistribution }) {
   return (
     <tr>
-      <td className="border border-[#0f172a] bg-white px-3 py-2 text-left text-xs font-black text-[#172033]">{label}</td>
+      <td className="border border-[#cbd5e1] bg-white px-2 py-2 text-left text-[11px] font-black text-[#172033]">{label}</td>
       {toTimeOptions.map((code) => (
-        <td key={`${label}-${code}`} className="border border-[#0f172a] bg-white px-3 py-2 text-center text-xs font-black text-[#172033]">{values[code].toFixed(2)}%</td>
+        <td key={`${label}-${code}`} className="border border-[#cbd5e1] bg-white px-1.5 py-2 text-center text-[11px] font-black text-[#172033]">{values[code].toFixed(2)}%</td>
       ))}
     </tr>
   );
@@ -377,7 +470,7 @@ function ToTimeLegend() {
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
         <ToTimeLegendCard code="VE" description="Very Early" range="-00:31 to -02:00 (or earlier)" />
         <ToTimeLegendCard code="E" description="Early" range="-00:09 to -00:30" />
         <ToTimeLegendCard code="OT" description="On Time" range="-00:08 to +00:08" />
@@ -391,13 +484,13 @@ function ToTimeLegend() {
 
 function ToTimeLegendCard({ code, description, range }: { code: ToTimeCode; description: string; range: string }) {
   return (
-    <div className={`flex min-h-[88px] items-start gap-3 rounded-[12px] border px-3 py-3 ${getToTimeCardClass(code)}`}>
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-current text-xs font-black">
+    <div className={`flex min-h-[64px] items-start gap-2 rounded-[10px] border px-2.5 py-2.5 ${getToTimeCardClass(code)}`}>
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-current text-[10px] font-black">
         {code}
       </div>
       <div>
-        <p className="text-sm font-black leading-5">{description}</p>
-        <p className="mt-1 text-xs font-bold leading-5">{range}</p>
+        <p className="text-xs font-black leading-4">{description}</p>
+        <p className="mt-0.5 text-[10px] font-bold leading-4">{range}</p>
       </div>
     </div>
   );
@@ -406,12 +499,26 @@ function ToTimeLegendCard({ code, description, range }: { code: ToTimeCode; desc
 function buildToTimeDistribution(rows: DctRow[]): ToTimeDistributionSet {
   const dttCounts = buildZeroToTimeCounts();
   const attCounts = buildZeroToTimeCounts();
+  let dttTotal = 0;
+  let attTotal = 0;
+
   rows.forEach((row) => {
-    dttCounts[getDepartureToTimeCode(row)] += 1;
-    attCounts[getArrivalToTimeCode(row)] += 1;
+    const dtt = getDepartureToTimeCode(row);
+    const att = getArrivalToTimeCode(row);
+
+    if (dtt) {
+      dttCounts[dtt] += 1;
+      dttTotal += 1;
+    }
+
+    if (att) {
+      attCounts[att] += 1;
+      attTotal += 1;
+    }
   });
-  const dtt = convertCountsToPercentages(dttCounts, rows.length);
-  const att = convertCountsToPercentages(attCounts, rows.length);
+
+  const dtt = convertCountsToPercentages(dttCounts, dttTotal);
+  const att = convertCountsToPercentages(attCounts, attTotal);
   const mtt = buildZeroToTimeCounts();
   toTimeOptions.forEach((code) => {
     mtt[code] = Number(((dtt[code] + att[code]) / 2).toFixed(2));
@@ -432,11 +539,19 @@ function convertCountsToPercentages(counts: ToTimeDistribution, totalRows: numbe
   return percentages;
 }
 
-function getDepartureToTimeCode(row: DctRow): ToTimeCode {
+function getDepartureToTimeCode(row: DctRow): ToTimeCode | null {
+  if (row.status !== "Complete" || !row.departureActualTs) {
+    return null;
+  }
+
   return classifyToTime(getDifferenceInMinutes(row.plannedDepartureTs, row.departureActualTs));
 }
 
-function getArrivalToTimeCode(row: DctRow): ToTimeCode {
+function getArrivalToTimeCode(row: DctRow): ToTimeCode | null {
+  if (row.status !== "Complete" || !row.arrivalActualTs) {
+    return null;
+  }
+
   return classifyToTime(getDifferenceInMinutes(row.plannedArrivalTs, row.arrivalActualTs));
 }
 
@@ -472,7 +587,8 @@ function getToTimeCardClass(code: ToTimeCode) {
   return "border-[#15803d] bg-[#ecfdf3] text-[#166534]";
 }
 
-function getToTimeCellClass(code: ToTimeCode) {
+function getToTimeCellClass(code: ToTimeCode | null) {
+  if (!code) return "bg-[#f3f4f6] text-[#64748b]";
   if (code === "F") return "bg-[#fecaca] text-[#7f1d1d]";
   if (code === "VL") return "bg-[#ffd9b3] text-[#9a3412]";
   if (code === "L") return "bg-[#fff1c1] text-[#8a5200]";
@@ -480,8 +596,43 @@ function getToTimeCellClass(code: ToTimeCode) {
   return "bg-[#dcfce7] text-[#166534]";
 }
 
-function formatDivisionLabel(value: string) {
-  return value;
+function getDivisionForRow(row: DctRow): "Pie Haulage" | "Letters" | "Network" {
+  if (row.legNumber <= 4) {
+    return "Pie Haulage";
+  }
+
+  if (row.legNumber === 5) {
+    return "Letters";
+  }
+
+  return "Network";
+}
+
+function FilterSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[11px] font-black uppercase tracking-[0.12em] text-[#64748b]">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-2 h-10 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm font-bold text-[#172033] outline-none focus:border-[#d6001c]"
+      >
+        {options.map((option) => (
+          <option key={option}>{option}</option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
 function downloadRowsAsExcel(rows: DctRow[]) {
@@ -529,7 +680,7 @@ function downloadRowsAsExcel(rows: DctRow[]) {
     getVehicleNumberForRow(row),
     row.trailerNumber || "",
     row.userId,
-    formatDivisionLabel(row.contractorCompanyName),
+    getDivisionForRow(row),
     row.operator,
     row.dutyId,
     row.trailerType,
@@ -539,13 +690,13 @@ function downloadRowsAsExcel(rows: DctRow[]) {
     formatDateTime(row.plannedDepartureTs),
     row.departureActualTs ? formatDateTime(row.departureActualTs) : "-",
     formatSignedDifference(row.plannedDepartureTs, row.departureActualTs),
-    getDepartureToTimeCode(row),
+    getDepartureToTimeCode(row) || "-",
     getAssetCountForRow(row),
     row.arrivalLocation,
     formatDateTime(row.plannedArrivalTs),
     row.arrivalActualTs ? formatDateTime(row.arrivalActualTs) : "-",
     formatSignedDifference(row.plannedArrivalTs, row.arrivalActualTs),
-    getArrivalToTimeCode(row),
+    getArrivalToTimeCode(row) || "-",
     getAssetCountForRow(row),
     row.issueCategory || "-",
     row.issues || "-",

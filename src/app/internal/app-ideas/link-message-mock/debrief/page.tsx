@@ -269,7 +269,7 @@ export default function DebriefPage() {
               <SummaryCard label="318 / POD outstanding" value={String(missing318Count)} />
             </div>
 
-            <div className="mt-4 grid gap-3 xl:grid-cols-[440px_minmax(0,1fr)] xl:items-stretch">
+            <div className="mt-4 grid gap-3 xl:grid-cols-[500px_minmax(0,1fr)] xl:items-stretch">
               <ToTimeSummaryTable distribution={toTimeDistribution} />
               <ToTimeLegend />
             </div>
@@ -956,7 +956,7 @@ function CheckBox({
 }
 
 function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistributionSet }) {
-  const rowClassName = "border border-[#cbd5e1] px-3 py-2 text-center text-xs font-black text-[#172033]";
+  const rowClassName = "border border-[#cbd5e1] px-1.5 py-2 text-center text-[11px] font-black text-[#172033]";
 
   return (
     <section className="h-full rounded-[14px] border border-[#d9dee6] bg-white p-4 shadow-sm">
@@ -971,7 +971,7 @@ function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistribution
       </div>
 
       <div className="mt-3 overflow-hidden rounded-xl border border-[#cbd5e1]">
-        <table className="w-full border-collapse text-xs">
+        <table className="w-full table-fixed border-collapse text-[11px]">
           <thead>
             <tr className="bg-[#eff4fb] text-[#475569]">
               <th className={`${rowClassName} text-left`}>Measure</th>
@@ -994,9 +994,9 @@ function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistribution
 function ToTimeSummaryRow({ label, values }: { label: string; values: ToTimeDistribution }) {
   return (
     <tr className="even:bg-[#f8fafc]">
-      <td className="border border-[#cbd5e1] bg-white px-3 py-2 text-left text-xs font-black text-[#172033]">{label}</td>
+      <td className="border border-[#cbd5e1] bg-white px-2 py-2 text-left text-[11px] font-black text-[#172033]">{label}</td>
       {toTimeOptions.map((code) => (
-        <td key={`${label}-${code}`} className="border border-[#cbd5e1] bg-white px-3 py-2 text-center text-xs font-black text-[#172033]">
+        <td key={`${label}-${code}`} className="border border-[#cbd5e1] bg-white px-1.5 py-2 text-center text-[11px] font-black text-[#172033]">
           {values[code].toFixed(2)}%
         </td>
       ))}
@@ -1017,7 +1017,7 @@ function ToTimeLegend() {
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
         <ToTimeLegendCard code="VE" description="Very Early" range="-00:31 to -02:00 (or earlier)" />
         <ToTimeLegendCard code="E" description="Early" range="-00:09 to -00:30" />
         <ToTimeLegendCard code="OT" description="On Time" range="-00:08 to +00:08" />
@@ -1031,13 +1031,13 @@ function ToTimeLegend() {
 
 function ToTimeLegendCard({ code, description, range }: { code: ToTimeCode; description: string; range: string }) {
   return (
-    <div className={`flex min-h-[88px] items-start gap-3 rounded-[12px] border px-3 py-3 ${getToTimeCardClass(code)}`}>
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-current text-xs font-black">
+    <div className={`flex min-h-[64px] items-start gap-2 rounded-[10px] border px-2.5 py-2.5 ${getToTimeCardClass(code)}`}>
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-current text-[10px] font-black">
         {code}
       </div>
       <div>
-        <p className="text-sm font-black leading-5">{description}</p>
-        <p className="mt-1 text-xs font-bold leading-5">{range}</p>
+        <p className="text-xs font-black leading-4">{description}</p>
+        <p className="mt-0.5 text-[10px] font-bold leading-4">{range}</p>
       </div>
     </div>
   );
