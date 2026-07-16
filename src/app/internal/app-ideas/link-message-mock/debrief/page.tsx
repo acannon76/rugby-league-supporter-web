@@ -133,6 +133,7 @@ const debriefStatuses: DebriefStatus[] = ["Awaiting Debrief", "In Review", "Debr
 const debriefOutcomes: DebriefOutcome[] = ["Complete", "Part Complete", "Failed", "Cancelled"];
 const podStatuses = ["Received", "Pending Upload", "Missing", "Not Required", "Query"];
 const toTimeOptions: ToTimeCode[] = ["VE", "E", "OT", "L", "VL", "F"];
+const legStateOptions = ["Planned", "In Progress", "Complete"] as const;
 
 export default function DebriefPage() {
   const [rows, setRows] = useState<DebriefRow[]>(() => loadDebriefRows());
@@ -141,6 +142,7 @@ export default function DebriefPage() {
   const [issueFilter, setIssueFilter] = useState("All");
   const [dttFilter, setDttFilter] = useState<"All" | ToTimeCode>("All");
   const [attFilter, setAttFilter] = useState<"All" | ToTimeCode>("All");
+  const [legStateFilter, setLegStateFilter] = useState<"All" | (typeof legStateOptions)[number]>("All");
   const [selectedRow, setSelectedRow] = useState<DebriefRow | null>(null);
 
   useEffect(() => {
@@ -193,10 +195,11 @@ export default function DebriefPage() {
       const matchesIssue = issueFilter === "All" || row.issueCategory === issueFilter;
       const matchesDtt = dttFilter === "All" || getStartToTimeCode(row) === dttFilter;
       const matchesAtt = attFilter === "All" || getFinishToTimeCode(row) === attFilter;
+      const matchesLegState = legStateFilter === "All" || getLegState(row) === legStateFilter;
 
-      return matchesSearch && matchesStatus && matchesAwaitingTimingException && matchesIssue && matchesDtt && matchesAtt;
+      return matchesSearch && matchesStatus && matchesAwaitingTimingException && matchesIssue && matchesDtt && matchesAtt && matchesLegState;
     });
-  }, [rows, searchTerm, statusFilter, issueFilter, dttFilter, attFilter]);
+  }, [rows, searchTerm, statusFilter, issueFilter, dttFilter, attFilter, legStateFilter]);
 
   const awaitingCount = rows.filter((row) => row.debriefStatus === "Awaiting Debrief").length;
   const actionRequiredCount = rows.filter((row) => row.debriefStatus === "Action Required").length;
@@ -298,7 +301,7 @@ export default function DebriefPage() {
           </section>
 
           <section className="mt-4 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6 xl:items-end">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7 xl:items-end">
               <label className="block xl:col-span-2">
                 <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">
                   Search debrief
@@ -375,6 +378,22 @@ export default function DebriefPage() {
                 </select>
               </label>
 
+              <label className="block">
+                <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">
+                  Leg state
+                </span>
+                <select
+                  value={legStateFilter}
+                  onChange={(event) => setLegStateFilter(event.target.value as "All" | (typeof legStateOptions)[number])}
+                  className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
+                >
+                  <option>All</option>
+                  {legStateOptions.map((state) => (
+                    <option key={state}>{state}</option>
+                  ))}
+                </select>
+              </label>
+
               <button
                 type="button"
                 onClick={() => {
@@ -383,8 +402,9 @@ export default function DebriefPage() {
                   setIssueFilter("All");
                   setDttFilter("All");
                   setAttFilter("All");
+                  setLegStateFilter("All");
                 }}
-                className="h-11 rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-5 text-sm font-black uppercase tracking-[0.12em] text-[#4b5563] transition hover:border-[#e40000] xl:col-span-6"
+                className="h-11 rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-5 text-sm font-black uppercase tracking-[0.12em] text-[#4b5563] transition hover:border-[#e40000] xl:col-span-7"
               >
                 Clear Filters
               </button>
@@ -398,6 +418,7 @@ export default function DebriefPage() {
                   <tr>
                     <DebriefHeader label="Debrief Action" headerClass="bg-[#cfeefa]" widthClass="w-[105px]" />
                     <DebriefHeader label="Debrief Status" headerClass="bg-[#cfeefa]" widthClass="w-[120px]" />
+                    <DebriefHeader label="Leg State" headerClass="bg-[#cfeefa]" widthClass="w-[105px]" />
                     <DebriefHeader label="Duty Date" headerClass="bg-[#cfeefa]" widthClass="w-[88px]" />
                     <DebriefHeader label="Week Number" headerClass="bg-[#cfeefa]" widthClass="w-[78px]" />
                     <DebriefHeader label="Duty Order" headerClass="bg-[#cfeefa]" widthClass="w-[78px]" />
@@ -430,7 +451,7 @@ export default function DebriefPage() {
                 <tbody>
                   {filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={28} className="border border-black px-4 py-10 text-center text-sm font-black text-[#64748b]">
+                      <td colSpan={29} className="border border-black px-4 py-10 text-center text-sm font-black text-[#64748b]">
                         No duties match the selected debrief filters.
                       </td>
                     </tr>
@@ -1199,6 +1220,30 @@ function getToTimeCellClass(code: ToTimeCode | "") {
   return "bg-[#dcfce7] text-[#166534]";
 }
 
+function getLegState(row: DebriefRow) {
+  if (row.actualEndTs) {
+    return "Complete" as const;
+  }
+
+  if (row.actualStartTs) {
+    return "In Progress" as const;
+  }
+
+  return "Planned" as const;
+}
+
+function getLegStateCellClass(state: ReturnType<typeof getLegState>) {
+  if (state === "Complete") {
+    return "bg-[#d9f7e5] text-[#166534]";
+  }
+
+  if (state === "In Progress") {
+    return "bg-[#dbeafe] text-[#1d4ed8]";
+  }
+
+  return "bg-[#f3f4f6] text-[#6b7280]";
+}
+
 function formatDivisionCell(row: DebriefRow) {
   return row.division === "Contractor" ? "Pie Haulage" : row.division;
 }
@@ -1456,12 +1501,12 @@ function buildDebriefRowsFromManifestState(
 
 function buildDummyDebriefRows(savedRowMap: Map<string, DebriefRow>) {
   const dutyDefinitions = [
-    { dutyNumber: "NWH426", legCount: 6, completedLegs: 2, dayOffset: 0 },
-    { dutyNumber: "NWH634", legCount: 6, completedLegs: 2, dayOffset: 0 },
-    { dutyNumber: "WAVOC016", legCount: 4, completedLegs: 4, dayOffset: 1 },
-    { dutyNumber: "TNW7034", legCount: 4, completedLegs: 4, dayOffset: 1 },
-    { dutyNumber: "TNW2156", legCount: 2, completedLegs: 1, dayOffset: 2 },
-    { dutyNumber: "NWH8801", legCount: 2, completedLegs: 1, dayOffset: 2 },
+    { dutyNumber: "NWH426", legCount: 6, completedLegs: 2, inProgressLegs: [] as number[], dayOffset: 0 },
+    { dutyNumber: "NWH634", legCount: 6, completedLegs: 2, inProgressLegs: [2] as number[], dayOffset: 0 },
+    { dutyNumber: "WAVOC016", legCount: 4, completedLegs: 4, inProgressLegs: [] as number[], dayOffset: 1 },
+    { dutyNumber: "TNW7034", legCount: 4, completedLegs: 4, inProgressLegs: [] as number[], dayOffset: 1 },
+    { dutyNumber: "TNW2156", legCount: 2, completedLegs: 1, inProgressLegs: [] as number[], dayOffset: 2 },
+    { dutyNumber: "NWH8801", legCount: 2, completedLegs: 1, inProgressLegs: [] as number[], dayOffset: 2 },
   ] as const;
 
   return dutyDefinitions.flatMap((definition, dutyIndex) => {
@@ -1478,7 +1523,11 @@ function buildDummyDebriefRows(savedRowMap: Map<string, DebriefRow>) {
     ];
 
     return Array.from({ length: definition.legCount }, (_, legIndex) => {
-      const isCompleted = legIndex < definition.completedLegs;
+      const dutyOrder = legIndex + 1;
+      const isInProgress = definition.inProgressLegs.includes(dutyOrder);
+      const isCompleted = definition.dutyNumber === "NWH634"
+        ? dutyOrder === 1 || dutyOrder === 3
+        : dutyOrder <= definition.completedLegs;
       const plannedStartMinutes = baseStartMinutes + legIndex * 72;
       const travelMinutes = 42 + ((legIndex + dutyIndex) % 3) * 8;
       const actualStartOffset = [0, 5, -6, 12, 0, -3][(dutyIndex + legIndex) % 6];
@@ -1487,7 +1536,7 @@ function buildDummyDebriefRows(savedRowMap: Map<string, DebriefRow>) {
       const finalDestination = routeStops[(legIndex + 1) % routeStops.length];
       const plannedStartTs = buildTimestamp(dutyDate, plannedStartMinutes);
       const plannedEndTs = buildTimestamp(dutyDate, plannedStartMinutes + travelMinutes);
-      const actualStartTs = isCompleted ? buildTimestamp(dutyDate, plannedStartMinutes + actualStartOffset) : "";
+      const actualStartTs = isCompleted || isInProgress ? buildTimestamp(dutyDate, plannedStartMinutes + actualStartOffset) : "";
       const actualEndTs = isCompleted ? buildTimestamp(dutyDate, plannedStartMinutes + travelMinutes + actualFinishOffset) : "";
       const issueCategory = !isCompleted ? "" : actualFinishOffset >= 15 ? "Late Arrival" : actualStartOffset >= 9 ? "Late Departure" : "No Issue";
       const rowId = `dummy-${definition.dutyNumber}-leg-${legIndex + 1}`;
@@ -1500,14 +1549,14 @@ function buildDummyDebriefRows(savedRowMap: Map<string, DebriefRow>) {
         division: "Network" as Division,
         dutyDate,
         weekNumber: getWeekNumberFromInputDate(dutyDate),
-        dutyOrder: legIndex + 1,
+        dutyOrder,
         driverName: DRIVER_NAME,
         userId: `network.${definition.dutyNumber.toLowerCase()}@royalmail.com`,
         jobTier: "Current Week",
         planType: "Planned",
         traffic: "NWH",
         vehicle: ["PE68UHD", "PN21XHD", "MX70RHA", "DK19RHC", "YX72NWH", "PK68MTE"][(dutyIndex + legIndex) % 6],
-        trailerNumber: isCompleted ? ["5320233", "24163445", "7320234", "4330123", "5320456", "24164567"][(dutyIndex + legIndex) % 6] : "",
+        trailerNumber: isCompleted || isInProgress ? ["5320233", "24163445", "7320234", "4330123", "5320456", "24164567"][(dutyIndex + legIndex) % 6] : "",
         trailerType: ["49 Artic", "49 Artic T/L", "75 Artic DD", "95 Artic DD", "110 Artic DD", "95 Artic DD"][legIndex % 6],
         startLocation,
         finalDestination,
@@ -1518,18 +1567,18 @@ function buildDummyDebriefRows(savedRowMap: Map<string, DebriefRow>) {
         depAssets: 34 + ((dutyIndex * 7 + legIndex * 9) % 55),
         arrAssets: 34 + ((dutyIndex * 5 + legIndex * 7) % 55),
         issueCategory,
-        driverNotes: isCompleted ? buildDriverNotes(issueCategory || "No Issue", "Network") : "",
-        gpsDeparture: isCompleted ? `${startLocation} • ${formatDateTime(actualStartTs)}` : "",
+        driverNotes: isCompleted ? buildDriverNotes(issueCategory || "No Issue", "Network") : isInProgress ? "Driver is currently completing this leg." : "",
+        gpsDeparture: isCompleted || isInProgress ? `${startLocation} • ${formatDateTime(actualStartTs)}` : "",
         gpsArrival: isCompleted ? `${finalDestination} • ${formatDateTime(actualEndTs)}` : "",
         yorkBarcode: isCompleted ? `YRK${String(70000 + dutyIndex * 100 + legIndex * 11).padStart(6, "0")}` : "",
-        pod318Status: isCompleted ? "Received" : "",
+        pod318Status: isCompleted ? "Received" : isInProgress ? "Pending Upload" : "",
         routeChange: "",
         trailerChange: "",
         vehicleDefect: "",
         rtcBreakdown: "",
-        tachoBreak: isCompleted ? "Checked" : "",
-        fuelPurchased: isCompleted ? "No" : "",
-        sealNumber: isCompleted ? `SEAL${String(9500 + dutyIndex * 10 + legIndex)}` : "",
+        tachoBreak: isCompleted ? "Checked" : isInProgress ? "In Progress" : "",
+        fuelPurchased: isCompleted ? "No" : isInProgress ? "Pending" : "",
+        sealNumber: isCompleted ? `SEAL${String(9500 + dutyIndex * 10 + legIndex)}` : isInProgress ? `SEAL${String(9500 + dutyIndex * 10 + legIndex)}` : "",
         debriefStatus: overlayAllowed ? savedRow.debriefStatus : "Awaiting Debrief" as DebriefStatus,
         debriefOutcome: overlayAllowed ? savedRow.debriefOutcome : issueCategory && issueCategory !== "No Issue" ? "Part Complete" : "Complete",
         debriefedBy: overlayAllowed ? savedRow.debriefedBy : "",
@@ -1538,7 +1587,7 @@ function buildDummyDebriefRows(savedRowMap: Map<string, DebriefRow>) {
         followUpDate: overlayAllowed ? savedRow.followUpDate : "",
         lateReason: overlayAllowed ? savedRow.lateReason : isCompleted ? buildLateReason(issueCategory || "No Issue") : "",
         officeNotes: overlayAllowed ? savedRow.officeNotes : issueCategory && issueCategory !== "No Issue" ? "Requires debrief follow-up." : "",
-        checks: overlayAllowed ? savedRow.checks : buildInitialChecks("Awaiting Debrief", isCompleted ? "Received" : ""),
+        checks: overlayAllowed ? savedRow.checks : buildInitialChecks("Awaiting Debrief", isCompleted ? "Received" : isInProgress ? "Pending Upload" : ""),
       };
     });
   });
@@ -1641,11 +1690,15 @@ function toInputDateFromDisplay(displayDate: string) {
 
 function getWeekNumberFromInputDate(dateInput: string) {
   const date = parseInputDate(dateInput);
-  const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = utcDate.getUTCDay() || 7;
-  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1));
-  return Math.ceil((((utcDate.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  const seasonStart = new Date(date.getFullYear(), 3, 1, 0, 0, 0, 0);
+  const diffMs = date.getTime() - seasonStart.getTime();
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffDays < 0) {
+    return 1;
+  }
+
+  return Math.floor(diffDays / 7) + 1;
 }
 
 function buildTimestamp(dateInput: string, minutesFromStart: number) {
@@ -1775,6 +1828,7 @@ function downloadDebriefRowsAsExcel(rows: DebriefRow[]) {
 
   const headers = [
     "Debrief Status",
+    "Leg State",
     "Duty Date",
     "Week Number",
     "Duty Order",
@@ -1807,6 +1861,7 @@ function downloadDebriefRowsAsExcel(rows: DebriefRow[]) {
 
   const exportRows = rows.map((row) => [
     row.debriefStatus,
+    getLegState(row),
     formatDate(row.dutyDate),
     row.weekNumber,
     row.dutyOrder,
