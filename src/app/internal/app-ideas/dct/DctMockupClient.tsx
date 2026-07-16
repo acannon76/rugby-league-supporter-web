@@ -163,8 +163,10 @@ function DctWebScreen({
             <SummaryCard label="Total delay" value={formatDelayTotal(totalDelayMinutes)} />
           </div>
 
-          <ToTimeSummaryTable distribution={buildToTimeDistribution(displayRows)} />
-          <ToTimeLegend />
+          <div className="mt-4 grid gap-3 xl:grid-cols-[440px_minmax(0,1fr)] xl:items-stretch">
+            <ToTimeSummaryTable distribution={buildToTimeDistribution(displayRows)} />
+            <ToTimeLegend />
+          </div>
 
           <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]">
             <span className="rounded-full border border-[#1f7a34] bg-[#d9f7e5] px-3 py-2 text-[#166534]">
@@ -316,25 +318,38 @@ type ToTimeDistribution = Record<ToTimeCode, number>;
 type ToTimeDistributionSet = { dtt: ToTimeDistribution; att: ToTimeDistribution; mtt: ToTimeDistribution };
 
 function ToTimeSummaryTable({ distribution }: { distribution: ToTimeDistributionSet }) {
-  const cellClass = "border border-[#0f172a] px-3 py-2 text-center text-xs font-black text-[#172033]";
+  const rowClassName = "border border-[#cbd5e1] px-3 py-2 text-center text-xs font-black text-[#172033]";
+
   return (
-    <div className="mt-4 overflow-x-auto rounded-[12px] border border-[#d9dee6] bg-[#f8fafc]">
-      <table className="min-w-[560px] border-collapse text-xs">
-        <thead>
-          <tr className="bg-white text-[#64748b]">
-            <th className={`${cellClass} text-left`}>Measure</th>
-            {toTimeOptions.map((code) => (
-              <th key={code} className={cellClass}>{code}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          <ToTimeSummaryRow label="DTT" values={distribution.dtt} />
-          <ToTimeSummaryRow label="ATT" values={distribution.att} />
-          <ToTimeSummaryRow label="MTT" values={distribution.mtt} />
-        </tbody>
-      </table>
-    </div>
+    <section className="h-full rounded-[14px] border border-[#d9dee6] bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#d6001c]">
+            Timing split summary
+          </p>
+          <h3 className="mt-1 text-lg font-black text-[#172033]">DTT / ATT / MTT overview</h3>
+          <p className="mt-1 text-xs font-bold text-[#64748b]">Percentage split across the six timing codes.</p>
+        </div>
+      </div>
+
+      <div className="mt-3 overflow-hidden rounded-xl border border-[#cbd5e1]">
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="bg-[#eff4fb] text-[#475569]">
+              <th className={`${rowClassName} text-left`}>Measure</th>
+              {toTimeOptions.map((code) => (
+                <th key={code} className={rowClassName}>{code}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <ToTimeSummaryRow label="DTT" values={distribution.dtt} />
+            <ToTimeSummaryRow label="ATT" values={distribution.att} />
+            <ToTimeSummaryRow label="MTT" values={distribution.mtt} />
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -351,23 +366,39 @@ function ToTimeSummaryRow({ label, values }: { label: string; values: ToTimeDist
 
 function ToTimeLegend() {
   return (
-    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-      <ToTimeLegendCard code="VE" description="Very Early" range="-00:31 to -02:00 (or earlier)" />
-      <ToTimeLegendCard code="E" description="Early" range="-00:09 to -00:30" />
-      <ToTimeLegendCard code="OT" description="On Time" range="-00:08 to +00:08" />
-      <ToTimeLegendCard code="L" description="Late" range="+00:09 to +00:30" />
-      <ToTimeLegendCard code="VL" description="Very Late" range="+00:31 to +01:59" />
-      <ToTimeLegendCard code="F" description="Failed" range="+02:00 or later" />
-    </div>
+    <section className="h-full rounded-[14px] border border-[#d9dee6] bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#d6001c]">
+            Timing code guide
+          </p>
+          <h3 className="mt-1 text-lg font-black text-[#172033]">How each timing code is set</h3>
+          <p className="mt-1 text-xs font-bold text-[#64748b]">Reference ranges used for DTT, ATT and MTT.</p>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        <ToTimeLegendCard code="VE" description="Very Early" range="-00:31 to -02:00 (or earlier)" />
+        <ToTimeLegendCard code="E" description="Early" range="-00:09 to -00:30" />
+        <ToTimeLegendCard code="OT" description="On Time" range="-00:08 to +00:08" />
+        <ToTimeLegendCard code="L" description="Late" range="+00:09 to +00:30" />
+        <ToTimeLegendCard code="VL" description="Very Late" range="+00:31 to +01:59" />
+        <ToTimeLegendCard code="F" description="Failed" range="+02:00 or later" />
+      </div>
+    </section>
   );
 }
 
 function ToTimeLegendCard({ code, description, range }: { code: ToTimeCode; description: string; range: string }) {
   return (
-    <div className={`rounded-[12px] border p-3 ${getToTimeCardClass(code)}`}>
-      <p className="text-[11px] font-black uppercase tracking-[0.16em]">{code}</p>
-      <p className="mt-1 text-sm font-black">{description}</p>
-      <p className="mt-1 text-xs font-bold">{range}</p>
+    <div className={`flex min-h-[88px] items-start gap-3 rounded-[12px] border px-3 py-3 ${getToTimeCardClass(code)}`}>
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-current text-xs font-black">
+        {code}
+      </div>
+      <div>
+        <p className="text-sm font-black leading-5">{description}</p>
+        <p className="mt-1 text-xs font-bold leading-5">{range}</p>
+      </div>
     </div>
   );
 }
