@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import DriverName from "../../DriverName";
 import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 
 type SideButton = {
@@ -28,6 +27,11 @@ type GanttSegment = {
 type DutyRow = {
   duty: string;
   segments: GanttSegment[];
+};
+
+type HoveredTravelSegment = {
+  duty: string;
+  segmentIndex: number;
 };
 
 const sideButtons: SideButton[] = [
@@ -228,6 +232,26 @@ const duties: DutyRow[] = Array.from({ length: 30 }, (_, index) => {
   };
 });
 
+const roadHaulageDutyCodes = new Set(["NWH004", "NWH009", "NWH017", "NWH024"]);
+const mockTravelLocations = [
+  "North West Hub",
+  "Manchester VOC",
+  "Preston MC",
+  "Warrington VOC",
+  "Liverpool Mail Centre",
+  "North West Hub",
+];
+const mockTrailerNumbers = [
+  "5320233",
+  "24163445",
+  "7320234",
+  "4330123",
+  "5321184",
+  "2419087",
+  "7321108",
+  "4332755",
+];
+
 const timeLabels = Array.from({ length: 16 }, (_, index) => `${String(index + 1).padStart(2, "0")}:00`);
 
 function getMonday(date: Date) {
@@ -283,6 +307,63 @@ function getSegmentClasses(tone: GanttSegment["tone"]) {
   return "border-[#c4c9cf] bg-[#d4d6da]";
 }
 
+
+function isRoadHaulageDuty(duty: string) {
+  return roadHaulageDutyCodes.has(duty);
+}
+
+function getDutyNumericIndex(duty: string) {
+  const match = duty.match(/(\d+)$/);
+  return match ? Number(match[1]) - 1 : 0;
+}
+
+function formatDurationLong(durationLabel: string) {
+  const match = durationLabel.match(/(\d+)h\s(\d+)m/);
+
+  if (!match) {
+    return durationLabel;
+  }
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const hourText = `${hours} hour${hours === 1 ? "" : "s"}`;
+
+  if (minutes === 0) {
+    return hourText;
+  }
+
+  return `${hourText} ${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
+
+function buildTravelTooltip(row: DutyRow, segmentIndex: number) {
+  const segment = row.segments[segmentIndex];
+
+  if (!segment || segment.label !== "Travel") {
+    return null;
+  }
+
+  const travelSegments = row.segments
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item.label === "Travel");
+  const travelIndex = travelSegments.findIndex(({ index }) => index === segmentIndex);
+  const dutyIndex = getDutyNumericIndex(row.duty);
+  const routeBaseIndex = (dutyIndex + Math.max(travelIndex, 0)) % (mockTravelLocations.length - 1);
+  const fromLocation = mockTravelLocations[routeBaseIndex];
+  const toLocation = mockTravelLocations[routeBaseIndex + 1];
+  const trailer = mockTrailerNumbers[(dutyIndex + Math.max(travelIndex, 0)) % mockTrailerNumbers.length];
+  const start = formatTimelinePercentAsTime(segment.start);
+  const finish = formatTimelinePercentAsTime(segment.start + segment.width);
+  const duration = calculateRhcDutyDuration(start, finish);
+
+  return {
+    title: `Travel - ${fromLocation.toUpperCase()} to ${toLocation.toUpperCase()}`,
+    time: `${start} to ${finish}`,
+    duration: formatDurationLong(duration.label),
+    trailer,
+    anchor: Math.max(12, Math.min(88, segment.start + segment.width / 2)),
+  };
+}
+
 export default function LinkMessageMockPage() {
   const [activeSideButton, setActiveSideButton] = useState("Settings");
   const [selectedDetail, setSelectedDetail] = useState(
@@ -291,6 +372,8 @@ export default function LinkMessageMockPage() {
   const [rhcPopupDuty, setRhcPopupDuty] = useState<DutyRow | null>(null);
   const [rhcHoldingOrders, setRhcHoldingOrders] = useState<RhcOrder[]>([]);
   const [selectedRhcHoldingIds, setSelectedRhcHoldingIds] = useState<string[]>([]);
+  const [activeDutyTab, setActiveDutyTab] = useState<"all" | "roadHaulage">("all");
+  const [hoveredTravelSegment, setHoveredTravelSegment] = useState<HoveredTravelSegment | null>(null);
 
   const today = useMemo(() => new Date(), []);
   const weekStart = useMemo(() => getMonday(today), [today]);
@@ -304,6 +387,10 @@ export default function LinkMessageMockPage() {
     [weekStart],
   );
   const weekEnd = days[6];
+  const visibleDuties = useMemo(
+    () => (activeDutyTab === "roadHaulage" ? duties.filter((duty) => isRoadHaulageDuty(duty.duty)) : duties),
+    [activeDutyTab],
+  );
 
   return (
     <main className="min-h-screen bg-[#f4f6f9] font-sans text-[#1d2633]">
@@ -341,7 +428,7 @@ export default function LinkMessageMockPage() {
             ●
           </button>
           <div className="hidden text-right sm:block">
-            <p className="text-base font-black"><DriverName /></p>
+            <p className="text-base font-black">Andrew Cannon</p>
             <p className="text-xs font-bold text-white/80">Mock dashboard user</p>
           </div>
           <button
@@ -464,6 +551,36 @@ export default function LinkMessageMockPage() {
           </div>
 
           <div className="mt-4 rounded-md border border-[#d9dee6] bg-white p-3 shadow-sm">
+            <div className="mb-4 flex flex-wrap gap-2 border-b border-[#e5e7eb] pb-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveDutyTab("all");
+                  setSelectedDetail("All Duties tab opened.");
+                }}
+                className={`rounded-t-md border px-4 py-3 text-sm font-black transition ${
+                  activeDutyTab === "all"
+                    ? "border-[#e40000] bg-[#fff5f5] text-[#e40000]"
+                    : "border-[#d9dee6] bg-[#f8fafc] text-[#4b5563] hover:border-[#e40000]"
+                }`}
+              >
+                All Duties <span className="ml-1 text-xs text-inherit">({duties.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveDutyTab("roadHaulage");
+                  setSelectedDetail("Road Haulage Duties tab opened.");
+                }}
+                className={`rounded-t-md border px-4 py-3 text-sm font-black transition ${
+                  activeDutyTab === "roadHaulage"
+                    ? "border-[#e40000] bg-[#fff5f5] text-[#e40000]"
+                    : "border-[#d9dee6] bg-[#f8fafc] text-[#4b5563] hover:border-[#e40000]"
+                }`}
+              >
+                Road Haulage Duties <span className="ml-1 text-xs text-inherit">({duties.filter((duty) => isRoadHaulageDuty(duty.duty)).length})</span>
+              </button>
+            </div>
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex flex-wrap gap-2">
                 {days.map((day) => {
@@ -592,7 +709,7 @@ export default function LinkMessageMockPage() {
                     style={{ left: "calc(240px + ((100% - 240px) * 0.72))" }}
                   />
 
-                  {duties.map((duty, index) => (
+                  {visibleDuties.map((duty, index) => (
                     <div
                       key={duty.duty}
                       className={`grid min-h-[64px] grid-cols-[240px_1fr] border-b border-[#dfe5ed] ${
@@ -603,6 +720,11 @@ export default function LinkMessageMockPage() {
                         <div className="flex items-center gap-2">
                           <span className="h-3 w-3 rounded-full bg-[#2c80e5]" />
                           <p className="font-black text-[#374151]">{duty.duty}</p>
+                          {isRoadHaulageDuty(duty.duty) ? (
+                            <span className="inline-flex h-5 items-center rounded-sm bg-[#facc15] px-1.5 text-[10px] font-black uppercase leading-none text-[#1f2937] shadow-sm">
+                              RH
+                            </span>
+                          ) : null}
                         </div>
                         <div className="mt-1 flex items-center gap-0.5">
                           {dutyActions.map((action) => (
@@ -642,6 +764,20 @@ export default function LinkMessageMockPage() {
                             onClick={() =>
                               setSelectedDetail(`${duty.duty}: ${segment.label} segment clicked.`)
                             }
+                            onMouseEnter={() => {
+                              if (segment.label === "Travel") {
+                                setHoveredTravelSegment({ duty: duty.duty, segmentIndex });
+                              }
+                            }}
+                            onMouseLeave={() => {
+                              if (segment.label === "Travel") {
+                                setHoveredTravelSegment((current) =>
+                                  current && current.duty === duty.duty && current.segmentIndex === segmentIndex
+                                    ? null
+                                    : current,
+                                );
+                              }
+                            }}
                             className={`absolute top-[18px] flex h-[24px] items-center justify-center overflow-hidden border text-[12px] font-black text-[#202733] shadow-sm transition hover:z-30 hover:scale-y-125 ${getSegmentClasses(
                               segment.tone,
                             )}`}
@@ -651,13 +787,33 @@ export default function LinkMessageMockPage() {
                             <span>{segment.icon}</span>
                           </button>
                         ))}
+                        {hoveredTravelSegment?.duty === duty.duty ? (() => {
+                          const tooltip = buildTravelTooltip(duty, hoveredTravelSegment.segmentIndex);
+
+                          if (!tooltip) {
+                            return null;
+                          }
+
+                          return (
+                            <div
+                              className="pointer-events-none absolute bottom-[42px] z-40 w-[330px] -translate-x-1/2 rounded-xl bg-[#334763] px-4 py-3 text-left text-white shadow-2xl"
+                              style={{ left: `${tooltip.anchor}%` }}
+                            >
+                              <p className="text-[15px] font-black leading-tight">{tooltip.title}</p>
+                              <p className="mt-1 text-sm font-medium">Time - {tooltip.time}</p>
+                              <p className="text-sm font-medium">Duration - {tooltip.duration}</p>
+                              <p className="text-sm font-medium">Trailer - {tooltip.trailer}</p>
+                              <span className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-[#334763]" />
+                            </div>
+                          );
+                        })() : null}
                       </div>
                     </div>
                   ))}
                 </div>
 
                 <div className="flex items-center justify-between px-4 py-3 text-sm font-medium text-[#6b7280]">
-                  <p>Showing 1 to {duties.length} of {duties.length} entries</p>
+                  <p>Showing 1 to {visibleDuties.length} of {visibleDuties.length} entries</p>
                   <div className="flex items-center gap-3">
                     <button type="button" className="text-lg text-[#9ca3af]" onClick={() => setSelectedDetail("First page clicked.")}>«</button>
                     <button type="button" className="text-lg text-[#9ca3af]" onClick={() => setSelectedDetail("Previous page clicked.")}>‹</button>
