@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import ExportDataMenu from "../ExportDataMenu";
+import { exportTabularData, type ExportFormat } from "../exportData";
 import {
   DctRow,
   type DctStatus,
@@ -194,14 +196,11 @@ function DctWebScreen({
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row xl:flex-col">
-              <button
-                type="button"
-                onClick={() => downloadRowsAsExcel(displayRows)}
+              <ExportDataMenu
                 disabled={displayRows.length === 0}
-                className="rounded-full bg-[#001b3a] px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#0f2f57] disabled:cursor-not-allowed disabled:bg-[#94a3b8]"
-              >
-                Download Excel
-              </button>
+                onExport={(format) => downloadRows(displayRows, format)}
+                buttonClassName="rounded-full bg-[#001b3a] px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#0f2f57] disabled:cursor-not-allowed disabled:bg-[#94a3b8]"
+              />
 
               <button
                 type="button"
@@ -635,11 +634,7 @@ function FilterSelect({
   );
 }
 
-function downloadRowsAsExcel(rows: DctRow[]) {
-  if (typeof window === "undefined" || rows.length === 0) {
-    return;
-  }
-
+function downloadRows(rows: DctRow[], format: ExportFormat) {
   const headers = [
     "Leg Status",
     "Start Date",
@@ -706,54 +701,14 @@ function downloadRowsAsExcel(rows: DctRow[]) {
     "",
   ]);
 
-  const html = `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <style>
-    table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; }
-    th, td { border: 1px solid #000; padding: 6px; vertical-align: middle; }
-    th { background: #cfeefa; font-weight: bold; }
-  </style>
-</head>
-<body>
-  <table>
-    <thead><tr>${headers.map((header) => `<th>${escapeExcelHtml(header)}</th>`).join("")}</tr></thead>
-    <tbody>
-      ${exportRows
-        .map(
-          (exportRow) =>
-            `<tr>${exportRow
-              .map((cell) => `<td>${escapeExcelHtml(String(cell))}</td>`)
-              .join("")}</tr>`
-        )
-        .join("")}
-    </tbody>
-  </table>
-</body>
-</html>`;
-
-  const blob = new Blob([html], {
-    type: "application/vnd.ms-excel;charset=utf-8",
-  });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
   const today = new Date().toISOString().slice(0, 10);
-  link.href = url;
-  link.download = `dct-mockup-data-${today}.xls`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
-}
-
-function escapeExcelHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+  exportTabularData({
+    format,
+    headers,
+    rows: exportRows,
+    fileName: `dct-mockup-data-${today}`,
+    title: "DCT Mockup Data",
+  });
 }
 
 function getVehicleNumberForRow(row: DctRow) {
