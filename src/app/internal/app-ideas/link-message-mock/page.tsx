@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
+import { Fragment, type Dispatch, type SetStateAction, useMemo, useState } from "react";
 
 type SideButton = {
   label: string;
@@ -241,6 +241,16 @@ const mockTravelLocations = [
   "Liverpool Mail Centre",
   "North West Hub",
 ];
+const mockVehicleRegistrations = [
+  "PE68UHD",
+  "PO70KVT",
+  "MX69JZF",
+  "PN71XRL",
+  "PF20LKA",
+  "PL72VBT",
+  "PK19WMO",
+  "PX73HCD",
+];
 const mockTrailerNumbers = [
   "5320233",
   "24163445",
@@ -335,6 +345,20 @@ function formatDurationLong(durationLabel: string) {
   return `${hourText} ${minutes} minute${minutes === 1 ? "" : "s"}`;
 }
 
+function getTravelLegIndex(row: DutyRow, segmentIndex: number) {
+  return row.segments
+    .slice(0, segmentIndex + 1)
+    .filter((segment) => segment.label === "Travel").length - 1;
+}
+
+function getTravelTimingStatus(row: DutyRow, segmentIndex: number) {
+  const dutyIndex = getDutyNumericIndex(row.duty);
+  const travelIndex = Math.max(0, getTravelLegIndex(row, segmentIndex));
+
+  // Deterministic mock timing: approximately one in three travel legs is late.
+  return (dutyIndex + travelIndex * 2) % 3 === 1 ? "late" : "onTime";
+}
+
 function buildTravelTooltip(row: DutyRow, segmentIndex: number) {
   const segment = row.segments[segmentIndex];
 
@@ -350,6 +374,8 @@ function buildTravelTooltip(row: DutyRow, segmentIndex: number) {
   const routeBaseIndex = (dutyIndex + Math.max(travelIndex, 0)) % (mockTravelLocations.length - 1);
   const fromLocation = mockTravelLocations[routeBaseIndex];
   const toLocation = mockTravelLocations[routeBaseIndex + 1];
+  const vehicle =
+    mockVehicleRegistrations[(dutyIndex + Math.max(travelIndex, 0)) % mockVehicleRegistrations.length];
   const trailer = mockTrailerNumbers[(dutyIndex + Math.max(travelIndex, 0)) % mockTrailerNumbers.length];
   const start = formatTimelinePercentAsTime(segment.start);
   const finish = formatTimelinePercentAsTime(segment.start + segment.width);
@@ -359,6 +385,7 @@ function buildTravelTooltip(row: DutyRow, segmentIndex: number) {
     title: `Travel - ${fromLocation.toUpperCase()} to ${toLocation.toUpperCase()}`,
     time: `${start} to ${finish}`,
     duration: formatDurationLong(duration.label),
+    vehicle,
     trailer,
     anchor: Math.max(12, Math.min(88, segment.start + segment.width / 2)),
   };
@@ -757,36 +784,58 @@ export default function LinkMessageMockPage() {
                       </div>
 
                       <div className="relative z-0 h-[64px]">
-                        {duty.segments.map((segment, segmentIndex) => (
-                          <button
-                            key={`${duty.duty}-${segment.label}-${segmentIndex}`}
-                            type="button"
-                            onClick={() =>
-                              setSelectedDetail(`${duty.duty}: ${segment.label} segment clicked.`)
-                            }
-                            onMouseEnter={() => {
-                              if (segment.label === "Travel") {
-                                setHoveredTravelSegment({ duty: duty.duty, segmentIndex });
-                              }
-                            }}
-                            onMouseLeave={() => {
-                              if (segment.label === "Travel") {
-                                setHoveredTravelSegment((current) =>
-                                  current && current.duty === duty.duty && current.segmentIndex === segmentIndex
-                                    ? null
-                                    : current,
-                                );
-                              }
-                            }}
-                            className={`absolute top-[18px] flex h-[24px] items-center justify-center overflow-hidden border text-[12px] font-black text-[#202733] shadow-sm transition hover:z-30 hover:scale-y-125 ${getSegmentClasses(
-                              segment.tone,
-                            )}`}
-                            style={{ left: `${segment.start}%`, width: `${segment.width}%` }}
-                            title={`${duty.duty} ${segment.label}`}
-                          >
-                            <span>{segment.icon}</span>
-                          </button>
-                        ))}
+                        {duty.segments.map((segment, segmentIndex) => {
+                          const travelTimingStatus =
+                            segment.label === "Travel"
+                              ? getTravelTimingStatus(duty, segmentIndex)
+                              : null;
+
+                          return (
+                            <Fragment key={`${duty.duty}-${segment.label}-${segmentIndex}`}>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedDetail(`${duty.duty}: ${segment.label} segment clicked.`)
+                                }
+                                onMouseEnter={() => {
+                                  if (segment.label === "Travel") {
+                                    setHoveredTravelSegment({ duty: duty.duty, segmentIndex });
+                                  }
+                                }}
+                                onMouseLeave={() => {
+                                  if (segment.label === "Travel") {
+                                    setHoveredTravelSegment((current) =>
+                                      current &&
+                                      current.duty === duty.duty &&
+                                      current.segmentIndex === segmentIndex
+                                        ? null
+                                        : current,
+                                    );
+                                  }
+                                }}
+                                className={`absolute top-[18px] flex h-[24px] items-center justify-center overflow-hidden border text-[12px] font-black text-[#202733] shadow-sm transition hover:z-30 hover:scale-y-125 ${getSegmentClasses(
+                                  segment.tone,
+                                )}`}
+                                style={{ left: `${segment.start}%`, width: `${segment.width}%` }}
+                                title={`${duty.duty} ${segment.label}`}
+                              >
+                                <span>{segment.icon}</span>
+                              </button>
+
+                              {travelTimingStatus ? (
+                                <span
+                                  aria-hidden="true"
+                                  className={`pointer-events-none absolute top-[41px] z-[35] h-[5px] rounded-b-[2px] shadow-sm ${
+                                    travelTimingStatus === "late"
+                                      ? "bg-[#e40000]"
+                                      : "bg-[#159447]"
+                                  }`}
+                                  style={{ left: `${segment.start}%`, width: `${segment.width}%` }}
+                                />
+                              ) : null}
+                            </Fragment>
+                          );
+                        })}
                         {hoveredTravelSegment?.duty === duty.duty ? (() => {
                           const tooltip = buildTravelTooltip(duty, hoveredTravelSegment.segmentIndex);
 
@@ -802,6 +851,7 @@ export default function LinkMessageMockPage() {
                               <p className="text-[15px] font-black leading-tight">{tooltip.title}</p>
                               <p className="mt-1 text-sm font-medium">Time - {tooltip.time}</p>
                               <p className="text-sm font-medium">Duration - {tooltip.duration}</p>
+                              <p className="text-sm font-medium">Vehicle - {tooltip.vehicle}</p>
                               <p className="text-sm font-medium">Trailer - {tooltip.trailer}</p>
                               <span className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-[#334763]" />
                             </div>
