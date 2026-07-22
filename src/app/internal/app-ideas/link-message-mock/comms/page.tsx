@@ -116,6 +116,7 @@ type CommsHistoryRecord = {
 const COMMS_HISTORY_STORAGE_KEY = "link-message-comms-history";
 const COMMS_OPEN_STORAGE_KEY = "link-message-comms-open-items";
 const MANAGER_NAME = "Harry Smith";
+const MOCK_DUTY_START_DATE = "22/07/2026";
 
 const driverNames = [
   "Andrew Cannon",
@@ -1024,11 +1025,13 @@ export default function LinkCommsDashboardPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1320px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[1560px] border-collapse text-left text-sm">
                 <thead className="bg-white text-xs uppercase tracking-[0.12em] text-[#6b7280]">
                   <tr>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Source</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Duty</th>
+                    <th className="border-b border-[#d9dee6] px-4 py-3">Duty start date</th>
+                    <th className="border-b border-[#d9dee6] px-4 py-3">Message flow</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Driver</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Priority</th>
                     <th className="border-b border-[#d9dee6] px-4 py-3">Status</th>
@@ -1046,6 +1049,8 @@ export default function LinkCommsDashboardPage() {
                     >
                       <td className="border-b border-[#edf0f4] px-4 py-3 font-black text-[#111827]">{item.source}</td>
                       <td className="border-b border-[#edf0f4] px-4 py-3 font-black text-[#374151]">{item.duty}</td>
+                      <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#374151]">{MOCK_DUTY_START_DATE}</td>
+                      <td className="border-b border-[#edf0f4] px-4 py-3"><FlowBadge flow={getMessageFlow(item)} /></td>
                       <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#374151]">{item.driver}</td>
                       <td className="border-b border-[#edf0f4] px-4 py-3"><PriorityBadge priority={item.priority} /></td>
                       <td className="border-b border-[#edf0f4] px-4 py-3"><StatusBadge status={item.status} /></td>
@@ -1529,6 +1534,23 @@ function NewDriverMessageModal({
       </section>
     </div>
   );
+}
+
+function getMessageFlow(item: CommsItem): "Incoming" | "Outgoing" {
+  if (item.message?.direction === "Office to driver") {
+    return "Outgoing";
+  }
+
+  return "Incoming";
+}
+
+function FlowBadge({ flow }: { flow: "Incoming" | "Outgoing" }) {
+  const classes =
+    flow === "Outgoing"
+      ? "border-[#2563eb] bg-[#eff6ff] text-[#1d4ed8]"
+      : "border-[#16a34a] bg-[#f0fdf4] text-[#166534]";
+
+  return <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.12em] ${classes}`}>{flow}</span>;
 }
 
 function SummaryPopup({ title, detail, onClose }: { title: string; detail: string; onClose: () => void }) {
