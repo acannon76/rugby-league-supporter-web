@@ -118,12 +118,11 @@ export default function ArrivalsDeparturesPage() {
 
         <main className="flex-1 p-4 sm:p-6">
           <section className="overflow-hidden rounded-[28px] border border-[#d9e3ee] bg-white shadow-sm">
-            <div className="bg-[radial-gradient(circle_at_top_left,#0f3a6d_0%,#10203a_42%,#172d4f_100%)] px-6 py-7 text-white sm:px-8">
+            <div className="bg-[#e40000] px-6 py-7 text-white sm:px-8">
               <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                 <div className="max-w-4xl">
-                  <p className="text-xs font-black uppercase tracking-[0.22em] text-[#bfdbfe]">Modern board concept</p>
-                  <h1 className="mt-3 text-3xl font-black sm:text-4xl">Arrival & Departure Control Centre</h1>
-                  <p className="mt-4 max-w-3xl text-sm font-bold leading-6 text-[#dbe7f5]">
+                  <h1 className="text-3xl font-black sm:text-4xl">Arrival & Departure Control Centre</h1>
+                  <p className="mt-4 max-w-3xl text-sm font-bold leading-6 text-white/90">
                     Select a site and switch between Overview, Departures and Arrivals. Arrivals now show anything arrived in the last 30 minutes plus ETA movements in the next 2 hours, and departures drop off 30 minutes after departure.
                   </p>
                 </div>

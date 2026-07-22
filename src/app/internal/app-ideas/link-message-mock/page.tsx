@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, type Dispatch, type SetStateAction, useMemo, useState } from "react";
+import { Fragment, type Dispatch, type SetStateAction, useEffect, useMemo, useState } from "react";
+
+import { useDriverName } from "../../DriverName";
 
 type SideButton = {
   label: string;
@@ -55,21 +57,6 @@ const sideButtons: SideButton[] = [
     label: "RHC Team",
     icon: "RHC",
     href: "/internal/app-ideas/link-message-mock/rhc-team",
-  },
-  {
-    label: "Live Tracking",
-    icon: "GPS",
-    href: "/internal/app-ideas/link-message-mock/live-tracking",
-  },
-  {
-    label: "Reports",
-    icon: "REP",
-    href: "/internal/app-ideas/link-message-mock/reports",
-  },
-  {
-    label: "A&D Dashboard",
-    icon: "A&D",
-    href: "/internal/app-ideas/link-message-mock/arrivals-departures",
   },
 ];
 
@@ -239,7 +226,7 @@ const duties: DutyRow[] = Array.from({ length: 30 }, (_, index) => {
   const offset = ((index % 5) - 2) * 1.1;
 
   return {
-    duty: `NWH${String(index + 1).padStart(3, "0")}`,
+    duty: index === 2 ? "NWH254" : `NWH${String(index + 1).padStart(3, "0")}`,
     segments: pattern.segments.map((segment) => ({
       ...segment,
       start: Math.min(94, Math.max(1, Number((segment.start + offset).toFixed(1)))),
@@ -278,6 +265,17 @@ const mockTrailerNumbers = [
 ];
 
 const timeLabels = Array.from({ length: 16 }, (_, index) => `${String(index + 1).padStart(2, "0")}:00`);
+
+const COMMS_OPEN_STORAGE_KEY = "link-message-comms-open-items";
+
+type CommsStorageItem = {
+  duty?: string;
+  driver?: string;
+  source?: string;
+  message?: {
+    direction?: string;
+  };
+};
 
 function getMonday(date: Date) {
   const result = new Date(date);
@@ -407,6 +405,7 @@ function buildTravelTooltip(row: DutyRow, segmentIndex: number) {
 }
 
 export default function LinkMessageMockPage() {
+  const driverName = useDriverName();
   const [activeSideButton, setActiveSideButton] = useState("Settings");
   const [selectedDetail, setSelectedDetail] = useState(
     "Ready. Click a duty icon, left menu button or Gantt segment to test the mock interaction.",
@@ -416,6 +415,53 @@ export default function LinkMessageMockPage() {
   const [selectedRhcHoldingIds, setSelectedRhcHoldingIds] = useState<string[]>([]);
   const [activeDutyTab, setActiveDutyTab] = useState<"all" | "roadHaulage">("all");
   const [hoveredTravelSegment, setHoveredTravelSegment] = useState<HoveredTravelSegment | null>(null);
+  const [driverMessageDutyIds, setDriverMessageDutyIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    function refreshDriverMessageIndicators() {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      try {
+        const raw = window.localStorage.getItem(COMMS_OPEN_STORAGE_KEY);
+        if (!raw) {
+          setDriverMessageDutyIds([]);
+          return;
+        }
+
+        const parsed = JSON.parse(raw);
+        const openDriverDuties = Array.isArray(parsed)
+          ? Array.from(
+              new Set(
+                parsed
+                  .filter((item): item is CommsStorageItem => Boolean(item && typeof item === "object"))
+                  .filter((item) =>
+                    typeof item.duty === "string" &&
+                    typeof item.driver === "string" &&
+                    item.driver.trim().toLowerCase() === driverName.trim().toLowerCase() &&
+                    (item.message?.direction === "Driver to office" || item.source === "Breakdown"),
+                  )
+                  .map((item) => item.duty as string),
+              ),
+            )
+          : [];
+
+        setDriverMessageDutyIds(openDriverDuties);
+      } catch {
+        setDriverMessageDutyIds([]);
+      }
+    }
+
+    refreshDriverMessageIndicators();
+    window.addEventListener("storage", refreshDriverMessageIndicators);
+    window.addEventListener("focus", refreshDriverMessageIndicators);
+
+    return () => {
+      window.removeEventListener("storage", refreshDriverMessageIndicators);
+      window.removeEventListener("focus", refreshDriverMessageIndicators);
+    };
+  }, [driverName]);
 
   const today = useMemo(() => new Date(), []);
   const weekStart = useMemo(() => getMonday(today), [today]);
@@ -470,7 +516,7 @@ export default function LinkMessageMockPage() {
             ●
           </button>
           <div className="hidden text-right sm:block">
-            <p className="text-base font-black">Andrew Cannon</p>
+            <p className="text-base font-black">{driverName}</p>
             <p className="text-xs font-bold text-white/80">Mock dashboard user</p>
           </div>
           <button
@@ -760,8 +806,11 @@ export default function LinkMessageMockPage() {
                     >
                       <div className="z-20 border-r border-[#d9dee6] px-3 py-2">
                         <div className="flex items-center gap-2">
-                          <span className="h-3 w-3 rounded-full bg-[#2c80e5]" />
-                          <p className="font-black text-[#374151]">{duty.duty}</p>
+                          <span className={`h-3 w-3 rounded-full ${driverMessageDutyIds.includes(duty.duty) ? "bg-[#e40000]" : "bg-[#2c80e5]"}`} />
+                          <p className={`font-black ${driverMessageDutyIds.includes(duty.duty) ? "text-[#e40000]" : "text-[#374151]"}`}>{duty.duty}</p>
+                          {driverMessageDutyIds.includes(duty.duty) ? (
+                            <span className="text-[10px] font-black uppercase tracking-[0.12em] text-[#e40000]">Driver Msg</span>
+                          ) : null}
                           {isRoadHaulageDuty(duty.duty) ? (
                             <span className="inline-flex h-5 items-center rounded-sm bg-[#facc15] px-1.5 text-[10px] font-black uppercase leading-none text-[#1f2937] shadow-sm">
                               RH
