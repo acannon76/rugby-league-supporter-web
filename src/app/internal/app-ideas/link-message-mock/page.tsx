@@ -58,6 +58,21 @@ const sideButtons: SideButton[] = [
     icon: "RHC",
     href: "/internal/app-ideas/link-message-mock/rhc-team",
   },
+  {
+    label: "Live Tracking",
+    icon: "GPS",
+    href: "/internal/app-ideas/link-message-mock/live-tracking",
+  },
+  {
+    label: "Reports",
+    icon: "REP",
+    href: "/internal/app-ideas/link-message-mock/reports",
+  },
+  {
+    label: "A&D Dashboard",
+    icon: "A&D",
+    href: "/internal/app-ideas/link-message-mock/arrivals-departures",
+  },
 ];
 
 const dutyActions: DutyAction[] = [
@@ -544,7 +559,7 @@ export default function LinkMessageMockPage() {
       </header>
 
       <div className="flex">
-        <aside className="flex min-h-[calc(100vh-64px)] w-[68px] flex-col bg-[#252c33] text-white">
+        <aside className="flex h-[calc(100vh-64px)] w-[68px] shrink-0 flex-col overflow-y-auto bg-[#252c33] text-white">
           {sideButtons.map((button) => {
             const isActive = button.label === activeSideButton;
             const buttonClasses = `relative flex h-[64px] items-center justify-center border-b border-white/10 transition ${
