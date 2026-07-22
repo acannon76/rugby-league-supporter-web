@@ -416,6 +416,7 @@ export default function LinkMessageMockPage() {
   const [activeDutyTab, setActiveDutyTab] = useState<"all" | "roadHaulage">("all");
   const [hoveredTravelSegment, setHoveredTravelSegment] = useState<HoveredTravelSegment | null>(null);
   const [driverMessageDutyIds, setDriverMessageDutyIds] = useState<string[]>([]);
+  const [showIssuesOnly, setShowIssuesOnly] = useState(false);
 
   useEffect(() => {
     function refreshDriverMessageIndicators() {
@@ -475,10 +476,22 @@ export default function LinkMessageMockPage() {
     [weekStart],
   );
   const weekEnd = days[6];
-  const visibleDuties = useMemo(
-    () => (activeDutyTab === "roadHaulage" ? duties.filter((duty) => isRoadHaulageDuty(duty.duty)) : duties),
-    [activeDutyTab],
-  );
+  const visibleDuties = useMemo(() => {
+    const baseDuties = activeDutyTab === "roadHaulage" ? duties.filter((duty) => isRoadHaulageDuty(duty.duty)) : duties;
+
+    if (!showIssuesOnly) {
+      return baseDuties;
+    }
+
+    return baseDuties.filter((duty) => {
+      const hasDriverMessage = driverMessageDutyIds.includes(duty.duty);
+      const hasLateTravelLeg = duty.segments.some(
+        (segment, segmentIndex) => segment.label === "Travel" && getTravelTimingStatus(duty, segmentIndex) === "late",
+      );
+
+      return hasDriverMessage || hasLateTravelLeg;
+    });
+  }, [activeDutyTab, driverMessageDutyIds, showIssuesOnly]);
 
   return (
     <main className="min-h-screen bg-[#f4f6f9] font-sans text-[#1d2633]">
@@ -721,6 +734,22 @@ export default function LinkMessageMockPage() {
                 <label className="flex items-center gap-2">
                   <input type="checkbox" className="h-4 w-4 rounded border-[#cbd5e1]" />
                   Show Additional Details
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={showIssuesOnly}
+                    onChange={(event) => {
+                      setShowIssuesOnly(event.target.checked);
+                      setSelectedDetail(
+                        event.target.checked
+                          ? "Show Issues enabled. Displaying duties with driver messages or late travel legs."
+                          : "Show Issues disabled. Displaying all duties in the selected tab.",
+                      );
+                    }}
+                    className="h-4 w-4 rounded border-[#cbd5e1]"
+                  />
+                  Show Issues
                 </label>
                 <button
                   type="button"
