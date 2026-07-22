@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import DriverName from "../../../../DriverName";
-import ExportDataMenu from "../../../ExportDataMenu";
-import { exportTabularData, type ExportFormat } from "../../../exportData";
 import { useEffect, useMemo, useState } from "react";
 
 type CommsSource = "RTC" | "Breakdown" | "Messaging" | "PMT Confirmation";
@@ -58,10 +56,12 @@ const sidebarItems = [
   { label: "Vehicle view", icon: "🚛", href: "/internal/app-ideas/link-message-mock" },
   { label: "Trailer view", icon: "▰", href: "/internal/app-ideas/link-message-mock" },
   { label: "Fleet view", icon: "▱", href: "/internal/app-ideas/link-message-mock" },
-  { label: "Comms", icon: "💬", href: "/internal/app-ideas/link-message-mock/comms" },
+  { label: "Comms", icon: "💬", href: "/internal/app-ideas/link-message-mock/comms", active: true },
   { label: "Debrief", icon: "🧾", href: "/internal/app-ideas/link-message-mock/debrief" },
   { label: "RHC Team", icon: "RHC", href: "/internal/app-ideas/link-message-mock/rhc-team" },
-  { label: "History", icon: "HIS", href: "/internal/app-ideas/link-message-mock/comms/history", active: true },
+  { label: "Live Tracking", icon: "GPS", href: "/internal/app-ideas/link-message-mock/live-tracking" },
+  { label: "Reports", icon: "REP", href: "/internal/app-ideas/link-message-mock/reports" },
+  { label: "A&D Dashboard", icon: "A&D", href: "/internal/app-ideas/link-message-mock/arrivals-departures" },
 ];
 
 export default function CommsHistoryPage() {
@@ -83,7 +83,7 @@ export default function CommsHistoryPage() {
     });
   }, [records, sourceFilter, dutyFilter, managerFilter]);
 
-  function exportHistory(format: ExportFormat) {
+  function exportHistoryToCsv() {
     const headers = [
       "Source",
       "Duty",
@@ -128,14 +128,19 @@ export default function CommsHistoryPage() {
       record.messageThreadSummary || buildThreadSummary(record),
     ]);
 
-    const today = new Date().toISOString().slice(0, 10);
-    exportTabularData({
-      format,
-      headers,
-      rows,
-      fileName: `comms-history-${today}`,
-      title: "Comms History Data",
-    });
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `comms-history-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   function resetMockHistory() {
@@ -174,11 +179,13 @@ export default function CommsHistoryPage() {
                 >
                   Mock Reset
                 </button>
-                <ExportDataMenu
-                  disabled={filteredRecords.length === 0}
-                  onExport={exportHistory}
-                  buttonClassName="rounded-lg border border-[#111827] bg-white px-4 py-2 text-sm font-black uppercase tracking-[0.12em] text-[#111827] transition hover:border-[#e40000] hover:text-[#e40000] disabled:cursor-not-allowed disabled:border-[#cbd5e1] disabled:text-[#94a3b8]"
-                />
+                <button
+                  type="button"
+                  onClick={exportHistoryToCsv}
+                  className="rounded-lg border border-[#111827] bg-white px-4 py-2 text-sm font-black uppercase tracking-[0.12em] text-[#111827] transition hover:border-[#e40000] hover:text-[#e40000]"
+                >
+                  Export to Excel
+                </button>
                 <Link
                   href="/internal/app-ideas/link-message-mock/comms"
                   className="rounded-lg border border-[#ccd5e2] bg-white px-4 py-2 text-sm font-black text-[#4b5563] no-underline transition hover:border-[#e40000]"

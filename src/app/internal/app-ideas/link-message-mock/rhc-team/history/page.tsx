@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import ExportDataMenu from "../../../ExportDataMenu";
-import { exportTabularData, type ExportFormat } from "../../../exportData";
 import DriverName from "../../../../DriverName";
 import { useEffect, useMemo, useState } from "react";
 
@@ -104,8 +102,10 @@ const sidebarItems = [
     alertCount: 4,
   },
   { label: "Debrief", icon: "🧾", href: "/internal/app-ideas/link-message-mock/debrief" },
-  { label: "RHC Team", icon: "RHC", href: "/internal/app-ideas/link-message-mock/rhc-team" },
-  { label: "RHC History", icon: "HIS", href: "/internal/app-ideas/link-message-mock/rhc-team/history", active: true },
+  { label: "RHC Team", icon: "RHC", href: "/internal/app-ideas/link-message-mock/rhc-team", active: true },
+  { label: "Live Tracking", icon: "GPS", href: "/internal/app-ideas/link-message-mock/live-tracking" },
+  { label: "Reports", icon: "REP", href: "/internal/app-ideas/link-message-mock/reports" },
+  { label: "A&D Dashboard", icon: "A&D", href: "/internal/app-ideas/link-message-mock/arrivals-departures" },
 ];
 
 export default function RhcTeamHistoryPage() {
@@ -147,8 +147,8 @@ export default function RhcTeamHistoryPage() {
     });
   }, [orders, searchText, weekFilter, dutyFilter, dayFilter, planTypeFilter]);
 
-  function exportHistory(format: ExportFormat) {
-    exportOrders(filteredOrders, "RHC-Team-History-Export", format);
+  function exportHistory() {
+    exportOrdersToExcel(filteredOrders, "RHC-Team-History-Export");
   }
 
   function clearHistory() {
@@ -185,11 +185,13 @@ export default function RhcTeamHistoryPage() {
                 >
                   ← Back to RHC Order
                 </Link>
-                <ExportDataMenu
-                  disabled={filteredOrders.length === 0}
-                  onExport={exportHistory}
-                  buttonClassName="rounded-lg border border-[#111827] bg-white px-4 py-2 text-sm font-black text-[#111827] transition hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:border-[#cbd5e1] disabled:text-[#94a3b8]"
-                />
+                <button
+                  type="button"
+                  onClick={exportHistory}
+                  className="rounded-lg border border-[#111827] bg-white px-4 py-2 text-sm font-black text-[#111827] transition hover:bg-[#f3f4f6]"
+                >
+                  Export To Excel
+                </button>
                 <button
                   type="button"
                   onClick={clearHistory}
@@ -387,19 +389,41 @@ function formatTableCell(value: string | number | boolean | undefined) {
   return String(value ?? "");
 }
 
-function exportOrders(orders: RhcOrder[], fileName: string, format: ExportFormat) {
-  const headers = rhcJobTemplateColumns.map((column) => column.header);
-  const rows = orders.map((order) =>
-    rhcJobTemplateColumns.map((column) => column.value(order)),
-  );
+function exportOrdersToExcel(orders: RhcOrder[], fileName: string) {
+  if (typeof window === "undefined" || orders.length === 0) {
+    return;
+  }
 
-  exportTabularData({
-    format,
-    headers,
-    rows,
-    fileName: `${fileName}-${new Date().toISOString().slice(0, 10)}`,
-    title: "RHC Team History Data",
-  });
+  const headerHtml = rhcJobTemplateColumns
+    .map((column) => `<th>${escapeExcelCell(column.header)}</th>`)
+    .join("");
+
+  const rowsHtml = orders
+    .map((order) =>
+      `<tr>${rhcJobTemplateColumns
+        .map((column) => `<td>${escapeExcelCell(column.value(order))}</td>`)
+        .join("")}</tr>`,
+    )
+    .join("");
+
+  const html = `<!doctype html><html><head><meta charset="utf-8" /></head><body><table border="1"><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+  const blob = new Blob(["\ufeff", html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${fileName}-${new Date().toISOString().slice(0, 10)}.xls`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
+function escapeExcelCell(value: string | number | boolean | undefined) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function readOrdersFromStorage(): RhcOrder[] {

@@ -532,7 +532,9 @@ const sidebarItems = [
   },
   { label: "Debrief", icon: "🧾", href: "/internal/app-ideas/link-message-mock/debrief" },
   { label: "RHC Team", icon: "RHC", href: "/internal/app-ideas/link-message-mock/rhc-team" },
-  { label: "History", icon: "HIS", href: "/internal/app-ideas/link-message-mock/comms/history" },
+  { label: "Live Tracking", icon: "GPS", href: "/internal/app-ideas/link-message-mock/live-tracking" },
+  { label: "Reports", icon: "REP", href: "/internal/app-ideas/link-message-mock/reports" },
+  { label: "A&D Dashboard", icon: "A&D", href: "/internal/app-ideas/link-message-mock/arrivals-departures" },
 ];
 
 export default function LinkCommsDashboardPage() {
