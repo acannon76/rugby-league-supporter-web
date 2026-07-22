@@ -40,7 +40,7 @@ export default function MessagingPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<MessageCategory | "All">("All");
   const [priorityFilter, setPriorityFilter] = useState<DriverMessagePriority | "All">("All");
-  const [inboxFilter, setInboxFilter] = useState<InboxFilter>("Unread");
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>("All");
   const [sentFilter, setSentFilter] = useState<SentFilter>("All");
   const [composeCategory, setComposeCategory] = useState<MessageCategory>("Home VOC Message");
   const [composePriority, setComposePriority] = useState<DriverMessagePriority>("Normal");
@@ -129,7 +129,7 @@ export default function MessagingPage() {
     setActiveView(view);
     setSelectedMessageId(null);
     setNotice(null);
-    if (view === "Inbox") setInboxFilter("Unread");
+    if (view === "Inbox") setInboxFilter("All");
   }
 
   function sendMessage() {
@@ -251,8 +251,7 @@ export default function MessagingPage() {
                 ))}
               </div>
 
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <InfoTile label="Driver" value={driverName} />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <InfoTile label="Duty" value={DUTY_NUMBER} />
                 <InfoTile label="Vehicle ID" value={VEHICLE_ID} />
                 <InfoTile label="Trailer ID" value={TRAILER_ID} />
@@ -284,7 +283,7 @@ export default function MessagingPage() {
                   <FilterSelect label="Category" value={categoryFilter} onChange={(value) => setCategoryFilter(value as MessageCategory | "All")} options={["All", ...categories]} />
                   <FilterSelect label="Priority" value={priorityFilter} onChange={(value) => setPriorityFilter(value as DriverMessagePriority | "All")} options={["All", "Critical", "High", "Normal"]} />
                   {activeView === "Inbox" ? (
-                    <FilterSelect label="Read status" value={inboxFilter} onChange={(value) => setInboxFilter(value as InboxFilter)} options={["Unread", "Read", "All"]} />
+                    <FilterSelect label="Read status" value={inboxFilter} onChange={(value) => setInboxFilter(value as InboxFilter)} options={["All", "Unread", "Read"]} />
                   ) : (
                     <FilterSelect label="Office read" value={sentFilter} onChange={(value) => setSentFilter(value as SentFilter)} options={["All", "Office unread", "Office read"]} />
                   )}
@@ -488,7 +487,10 @@ function FilterInput({ label, value, onChange }: { label: string; value: string;
 }
 
 function FilterSelect({ label, value, options, onChange }: { label: string; value: string; options: readonly string[]; onChange: (value: string) => void }) {
-  return <label><span className="text-xs font-black uppercase tracking-[0.12em] text-[#61748b]">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d5dce4] px-3 text-sm font-bold text-[#001b3a] outline-none focus:border-[#c4002f]">{options.map((option) => <option key={option} value={option}>{option === "All" ? `All ${label.toLowerCase()}` : option}</option>)}</select></label>;
+  return <label><span className="text-xs font-black uppercase tracking-[0.12em] text-[#61748b]">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d5dce4] px-3 text-sm font-bold text-[#001b3a] outline-none focus:border-[#c4002f]">{options.map((option) => {
+    const optionLabel = option === "All" && label === "Read status" ? "All Messages" : option === "All" ? `All ${label.toLowerCase()}` : option;
+    return <option key={option} value={option}>{optionLabel}</option>;
+  })}</select></label>;
 }
 
 function CategoryBadge({ category }: { category: MessageCategory }) {

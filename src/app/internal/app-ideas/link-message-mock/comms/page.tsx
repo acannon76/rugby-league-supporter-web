@@ -553,15 +553,13 @@ export default function LinkCommsDashboardPage() {
   const [activeItem, setActiveItem] = useState<CommsItem | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replyPriority, setReplyPriority] = useState<Priority>("Normal");
-  const [retainUntilRead, setRetainUntilRead] = useState(false);
   const [managerName, setManagerName] = useState(MANAGER_NAME);
   const [summaryPopup, setSummaryPopup] = useState<{ title: string; detail: string } | null>(null);
   const [newMessageModalOpen, setNewMessageModalOpen] = useState(false);
   const [newMessageDriver, setNewMessageDriver] = useState(driverNames[0]);
-  const [newMessageDuty, setNewMessageDuty] = useState("NWH426");
+  const [newMessageDuty, setNewMessageDuty] = useState("NWH254");
   const [newMessageText, setNewMessageText] = useState("");
   const [newMessagePriority, setNewMessagePriority] = useState<Priority>("Normal");
-  const [newMessageRetainUntilRead, setNewMessageRetainUntilRead] = useState(false);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -620,7 +618,6 @@ export default function LinkCommsDashboardPage() {
     setActiveItem(nextItem);
     setReplyText(nextItem.pendingReplyText || defaultReplyForItem(nextItem));
     setReplyPriority(nextItem.pendingReplyPriority || "Normal");
-    setRetainUntilRead(Boolean(nextItem.retainUntilDriverRead));
     setManagerName(nextItem.pendingManager || MANAGER_NAME);
   }
 
@@ -711,7 +708,7 @@ export default function LinkCommsDashboardPage() {
   }
 
   function saveHistoryRecord(item: CommsItem, action: ActionType) {
-    if (retainUntilRead && action !== "Marked actioned") {
+    if (action !== "Marked actioned") {
       queueAwaitingDriverRead(item, action);
       return;
     }
@@ -741,43 +738,7 @@ export default function LinkCommsDashboardPage() {
   }
 
   function sendDriverReplyOnly(item: CommsItem) {
-    if (retainUntilRead) {
-      queueAwaitingDriverRead(item, "Reply sent");
-      return;
-    }
-
-    const reply = replyText.trim() || defaultReplyForItem(item);
-    const replyEntry = createThreadEntry({
-      sender: "Office",
-      senderName: managerName.trim() || MANAGER_NAME,
-      message: reply,
-      priority: replyPriority,
-      direction: "Office to driver",
-    });
-
-    const nextItems = items.map((currentItem) =>
-      currentItem.id === item.id
-        ? {
-            ...currentItem,
-            status: "Office review" as CommsStatus,
-            summary: `${currentItem.summary} Latest office reply (${replyPriority}): ${reply}`,
-            messageThread: [...getMessageThread(currentItem), replyEntry],
-            retainUntilDriverRead: false,
-            driverReadConfirmed: false,
-            pendingAction: undefined,
-            pendingManager: undefined,
-            pendingReplyText: undefined,
-            pendingReplyPriority: undefined,
-          }
-        : currentItem,
-    );
-
-    persistOpenItems(nextItems);
-    setActiveItem(null);
-    setSummaryPopup({
-      title: `Reply sent to ${item.driver}`,
-      detail: `${item.duty} remains in the Comms queue until it is marked as actioned. Reply priority: ${replyPriority}. Reply: ${reply}`,
-    });
+    queueAwaitingDriverRead(item, "Reply sent");
   }
 
   function createManualDriverMessage() {
@@ -787,17 +748,15 @@ export default function LinkCommsDashboardPage() {
       id: `MANUAL-${Date.now()}`,
       source: "Messaging",
       priority: newMessagePriority,
-      status: newMessageRetainUntilRead ? "Awaiting driver read" : "Office review",
-      duty: newMessageDuty.trim() || "NWH426",
+      status: "Awaiting driver read",
+      duty: newMessageDuty.trim() || "NWH254",
       driver: newMessageDriver,
       vehicle: "PE68UHD",
       trailer: "7338014",
       received: now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
       receivedDate: now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" }),
       title: "Office message to driver",
-      summary: newMessageRetainUntilRead
-        ? `Mock office message created for ${newMessageDriver}. Awaiting driver read confirmation.`
-        : `Mock office message created for ${newMessageDriver}. Awaiting actioned confirmation.`,
+      summary: `Mock office message created for ${newMessageDriver}. Awaiting driver read confirmation.`,
       message: {
         route: "Office Communications > Message Driver",
         direction: "Office to driver",
@@ -812,7 +771,7 @@ export default function LinkCommsDashboardPage() {
           direction: "Office to driver",
         }),
       ],
-      retainUntilDriverRead: newMessageRetainUntilRead,
+      retainUntilDriverRead: true,
       driverReadConfirmed: false,
       pendingAction: "Reply sent",
       pendingManager: MANAGER_NAME,
@@ -826,12 +785,9 @@ export default function LinkCommsDashboardPage() {
     setNewMessageModalOpen(false);
     setNewMessageText("");
     setNewMessagePriority("Normal");
-    setNewMessageRetainUntilRead(false);
     setSummaryPopup({
       title: `Message created for ${newMessageDriver}`,
-      detail: newMessageRetainUntilRead
-        ? `${newItem.duty} has been added to the Comms queue and will stay there until the driver reads and confirms the message.`
-        : `${newItem.duty} has been added to the Comms queue and will remain there until actioned.`,
+      detail: `${newItem.duty} has been added to the Comms queue and will remain there until the driver has read the message.`,
     });
   }
 
@@ -841,8 +797,6 @@ export default function LinkCommsDashboardPage() {
     setItems(initialCommsItems);
     clearFilters();
     setActiveItem(null);
-    setRetainUntilRead(false);
-    setNewMessageRetainUntilRead(false);
     setSummaryPopup({
       title: "Comms mock reset",
       detail: "The Comms queue has been restored to the original 16 mock examples and Comms History has been cleared.",
@@ -1094,11 +1048,9 @@ export default function LinkCommsDashboardPage() {
           managerName={managerName}
           replyText={replyText}
           replyPriority={replyPriority}
-          retainUntilRead={retainUntilRead}
           onManagerNameChange={setManagerName}
           onReplyTextChange={setReplyText}
           onReplyPriorityChange={setReplyPriority}
-          onRetainUntilReadChange={setRetainUntilRead}
           onClose={() => setActiveItem(null)}
           onSaveHistory={saveHistoryRecord}
           onReplyOnly={sendDriverReplyOnly}
@@ -1113,12 +1065,10 @@ export default function LinkCommsDashboardPage() {
           duty={newMessageDuty}
           message={newMessageText}
           priority={newMessagePriority}
-          retainUntilRead={newMessageRetainUntilRead}
           onDriverChange={setNewMessageDriver}
           onDutyChange={setNewMessageDuty}
           onMessageChange={setNewMessageText}
           onPriorityChange={setNewMessagePriority}
-          onRetainUntilReadChange={setNewMessageRetainUntilRead}
           onClose={() => setNewMessageModalOpen(false)}
           onCreate={createManualDriverMessage}
         />
@@ -1140,11 +1090,9 @@ function CommunicationModal({
   managerName,
   replyText,
   replyPriority,
-  retainUntilRead,
   onManagerNameChange,
   onReplyTextChange,
   onReplyPriorityChange,
-  onRetainUntilReadChange,
   onClose,
   onSaveHistory,
   onReplyOnly,
@@ -1154,11 +1102,9 @@ function CommunicationModal({
   managerName: string;
   replyText: string;
   replyPriority: Priority;
-  retainUntilRead: boolean;
   onManagerNameChange: (value: string) => void;
   onReplyTextChange: (value: string) => void;
   onReplyPriorityChange: (value: Priority) => void;
-  onRetainUntilReadChange: (value: boolean) => void;
   onClose: () => void;
   onSaveHistory: (item: CommsItem, action: ActionType) => void;
   onReplyOnly: (item: CommsItem) => void;
@@ -1195,7 +1141,6 @@ function CommunicationModal({
             <ChatThreadPanel thread={getMessageThread(item)} />
 
             {item.pmt && <PmtDetailsPanel item={item} details={item.pmt} />}
-            {item.message && <MessageDetailsPanel details={item.message} />}
             {item.breakdown && <BreakdownDetailsPanel details={item.breakdown} />}
             {item.rtc && <RtcDetailsPanel details={item.rtc} />}
           </section>
@@ -1236,18 +1181,9 @@ function CommunicationModal({
               </select>
             </label>
 
-            <label className="mt-4 flex items-start gap-3 rounded-lg border border-[#d9dee6] bg-white p-3">
-              <input
-                type="checkbox"
-                checked={retainUntilRead}
-                onChange={(event) => onRetainUntilReadChange(event.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-[#ccd5e2]"
-              />
-              <span className="text-sm font-bold leading-6 text-[#4b5563]">
-                <span className="block font-black text-[#111827]">Retain message until driver reads and confirms</span>
-                Keep this office message in Comms even if the duty is completed. The item will only clear once the driver confirms they have read it via the mock popup.
-              </span>
-            </label>
+            <div className="mt-4 rounded-lg border border-[#d9dee6] bg-white p-3 text-sm font-bold leading-6 text-[#4b5563]">
+              Driver Comms will be retained until the driver has read the message.
+            </div>
 
             {item.retainUntilDriverRead && !item.driverReadConfirmed ? (
               <div className="mt-4 rounded-lg border border-[#2c80e5] bg-[#eef6ff] p-3 text-sm font-bold leading-6 text-[#1d4ed8]">
@@ -1385,20 +1321,6 @@ function PmtDetailsPanel({ item, details }: { item: CommsItem; details: PmtDetai
   );
 }
 
-function MessageDetailsPanel({ details }: { details: MessageDetails }) {
-  return (
-    <section className="rounded-xl border border-[#d9dee6] bg-white p-4 shadow-sm">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e40000]">Driver message</p>
-      <h3 className="mt-2 text-2xl font-black text-[#111827]">Message from PDA</h3>
-      <div className="mt-4 rounded-lg border border-[#ccd5e2] bg-[#f8fafc] p-4 text-base font-bold leading-7 text-[#111827]">
-        “{details.messageText}”
-      </div>
-      <p className="mt-3 text-sm font-bold text-[#6b7280]">Route: {details.route}</p>
-      {details.direction && <p className="mt-2 text-sm font-bold text-[#6b7280]">Direction: {details.direction}</p>}
-    </section>
-  );
-}
-
 function BreakdownDetailsPanel({ details }: { details: BreakdownDetails }) {
   return (
     <section className="rounded-xl border border-[#d9dee6] bg-white p-4 shadow-sm">
@@ -1442,12 +1364,10 @@ function NewDriverMessageModal({
   duty,
   message,
   priority,
-  retainUntilRead,
   onDriverChange,
   onDutyChange,
   onMessageChange,
   onPriorityChange,
-  onRetainUntilReadChange,
   onClose,
   onCreate,
 }: {
@@ -1456,12 +1376,10 @@ function NewDriverMessageModal({
   duty: string;
   message: string;
   priority: Priority;
-  retainUntilRead: boolean;
   onDriverChange: (value: string) => void;
   onDutyChange: (value: string) => void;
   onMessageChange: (value: string) => void;
   onPriorityChange: (value: Priority) => void;
-  onRetainUntilReadChange: (value: boolean) => void;
   onClose: () => void;
   onCreate: () => void;
 }) {
@@ -1473,7 +1391,7 @@ function NewDriverMessageModal({
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e40000]">New office message</p>
             <h2 className="mt-2 text-2xl font-black text-[#111827]">Message any driver</h2>
             <p className="mt-2 text-sm font-bold leading-6 text-[#6b7280]">
-              This creates a mock office-to-driver message and keeps it in Comms until it is actioned.
+              This creates a mock office-to-driver message. Driver Comms will be retained until the driver has read the message.
             </p>
           </div>
           <button
@@ -1533,18 +1451,9 @@ function NewDriverMessageModal({
           />
         </label>
 
-        <label className="mt-4 flex items-start gap-3 rounded-lg border border-[#d9dee6] bg-[#f8fafc] p-3">
-          <input
-            type="checkbox"
-            checked={retainUntilRead}
-            onChange={(event) => onRetainUntilReadChange(event.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-[#ccd5e2]"
-          />
-          <span className="text-sm font-bold leading-6 text-[#4b5563]">
-            <span className="block font-black text-[#111827]">Retain in Comms until driver reads it</span>
-            Use this for office messages that must stay visible until the driver confirms they have read the message.
-          </span>
-        </label>
+        <div className="mt-4 rounded-lg border border-[#d9dee6] bg-[#f8fafc] p-3 text-sm font-bold leading-6 text-[#4b5563]">
+          Driver Comms will be retained until the driver has read the message.
+        </div>
 
         <button
           type="button"
