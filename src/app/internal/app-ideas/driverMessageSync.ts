@@ -48,6 +48,7 @@ export type DriverCommsItem = {
 export const COMMS_OPEN_STORAGE_KEY = "link-message-comms-open-items";
 export const DRIVER_MESSAGE_READ_STORAGE_KEY = "driver-messaging-read-items";
 export const DRIVER_MESSAGE_STORE_CHANGED_EVENT = "driver-message-store-changed";
+const UNREAD_MESSAGE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function readOpenCommsItems(): DriverCommsItem[] {
   if (typeof window === "undefined") {
@@ -144,12 +145,19 @@ export function getUnreadOfficeMessages(
   driverName: string,
   duty: string,
 ) {
+  const retentionStart = Date.now() - UNREAD_MESSAGE_RETENTION_MS;
+
   return items
     .filter((item) => isForDriverDuty(item, driverName, duty))
     .map((item) => ({ item, message: getLatestOfficeMessage(item), readKey: getIncomingReadKey(item) }))
-    .filter((record): record is { item: DriverCommsItem; message: DriverMessageThreadEntry; readKey: string } =>
-      Boolean(record.message) && !readKeys.includes(record.readKey),
-    );
+    .filter((record): record is { item: DriverCommsItem; message: DriverMessageThreadEntry; readKey: string } => {
+      if (!record.message || readKeys.includes(record.readKey)) {
+        return false;
+      }
+
+      const receivedAt = parseDriverMessageTimestamp(record.message.timestamp);
+      return receivedAt === 0 || receivedAt >= retentionStart;
+    });
 }
 
 export function priorityRank(priority: DriverMessagePriority) {
@@ -169,6 +177,18 @@ export function normaliseDate(value: string) {
   }
 
   return parts[2].length === 2 ? `${parts[0]}/${parts[1]}/20${parts[2]}` : value;
+}
+
+function parseDriverMessageTimestamp(timestamp: string) {
+  const ukMatch = timestamp.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})[, ]+\s*(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (ukMatch) {
+    const [, dayText, monthText, yearText, hourText, minuteText, secondText = "0"] = ukMatch;
+    const year = Number(yearText.length === 2 ? `20${yearText}` : yearText);
+    return new Date(year, Number(monthText) - 1, Number(dayText), Number(hourText), Number(minuteText), Number(secondText)).getTime();
+  }
+
+  const parsed = Date.parse(timestamp);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 function normalise(value: string) {

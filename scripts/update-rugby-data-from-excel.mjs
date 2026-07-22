@@ -323,7 +323,7 @@ function buildLeagueTable(rows) {
 
     home.pointsFor += row.homeScore;
     home.pointsAgainst += row.awayScore;
-    away.pointsFor += row.awayScore;
+    away.pointsFor += row.awayScore;s
     away.pointsAgainst += row.homeScore;
 
     if (row.homeScore > row.awayScore) {
