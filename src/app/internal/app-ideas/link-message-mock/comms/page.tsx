@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { DRIVER_MESSAGE_STORE_CHANGED_EVENT } from "../../driverMessageSync";
+
 type CommsSource = "RTC" | "Breakdown" | "Messaging" | "PMT Confirmation";
 type CommsStatus = "New" | "Office review" | "Awaiting driver read" | "Actioned";
 type Priority = "Critical" | "High" | "Normal";
@@ -1992,6 +1994,7 @@ function getCurrentMockDriverName(item: CommsItem, index: number) {
 
 function writeOpenItems(items: CommsItem[]) {
   localStorage.setItem(COMMS_OPEN_STORAGE_KEY, JSON.stringify(items));
+  window.dispatchEvent(new Event(DRIVER_MESSAGE_STORE_CHANGED_EVENT));
 }
 
 function readHistoryRecords(): CommsHistoryRecord[] {

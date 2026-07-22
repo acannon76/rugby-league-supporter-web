@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import VehicleCheckTimer, { resetVehicleCheckMockup } from "../vehicle-checks/VehicleCheckTimer";
 import { resetDriverPdaManifestMockup } from "./driverPdaManifestData";
 import {
@@ -9,6 +9,14 @@ import {
   saveDriverSession,
 } from "../driverPdaSession";
 import { useDriverSession } from "../DriverName";
+import {
+  DRIVER_MESSAGE_STORE_CHANGED_EVENT,
+  getUnreadOfficeMessages,
+  priorityRank,
+  readDriverReadKeys,
+  readOpenCommsItems,
+  writeDriverReadKeys,
+} from "./driverMessageSync";
 
 type AppButton = {
   title: string;
@@ -23,6 +31,12 @@ type AppButton = {
 };
 
 type MessageLevel = "none" | "normal" | "high" | "critical";
+
+type MessageAlert = {
+  level: MessageLevel;
+  count: number;
+  latestText: string;
+};
 
 type MessageLevelConfig = {
   level: Exclude<MessageLevel, "none">;
@@ -149,8 +163,52 @@ const appButtons: AppButton[] = [
 
 export default function HgvDriverPdaMockupClient() {
   const { isLoggedIn, driverName } = useDriverSession();
-  const [messageLevel, setMessageLevel] = useState<MessageLevel>("none");
+  const [messageAlert, setMessageAlert] = useState<MessageAlert>({ level: "none", count: 0, latestText: "" });
+  const messageLevel = messageAlert.level;
   const messageConfig = messageLevel === "none" ? null : messageLevelConfigs[messageLevel];
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setMessageAlert({ level: "none", count: 0, latestText: "" });
+      return;
+    }
+
+    function refreshMessageAlert() {
+      const unreadMessages = getUnreadOfficeMessages(
+        readOpenCommsItems(),
+        readDriverReadKeys(),
+        driverName,
+        "NWH254",
+      );
+
+      if (!unreadMessages.length) {
+        setMessageAlert({ level: "none", count: 0, latestText: "" });
+        return;
+      }
+
+      const highestMessage = unreadMessages.reduce((highest, current) =>
+        priorityRank(current.message.priority) > priorityRank(highest.message.priority) ? current : highest,
+      );
+      const level = highestMessage.message.priority.toLowerCase() as Exclude<MessageLevel, "none">;
+
+      setMessageAlert({
+        level,
+        count: unreadMessages.length,
+        latestText: highestMessage.message.message,
+      });
+    }
+
+    refreshMessageAlert();
+    window.addEventListener("storage", refreshMessageAlert);
+    window.addEventListener("focus", refreshMessageAlert);
+    window.addEventListener(DRIVER_MESSAGE_STORE_CHANGED_EVENT, refreshMessageAlert);
+
+    return () => {
+      window.removeEventListener("storage", refreshMessageAlert);
+      window.removeEventListener("focus", refreshMessageAlert);
+      window.removeEventListener(DRIVER_MESSAGE_STORE_CHANGED_EVENT, refreshMessageAlert);
+    };
+  }, [driverName, isLoggedIn]);
 
   function handleLogin(name: string) {
     saveDriverSession(name);
@@ -158,32 +216,16 @@ export default function HgvDriverPdaMockupClient() {
 
   function handleLogout() {
     clearDriverSession();
-    setMessageLevel("none");
   }
 
   function handleResetAllMocks() {
     resetAllDriverPdaMocks();
-    setMessageLevel("none");
+    writeDriverReadKeys([]);
+    setMessageAlert({ level: "none", count: 0, latestText: "" });
     window.alert("All Driver PDA mock journeys have been reset.");
   }
 
-  function handleMockMessage() {
-    setMessageLevel((current) => {
-      if (current === "none") {
-        return "normal";
-      }
 
-      if (current === "normal") {
-        return "high";
-      }
-
-      if (current === "high") {
-        return "critical";
-      }
-
-      return "none";
-    });
-  }
 
   if (!isLoggedIn) {
     return <DriverLoginScreen onLogin={handleLogin} />;
@@ -230,7 +272,7 @@ export default function HgvDriverPdaMockupClient() {
               <p className="text-xs font-black uppercase tracking-[0.16em]">
                 {messageConfig.heading}
               </p>
-              <p className="mt-2 text-base font-black">{messageConfig.text}</p>
+              <p className="mt-2 text-base font-black">{messageAlert.latestText || messageConfig.text}</p>
             </div>
 
             <div className="flex shrink-0 items-center gap-2" aria-label="Message priority options">
@@ -263,14 +305,15 @@ export default function HgvDriverPdaMockupClient() {
               key={button.title}
               button={button}
               messageConfig={messageConfig}
+              messageCount={messageAlert.count}
               onLogout={handleLogout}
             />
           ))}
 
           <MessagingControls
             messageConfig={messageConfig}
+            messageCount={messageAlert.count}
             onResetAllMocks={handleResetAllMocks}
-            onMockMessage={handleMockMessage}
           />
         </div>
       </section>
@@ -281,10 +324,12 @@ export default function HgvDriverPdaMockupClient() {
 function ActionCard({
   button,
   messageConfig,
+  messageCount,
   onLogout,
 }: {
   button: AppButton;
   messageConfig: MessageLevelConfig | null;
+  messageCount: number;
   onLogout: () => void;
 }) {
   const isMessagingActive = button.isMessaging && Boolean(messageConfig);
@@ -317,7 +362,9 @@ function ActionCard({
           isMessagingActive && messageConfig ? messageConfig.mutedTextClass : "text-[#61748b]"
         }`}
       >
-        {button.text}
+        {isMessagingActive && messageConfig
+          ? `${messageCount} unread ${messageConfig.label.toLowerCase()} priority message${messageCount === 1 ? "" : "s"}. Open Messaging to review.`
+          : button.text}
       </p>
 
       {button.redText && (
@@ -371,19 +418,19 @@ function ActionCard({
 
 function MessagingControls({
   messageConfig,
+  messageCount,
   onResetAllMocks,
-  onMockMessage,
 }: {
   messageConfig: MessageLevelConfig | null;
+  messageCount: number;
   onResetAllMocks: () => void;
-  onMockMessage: () => void;
 }) {
   const messageButtonClasses = messageConfig
     ? `${messageConfig.buttonClass} ${messageConfig.buttonHoverClass}`
     : "bg-[#e8f7ee] text-[#067a35] hover:bg-[#d9f7e5]";
 
   const messageButtonLabel = messageConfig
-    ? `${messageConfig.label} Message`
+    ? `${messageConfig.label} Message (${messageCount})`
     : "Message";
 
   return (
@@ -397,13 +444,12 @@ function MessagingControls({
           Reset
         </button>
 
-        <button
-          type="button"
-          onClick={onMockMessage}
-          className={`flex min-h-[42px] w-full items-center justify-center rounded-[14px] px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.14em] transition ${messageButtonClasses}`}
+        <Link
+          href="/internal/app-ideas/messaging"
+          className={`flex min-h-[42px] w-full items-center justify-center rounded-[14px] px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.14em] no-underline transition ${messageButtonClasses}`}
         >
           {messageButtonLabel}
-        </button>
+        </Link>
 
         <Link
           href="/internal/app-ideas/dct"
@@ -569,6 +615,9 @@ function resetAllDriverPdaMocks() {
     "hgv-brake-system-descriptions",
     "hgv-brake-system-photo-names",
     "driver-pda-rtc-report",
+    "link-message-comms-open-items",
+    "link-message-comms-history",
+    "driver-messaging-read-items",
   ];
 
   exactKeysToRemove.forEach((key) => window.localStorage.removeItem(key));
