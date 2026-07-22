@@ -1864,32 +1864,53 @@ function readOpenItems(): CommsItem[] {
   }
 
   try {
+    const actionedIds = new Set(
+      readHistoryRecords().map((record) => record.id.split("-").slice(0, -1).join("-")),
+    );
+    const availableMockItems = initialCommsItems.filter((item) => !actionedIds.has(item.id));
     const rawItems = localStorage.getItem(COMMS_OPEN_STORAGE_KEY);
+
     if (!rawItems) {
-      const actionedIds = new Set(readHistoryRecords().map((record) => record.id.split("-").slice(0, -1).join("-")));
-      return initialCommsItems.filter((item) => !actionedIds.has(item.id)).map(normaliseCommsItem);
+      return availableMockItems.map(normaliseCommsItem);
     }
 
     const parsed = JSON.parse(rawItems);
 
     if (!Array.isArray(parsed)) {
-      return initialCommsItems.map(normaliseCommsItem);
+      return availableMockItems.map(normaliseCommsItem);
     }
 
-    return parsed.map((item, index) =>
-      normaliseCommsItem({
-        ...item,
-        driver: getCurrentMockDriverName(item, index),
-      }),
-    );
+    const storedItems = parsed
+      .filter((item): item is CommsItem => Boolean(item && typeof item === "object" && item.id))
+      .filter((item) => !actionedIds.has(item.id))
+      .map((item, index) =>
+        normaliseCommsItem({
+          ...item,
+          driver: getCurrentMockDriverName(item, index),
+        }),
+      );
+
+    const storedIds = new Set(storedItems.map((item) => item.id));
+    const missingMockItems = availableMockItems
+      .filter((item) => !storedIds.has(item.id))
+      .map(normaliseCommsItem);
+
+    // Keep newly-created or updated stored messages first, then restore any
+    // original mock messages that are missing from localStorage.
+    return [...storedItems, ...missingMockItems];
   } catch {
     return initialCommsItems.map(normaliseCommsItem);
   }
 }
 
 function getCurrentMockDriverName(item: CommsItem, index: number) {
-  if (item.id?.startsWith("MANUAL-")) {
-    return item.driver || driverNames[0];
+  const isDriverPdaMessage =
+    item.id?.startsWith("DRV-") ||
+    item.message?.direction === "Driver to office" ||
+    (item.source === "Breakdown" && item.duty === "NWH254");
+
+  if (item.id?.startsWith("MANUAL-") || isDriverPdaMessage) {
+    return item.driver?.trim() || driverNames[0];
   }
 
   const matchingCurrentMock = initialCommsItems.find(
