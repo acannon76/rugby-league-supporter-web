@@ -1888,13 +1888,8 @@ function readOpenItems(): CommsItem[] {
 }
 
 function getCurrentMockDriverName(item: CommsItem, index: number) {
-  const isDriverPdaMessage =
-    item.id?.startsWith("DRV-") ||
-    item.message?.direction === "Driver to office" ||
-    (item.source === "Breakdown" && item.duty === "NWH254");
-
-  if (item.id?.startsWith("MANUAL-") || isDriverPdaMessage) {
-    return item.driver?.trim() || driverNames[0];
+  if (item.id?.startsWith("MANUAL-")) {
+    return item.driver || driverNames[0];
   }
 
   const matchingCurrentMock = initialCommsItems.find(

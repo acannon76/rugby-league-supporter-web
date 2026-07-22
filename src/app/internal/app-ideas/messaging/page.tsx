@@ -24,22 +24,11 @@ import {
 type MessageCategory = "Home VOC Message" | "Central Postal Control CPC" | "Breakdown";
 type DriverView = "Inbox" | "Sent" | "Compose";
 type InboxFilter = "Unread" | "Read" | "All";
-
-type ClearedMessageRecord = {
-  itemId: string;
-  readKey: string;
-  item: DriverCommsItem;
-  clearedAt: number;
-  expiresAt: number;
-};
 type SentFilter = "All" | "Office unread" | "Office read";
 
 const DUTY_NUMBER = "NWH254";
 const VEHICLE_ID = "PE68UHD";
 const TRAILER_ID = "7338014";
-const DRIVER_CLEARED_MESSAGE_STORAGE_KEY = "driver-messaging-cleared-history";
-const UNREAD_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
-const CLEARED_HISTORY_RETENTION_MS = 24 * 60 * 60 * 1000;
 const categories: MessageCategory[] = ["Home VOC Message", "Central Postal Control CPC", "Breakdown"];
 
 export default function MessagingPage() {
@@ -51,74 +40,53 @@ export default function MessagingPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<MessageCategory | "All">("All");
   const [priorityFilter, setPriorityFilter] = useState<DriverMessagePriority | "All">("All");
-  const [inboxFilter, setInboxFilter] = useState<InboxFilter>("Unread");
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>("All");
   const [sentFilter, setSentFilter] = useState<SentFilter>("All");
   const [composeCategory, setComposeCategory] = useState<MessageCategory>("Home VOC Message");
   const [composePriority, setComposePriority] = useState<DriverMessagePriority>("Normal");
   const [composeMessage, setComposeMessage] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState("");
-  const [replyNotice, setReplyNotice] = useState<string | null>(null);
-  const [clearedRecords, setClearedRecords] = useState<ClearedMessageRecord[]>([]);
-  const [clock, setClock] = useState(() => Date.now());
 
   useEffect(() => {
     function refresh() {
       setItems(readOpenCommsItems());
       setReadKeys(readDriverReadKeys());
-      setClearedRecords(readClearedMessageRecords());
-      setClock(Date.now());
     }
 
     refresh();
-    const clockTimer = window.setInterval(() => setClock(Date.now()), 60000);
     window.addEventListener("storage", refresh);
     window.addEventListener("focus", refresh);
     window.addEventListener(DRIVER_MESSAGE_STORE_CHANGED_EVENT, refresh);
 
     return () => {
-      window.clearInterval(clockTimer);
       window.removeEventListener("storage", refresh);
       window.removeEventListener("focus", refresh);
       window.removeEventListener(DRIVER_MESSAGE_STORE_CHANGED_EVENT, refresh);
     };
   }, []);
 
-  const allItems = useMemo(() => {
-    const activeHistoryItems = clearedRecords
-      .filter((record) => record.expiresAt > clock)
-      .map((record) => record.item);
-    const byId = new Map<string, DriverCommsItem>();
-
-    activeHistoryItems.forEach((item) => byId.set(item.id, item));
-    items.forEach((item) => byId.set(item.id, item));
-
-    return Array.from(byId.values());
-  }, [items, clearedRecords, clock]);
-
   const inboxItems = useMemo(() => {
-    return allItems
+    return items
       .filter((item) => isForDriverDuty(item, driverName, DUTY_NUMBER) && Boolean(getLatestOfficeMessage(item)))
-      .filter((item) => shouldShowInboxItem(item, readKeys, clearedRecords, clock))
       .filter((item) => matchesFilters(item, "Inbox", search, categoryFilter, priorityFilter))
       .sort((a, b) => getMessageTime(b, "Inbox") - getMessageTime(a, "Inbox"));
-  }, [allItems, driverName, search, categoryFilter, priorityFilter, readKeys, clearedRecords, clock]);
+  }, [items, driverName, search, categoryFilter, priorityFilter]);
 
   const sentItems = useMemo(() => {
-    return allItems
+    return items
       .filter((item) => isForDriverDuty(item, driverName, DUTY_NUMBER) && Boolean(getLatestDriverMessage(item)))
       .filter((item) => matchesFilters(item, "Sent", search, categoryFilter, priorityFilter))
       .sort((a, b) => getMessageTime(b, "Sent") - getMessageTime(a, "Sent"));
-  }, [allItems, driverName, search, categoryFilter, priorityFilter]);
+  }, [items, driverName, search, categoryFilter, priorityFilter]);
 
   const visibleInbox = useMemo(() => {
     return inboxItems.filter((item) => {
       const isRead = readKeys.includes(getIncomingReadKey(item));
-      if (inboxFilter === "Unread") return !isRead || item.id === selectedMessageId;
+      if (inboxFilter === "Unread") return !isRead;
       if (inboxFilter === "Read") return isRead;
       return true;
     });
-  }, [inboxItems, inboxFilter, readKeys, selectedMessageId]);
+  }, [inboxItems, inboxFilter, readKeys]);
 
   const visibleSent = useMemo(() => {
     return sentItems.filter((item) => {
@@ -133,15 +101,10 @@ export default function MessagingPage() {
   const officeUnreadCount = sentItems.filter((item) => !item.officeRead).length;
   const officeReadCount = sentItems.length - officeUnreadCount;
   const displayedItems = activeView === "Inbox" ? visibleInbox : visibleSent;
-  const selectedMessage =
-    displayedItems.find((item) => item.id === selectedMessageId) ||
-    allItems.find((item) => item.id === selectedMessageId) ||
-    null;
+  const selectedMessage = displayedItems.find((item) => item.id === selectedMessageId) || null;
 
   function openMessage(item: DriverCommsItem) {
     setSelectedMessageId((current) => (current === item.id ? null : item.id));
-    setReplyText("");
-    setReplyNotice(null);
 
     if (activeView === "Inbox") {
       const readKey = getIncomingReadKey(item);
@@ -166,90 +129,7 @@ export default function MessagingPage() {
     setActiveView(view);
     setSelectedMessageId(null);
     setNotice(null);
-    if (view === "Inbox") setInboxFilter("Unread");
-    setReplyText("");
-    setReplyNotice(null);
-  }
-
-  function replyToMessage(item: DriverCommsItem) {
-    const cleanReply = replyText.trim();
-    if (!cleanReply) {
-      setReplyNotice("Please type a reply before sending.");
-      return;
-    }
-
-    const now = new Date();
-    const latestOfficeMessage = getLatestOfficeMessage(item);
-    const replyPriority = latestOfficeMessage?.priority || item.priority;
-    const replyEntry = {
-      id: `${item.id}-driver-reply-${Date.now()}`,
-      sender: "Driver" as const,
-      senderName: driverName,
-      message: cleanReply,
-      timestamp: now.toLocaleString("en-GB"),
-      priority: replyPriority,
-      direction: "Driver to office" as const,
-    };
-    const updatedItem: DriverCommsItem = {
-      ...item,
-      status: "New",
-      priority: replyPriority,
-      summary: `Driver reply: ${cleanReply}`,
-      message: {
-        messageText: cleanReply,
-        route: resolveCategory(item),
-        direction: "Driver to office",
-      },
-      messageThread: [...getMessageThread(item), replyEntry],
-      retainUntilDriverRead: false,
-      driverReadConfirmed: true,
-      readConfirmedAt: now.toLocaleString("en-GB"),
-      officeRead: false,
-      officeReadAt: undefined,
-    };
-    const nextItems = items.some((currentItem) => currentItem.id === item.id)
-      ? items.map((currentItem) => (currentItem.id === item.id ? updatedItem : currentItem))
-      : [updatedItem, ...items];
-    const nextClearedRecords = clearedRecords.filter((record) => record.itemId !== item.id);
-
-    setItems(nextItems);
-    setClearedRecords(nextClearedRecords);
-    writeOpenCommsItems(nextItems);
-    writeClearedMessageRecords(nextClearedRecords);
-    setReplyText("");
-    setReplyNotice(`Reply sent at ${now.toLocaleString("en-GB")}. It is now visible in Office Communications.`);
-  }
-
-  function clearMessage(item: DriverCommsItem) {
-    const now = Date.now();
-    const readKey = getIncomingReadKey(item);
-    const readAt = new Date(now).toLocaleString("en-GB");
-    const readItem: DriverCommsItem = {
-      ...item,
-      driverReadConfirmed: true,
-      readConfirmedAt: item.readConfirmedAt || readAt,
-    };
-    const nextKeys = readKeys.includes(readKey) ? readKeys : [...readKeys, readKey];
-    const nextItems = items.map((currentItem) => (currentItem.id === item.id ? readItem : currentItem));
-    const nextRecord: ClearedMessageRecord = {
-      itemId: item.id,
-      readKey,
-      item: readItem,
-      clearedAt: now,
-      expiresAt: now + CLEARED_HISTORY_RETENTION_MS,
-    };
-    const nextClearedRecords = [nextRecord, ...clearedRecords.filter((record) => record.itemId !== item.id)];
-
-    setReadKeys(nextKeys);
-    setItems(nextItems);
-    setClearedRecords(nextClearedRecords);
-    writeDriverReadKeys(nextKeys);
-    writeOpenCommsItems(nextItems);
-    writeClearedMessageRecords(nextClearedRecords);
-    setSelectedMessageId(null);
-    setReplyText("");
-    setReplyNotice(null);
-    setNotice("Message cleared. It remains available under Read / All Messages for 24 hours.");
+    if (view === "Inbox") setInboxFilter("All");
   }
 
   function sendMessage() {
@@ -410,10 +290,6 @@ export default function MessagingPage() {
                   <div className="flex items-end"><div className="w-full rounded-xl border border-[#d5dce4] bg-[#f8fafc] px-4 py-3 text-sm font-bold text-[#4b5563]">Showing <span className="font-black text-[#001b3a]">{displayedItems.length}</span> message(s)</div></div>
                 </div>
 
-                {notice ? (
-                  <div className="mt-4 rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] px-4 py-3 text-sm font-bold text-[#1e3a8a]">{notice}</div>
-                ) : null}
-
                 <MessageTable
                   items={displayedItems}
                   mode={activeView}
@@ -423,15 +299,7 @@ export default function MessagingPage() {
                 />
 
                 {selectedMessage ? (
-                  <ConversationPanel
-                    item={selectedMessage}
-                    mode={activeView}
-                    replyText={replyText}
-                    replyNotice={replyNotice}
-                    onReplyTextChange={setReplyText}
-                    onReply={() => replyToMessage(selectedMessage)}
-                    onClear={() => clearMessage(selectedMessage)}
-                  />
+                  <ConversationPanel item={selectedMessage} mode={activeView} />
                 ) : null}
               </>
             )}
@@ -500,23 +368,7 @@ function MessageTable({
   );
 }
 
-function ConversationPanel({
-  item,
-  mode,
-  replyText,
-  replyNotice,
-  onReplyTextChange,
-  onReply,
-  onClear,
-}: {
-  item: DriverCommsItem;
-  mode: "Inbox" | "Sent";
-  replyText: string;
-  replyNotice: string | null;
-  onReplyTextChange: (value: string) => void;
-  onReply: () => void;
-  onClear: () => void;
-}) {
+function ConversationPanel({ item, mode }: { item: DriverCommsItem; mode: "Inbox" | "Sent" }) {
   return (
     <section className="mt-5 rounded-[24px] border border-[#dbe2ea] bg-[#f8fafc] p-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -537,33 +389,6 @@ function ConversationPanel({
           );
         })}
       </div>
-
-      {mode === "Inbox" ? (
-        <div className="mt-5 border-t border-[#dbe2ea] pt-5">
-          <label className="block">
-            <span className="text-xs font-black uppercase tracking-[0.12em] text-[#61748b]">Reply to message</span>
-            <textarea
-              value={replyText}
-              onChange={(event) => onReplyTextChange(event.target.value)}
-              rows={3}
-              placeholder="Type a reply to the transport office."
-              className="mt-2 w-full rounded-[20px] border border-[#d5dce4] bg-white px-4 py-4 text-base font-bold text-[#001b3a] outline-none focus:border-[#c4002f]"
-            />
-          </label>
-          {replyNotice ? (
-            <div className="mt-3 rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-3 text-sm font-bold text-[#166534]">{replyNotice}</div>
-          ) : null}
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button type="button" onClick={onReply} className="rounded-2xl bg-[#c4002f] px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white">
-              Reply to message
-            </button>
-            <button type="button" onClick={onClear} className="rounded-2xl border border-[#d5dce4] bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-[#001b3a]">
-              Clear message
-            </button>
-          </div>
-          <p className="mt-3 text-sm font-bold text-[#61748b]">Cleared messages remain available in Read / All Messages for 24 hours. Unread messages remain visible for up to 7 days.</p>
-        </div>
-      ) : null}
     </section>
   );
 }
@@ -613,69 +438,6 @@ function ComposePanel({
       </div>
     </div>
   );
-}
-
-function shouldShowInboxItem(
-  item: DriverCommsItem,
-  readKeys: string[],
-  clearedRecords: ClearedMessageRecord[],
-  now: number,
-) {
-  const readKey = getIncomingReadKey(item);
-  const clearRecord = clearedRecords.find((record) => record.itemId === item.id);
-
-  if (clearRecord && clearRecord.readKey === readKey) {
-    return clearRecord.expiresAt > now;
-  }
-
-  if (readKeys.includes(readKey)) {
-    return true;
-  }
-
-  const latestOfficeMessage = getLatestOfficeMessage(item);
-  const receivedAt = latestOfficeMessage ? parseMessageTimestamp(latestOfficeMessage.timestamp) : getMessageTime(item, "Inbox");
-  return receivedAt === 0 || receivedAt >= now - UNREAD_RETENTION_MS;
-}
-
-function readClearedMessageRecords(): ClearedMessageRecord[] {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const raw = window.localStorage.getItem(DRIVER_CLEARED_MESSAGE_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter(
-          (record): record is ClearedMessageRecord =>
-            Boolean(record) &&
-            typeof record.itemId === "string" &&
-            typeof record.readKey === "string" &&
-            typeof record.clearedAt === "number" &&
-            typeof record.expiresAt === "number" &&
-            Boolean(record.item),
-        )
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeClearedMessageRecords(records: ClearedMessageRecord[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(DRIVER_CLEARED_MESSAGE_STORAGE_KEY, JSON.stringify(records));
-  window.dispatchEvent(new Event(DRIVER_MESSAGE_STORE_CHANGED_EVENT));
-}
-
-function parseMessageTimestamp(timestamp: string) {
-  const ukMatch = timestamp.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})[, ]+\s*(\d{1,2}):(\d{2})(?::(\d{2}))?/);
-  if (ukMatch) {
-    const [, dayText, monthText, yearText, hourText, minuteText, secondText = "0"] = ukMatch;
-    const year = Number(yearText.length === 2 ? `20${yearText}` : yearText);
-    return new Date(year, Number(monthText) - 1, Number(dayText), Number(hourText), Number(minuteText), Number(secondText)).getTime();
-  }
-
-  const parsed = Date.parse(timestamp);
-  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 function matchesFilters(item: DriverCommsItem, mode: "Inbox" | "Sent", search: string, category: MessageCategory | "All", priority: DriverMessagePriority | "All") {
