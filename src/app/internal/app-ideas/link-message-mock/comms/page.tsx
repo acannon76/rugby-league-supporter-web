@@ -87,6 +87,8 @@ type CommsItem = {
   pendingManager?: string;
   pendingReplyText?: string;
   pendingReplyPriority?: Priority;
+  officeRead?: boolean;
+  officeReadAt?: string;
 };
 
 type CommsHistoryRecord = {
@@ -597,11 +599,27 @@ export default function LinkCommsDashboardPage() {
   const unreadCount = items.filter((item) => isUnreadOfficeMessage(item)).length;
 
   function openCommunication(item: CommsItem) {
-    setActiveItem(item);
-    setReplyText(item.pendingReplyText || defaultReplyForItem(item));
-    setReplyPriority(item.pendingReplyPriority || "Normal");
-    setRetainUntilRead(Boolean(item.retainUntilDriverRead));
-    setManagerName(item.pendingManager || MANAGER_NAME);
+    const shouldMarkOfficeRead = item.message?.direction !== "Office to driver" && !item.officeRead;
+    const nextItem = shouldMarkOfficeRead
+      ? {
+          ...item,
+          officeRead: true,
+          officeReadAt: new Date().toLocaleString("en-GB"),
+        }
+      : item;
+
+    if (shouldMarkOfficeRead) {
+      const nextItems = items.map((currentItem) =>
+        currentItem.id === item.id ? nextItem : currentItem,
+      );
+      persistOpenItems(nextItems);
+    }
+
+    setActiveItem(nextItem);
+    setReplyText(nextItem.pendingReplyText || defaultReplyForItem(nextItem));
+    setReplyPriority(nextItem.pendingReplyPriority || "Normal");
+    setRetainUntilRead(Boolean(nextItem.retainUntilDriverRead));
+    setManagerName(nextItem.pendingManager || MANAGER_NAME);
   }
 
   function persistOpenItems(nextItems: CommsItem[]) {
@@ -798,6 +816,8 @@ export default function LinkCommsDashboardPage() {
       pendingManager: MANAGER_NAME,
       pendingReplyText: manualMessage,
       pendingReplyPriority: newMessagePriority,
+      officeRead: true,
+      officeReadAt: now.toLocaleString("en-GB"),
     };
 
     persistOpenItems([newItem, ...items]);
@@ -1922,6 +1942,8 @@ function normaliseCommsItem(item: CommsItem): CommsItem {
     pendingManager: item.pendingManager,
     pendingReplyText: item.pendingReplyText,
     pendingReplyPriority: item.pendingReplyPriority,
+    officeRead: Boolean(item.officeRead),
+    officeReadAt: item.officeReadAt,
   };
 }
 
