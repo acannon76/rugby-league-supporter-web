@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import ExportDataMenu from "../../ExportDataMenu";
+import { exportTabularData, type ExportFormat } from "../../exportData";
 import {
   DRIVER_NAME,
   DctRow,
@@ -137,6 +139,16 @@ const debriefOutcomes: DebriefOutcome[] = ["Complete", "Part Complete", "Failed"
 const podStatuses = ["Received", "Pending Upload", "Missing", "Not Required", "Query"];
 const toTimeOptions: ToTimeCode[] = ["VE", "E", "OT", "L", "VL", "F"];
 const legStateOptions = ["Planned", "In Progress", "Complete"] as const;
+const trafficValues = [
+  "1C 24 Mail",
+  "2C 48 Mail",
+  "Empty",
+  "PF 24 Parcels",
+  "PF 48 Parcels",
+  "Container Retriation",
+  "Delivery",
+  "Collection",
+] as const;
 
 export default function DebriefPage() {
   const [rows, setRows] = useState<DebriefRow[]>(() => loadDebriefRows());
@@ -253,13 +265,11 @@ export default function DebriefPage() {
                 >
                   ← Back to Duty Execution
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => downloadDebriefRowsAsExcel(filteredRows)}
-                  className="rounded-lg bg-[#001b3a] px-4 py-2 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#0f2f57]"
-                >
-                  Export To Excel
-                </button>
+                <ExportDataMenu
+                  disabled={filteredRows.length === 0}
+                  onExport={(format) => downloadDebriefRows(filteredRows, format)}
+                  buttonClassName="rounded-lg bg-[#001b3a] px-4 py-2 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#0f2f57] disabled:cursor-not-allowed disabled:bg-[#94a3b8]"
+                />
                 <button
                   type="button"
                   onClick={resetMockup}
@@ -1330,7 +1340,7 @@ function buildInitialDebriefRows(): DebriefRow[] {
       userId: `${drivers[index % drivers.length].toLowerCase().replaceAll(" ", ".")}@mock.driver`,
       jobTier: "Tier 1",
       planType: index % 7 === 0 ? "FLEX" : "BAU",
-      traffic: "NWH",
+      traffic: getMockTraffic(index),
       vehicle: vehicles[index % vehicles.length],
       trailerNumber: String(7338000 + index + 1),
       trailerType: index % 4 === 0 ? "DD95" : "DD92",
@@ -1366,6 +1376,10 @@ function buildInitialDebriefRows(): DebriefRow[] {
       checks: buildInitialChecks(debriefStatus, pod318Status),
     };
   });
+}
+
+function getMockTraffic(index: number) {
+  return trafficValues[index % trafficValues.length];
 }
 
 function getMockDutyOrder(index: number) {
@@ -1560,7 +1574,7 @@ function buildDummyDebriefRows(savedRowMap: Map<string, DebriefRow>) {
         userId: `network.${definition.dutyNumber.toLowerCase()}@royalmail.com`,
         jobTier: "Current Week",
         planType: "Planned",
-        traffic: "NWH",
+        traffic: getMockTraffic(dutyIndex * 6 + legIndex),
         vehicle: isCompleted || isInProgress
           ? ["PE68UHD", "PN21XHD", "MX70RHA", "DK19RHC", "YX72NWH", "PK68MTE"][(dutyIndex + legIndex) % 6]
           : "",
@@ -1630,7 +1644,7 @@ function buildDebriefRowFromManifestRow(
     userId: manifestRow.userId,
     jobTier: "Current Week",
     planType: division === "Contractor" ? "Road Haulage" : "Planned",
-    traffic: manifestRow.operator,
+    traffic: getMockTraffic(index),
     vehicle: manifestRow.departureActualTs ? "PE68UHD" : "",
     trailerNumber: manifestRow.trailerNumber || "",
     trailerType: manifestRow.trailerType,
@@ -1828,11 +1842,7 @@ function getDebriefStatusCellClass(status: DebriefStatus) {
   return "bg-[#dbeafe]";
 }
 
-function downloadDebriefRowsAsExcel(rows: DebriefRow[]) {
-  if (typeof window === "undefined" || rows.length === 0) {
-    return;
-  }
-
+function downloadDebriefRows(rows: DebriefRow[], format: ExportFormat) {
   const headers = [
     "Debrief Status",
     "Leg State",
@@ -1899,47 +1909,12 @@ function downloadDebriefRowsAsExcel(rows: DebriefRow[]) {
     row.officeNotes,
   ]);
 
-  const html = `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <style>
-    table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; }
-    th, td { border: 1px solid #000; padding: 6px; vertical-align: middle; }
-    th { background: #cfeefa; font-weight: bold; }
-  </style>
-</head>
-<body>
-  <table>
-    <thead><tr>${headers.map((header) => `<th>${escapeExcelHtml(header)}</th>`).join("")}</tr></thead>
-    <tbody>
-      ${exportRows
-        .map((exportRow) => `<tr>${exportRow.map((cell) => `<td>${escapeExcelHtml(String(cell))}</td>`).join("")}</tr>`)
-        .join("")}
-    </tbody>
-  </table>
-</body>
-</html>`;
-
-  const blob = new Blob([html], {
-    type: "application/vnd.ms-excel;charset=utf-8",
-  });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
   const today = new Date().toISOString().slice(0, 10);
-  link.href = url;
-  link.download = `driver-debrief-mockup-${today}.xls`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
-}
-
-function escapeExcelHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+  exportTabularData({
+    format,
+    headers,
+    rows: exportRows,
+    fileName: `driver-debrief-mockup-${today}`,
+    title: "Driver Debrief Data",
+  });
 }
