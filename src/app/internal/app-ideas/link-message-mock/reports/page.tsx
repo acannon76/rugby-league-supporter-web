@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { exportTabularData, type ExportFormat } from "../../exportData";
+import { downloadNetworkPerformancePdf } from "./networkPerformancePdf";
 
 type SidebarItem = {
   label: string;
@@ -360,7 +361,7 @@ export default function ReportsPage() {
     }
 
     setErrorMessage("");
-    exportNetworkPerformanceRows(selectedRows, format, startDate, endDate);
+    exportNetworkPerformanceRows(selectedRows, format, startDate, startTime, endDate, endTime);
   };
 
   return (
@@ -873,8 +874,22 @@ function exportNetworkPerformanceRows(
   rows: NetworkPerformanceRow[],
   format: ExportFormat,
   startDate: string,
+  startTime: string,
   endDate: string,
+  endTime: string,
 ) {
+  if (format === "pdf") {
+    downloadNetworkPerformancePdf({
+      rows,
+      fileName: `network-performance-report-${startDate}-to-${endDate}.pdf`,
+      startDate,
+      startTime,
+      endDate,
+      endTime,
+    });
+    return;
+  }
+
   const headers = [
     "Reporting Site",
     "Debrief Status",
