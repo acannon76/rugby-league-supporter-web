@@ -430,9 +430,11 @@ function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow
                 <p className="text-lg font-black text-[#10203a]">{mode === "Departures" ? `Destination: ${route}` : `Origin: ${route}`}</p>
                 <p className="mt-1 text-base font-bold text-[#4b5563]">{row.resources}</p>
               </div>
-              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                <AssetsBadge value={row.assets} showLabel />
-                <TrafficBadge value={row.traffic} />
+              <div className="flex items-center gap-2 lg:justify-end">
+                <div className="flex flex-col items-end gap-1">
+                  <TrafficBadge value={row.traffic} compact />
+                  <AssetsBadge value={row.assets} showLabel compact />
+                </div>
                 <StatusBadge status={status} delay={row.delay} />
               </div>
             </div>
@@ -558,17 +560,21 @@ function EmptyRow({ colSpan }: { colSpan: number }) {
   );
 }
 
-function AssetsBadge({ value, showLabel = false }: { value: number; showLabel?: boolean }) {
+function AssetsBadge({ value, showLabel = false, compact = false }: { value: number; showLabel?: boolean; compact?: boolean }) {
+  const sizeClasses = compact ? "min-w-0 rounded-lg px-3 py-1 text-xs" : "min-w-12 rounded-xl px-3 py-2 text-base";
+
   return (
-    <span className="inline-flex min-w-12 justify-center rounded-xl border border-[#c7d4e5] bg-[#f8fbfe] px-3 py-2 text-base font-black text-[#10203a]">
+    <span className={`inline-flex justify-center border border-[#c7d4e5] bg-[#f8fbfe] font-black text-[#10203a] ${sizeClasses}`}>
       {showLabel ? `Assets: ${value}` : value}
     </span>
   );
 }
 
-function TrafficBadge({ value }: { value: string }) {
+function TrafficBadge({ value, compact = false }: { value: string; compact?: boolean }) {
+  const sizeClasses = compact ? "px-3 py-1 text-xs" : "px-4 py-2 text-sm";
+
   return (
-    <span className="inline-flex rounded-full bg-[#ecf5ff] px-4 py-2 text-sm font-black uppercase tracking-[0.12em] text-[#0f3a6d] ring-1 ring-[#bfdbfe]">
+    <span className={`inline-flex rounded-full bg-[#ecf5ff] font-black uppercase tracking-[0.12em] text-[#0f3a6d] ring-1 ring-[#bfdbfe] ${sizeClasses}`}>
       {value}
     </span>
   );
