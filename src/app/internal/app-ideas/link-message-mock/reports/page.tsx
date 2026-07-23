@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { exportTabularData, type ExportFormat } from "../../exportData";
 
@@ -15,6 +15,7 @@ type SidebarItem = {
 
 type NetworkPerformanceRow = {
   id: string;
+  reportingSite: string;
   debriefStatus: "Debriefed";
   legState: "Complete";
   dutyDate: string;
@@ -73,9 +74,12 @@ const sidebarItems: SidebarItem[] = [
   { label: "A&D Dashboard", icon: "A&D", href: "/internal/app-ideas/link-message-mock/arrivals-departures" },
 ];
 
-const MOCK_TODAY = "2026-07-23";
-const DEFAULT_START_DATE = "2026-07-18";
-const DEFAULT_END_DATE = "2026-07-22";
+type DynamicReportRange = {
+  today: string;
+  startDate: string;
+  endDate: string;
+  dates: string[];
+};
 
 const drivers = [
   "Andrew Cannon",
@@ -108,6 +112,94 @@ const trailers = [
   "7338015",
   "5320233",
   "24163445",
+];
+
+const availableLocations = [
+  "Aberdeen MC",
+  "ABERDEEN VOC",
+  "Agency - ADM South",
+  "Agency Central (Coventry Hub and NDC)",
+  "Agency Drivers",
+  "Atherstone VOC",
+  "Belfast MC",
+  "BELFAST VOC",
+  "Birmingham MC (VOC)",
+  "BIRMINGHAM VOC",
+  "Bridgend VOC",
+  "Bristol Mini VOC",
+  "Carlisle VOC",
+  "Chelmsford (SEAMAC) MC",
+  "CHELMSFORD VOC",
+  "CHORLEY NORTHERN HUB VOC",
+  "Chorley VOC",
+  "Coventry National Hub",
+  "COVENTRY NATIONAL HUB VOC",
+  "Croydon MC (VOC)",
+  "CROYDON VOC",
+  "Doncaster MC",
+  "East London DC",
+  "East Mids VOC",
+  "Edinburgh MC (VOC)",
+  "EDINBURGH VOC",
+  "ELDCVOC",
+  "Exeter VOC",
+  "Gatwick MC (VOC)",
+  "GATWICK VOC",
+  "Glasgow MC",
+  "GLASGOW VOC",
+  "Greenford MC/VOC",
+  "GREENFORD VOC",
+  "HATFIELD PROCESSING CENTRE VOC",
+  "HEATHROW WORLDWIDE DC VOC",
+  "HIXVOC",
+  "HWDC",
+  "Inverness MC",
+  "INVERNESS VOC",
+  "Manchester VOC",
+  "MIDLANDS SUPER HUB VOC",
+  "NATIONAL DC VOC",
+  "NDC",
+  "NEDC",
+  "New Installs",
+  "NHCDC",
+  "North West Hub",
+  "NORTH WEST SUPER HUB VOC",
+  "Norwich MC (VOC)",
+  "NORWICH VOC",
+  "Perth LD",
+  "Peterborough MC (VOC)",
+  "PETERBOROUGH VOC",
+  "PRDC",
+  "PRINCESS ROYAL DC VOC",
+  "PRVOC",
+  "Roborough VOC",
+  "SCOTTISH DC VOC",
+  "SDC",
+  "Sheffield MC",
+  "SOUTH EAST DC VOC",
+  "South East WBC (Rochester)",
+  "SOUTH WEST DC VOC",
+  "Southampton VOC",
+  "SWDC",
+  "Swindon VOC",
+  "Trailers - National Pool",
+  "Warrington VOC",
+  "WOKING DC VOC",
+  "Woking VOC",
+  "Wolverhampton MC",
+  "YDC",
+  "YDC Stourton VOC",
+  "YORKSHIRE DC VOC",
+  "YPC VOC",
+] as const;
+
+const nationalPartnerLocations = [
+  "National Distribution Centre",
+  "Midlands Super Hub",
+  "North West Hub",
+  "Princess Royal Distribution Centre",
+  "Yorkshire Distribution Centre",
+  "South East Distribution Centre",
 ];
 
 const baseLegs: BaseLeg[] = [
@@ -182,22 +274,58 @@ const baseLegs: BaseLeg[] = [
 const startOffsetPattern = [-4, 2, 11, -7, 18, 5, 0, -12, 7, 14, -2, 4, 9, -5, 22, 3, -8, 6, 12, 1, -3, 8, -6, 16, 4, -1, 10, -9, 5, 13];
 const finishOffsetPattern = [3, -2, 16, -5, 24, 7, 1, -8, 11, 19, -4, 6, 13, -3, 28, 4, -7, 9, 15, 2, -1, 12, -4, 21, 5, 0, 14, -6, 8, 18];
 
-const networkPerformanceRows = buildNetworkPerformanceRows();
-
 export default function ReportsPage() {
+  const [reportRange, setReportRange] = useState<DynamicReportRange | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [startDate, setStartDate] = useState(DEFAULT_START_DATE);
+  const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("00:00");
-  const [endDate, setEndDate] = useState(DEFAULT_END_DATE);
+  const [endDate, setEndDate] = useState("");
   const [endTime, setEndTime] = useState("23:59");
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([...availableLocations]);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const selectedRows = useMemo(
-    () => filterReportRows(networkPerformanceRows, startDate, startTime, endDate, endTime),
-    [startDate, startTime, endDate, endTime],
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const nextRange = getDynamicReportRange();
+      setReportRange(nextRange);
+      setStartDate(nextRange.startDate);
+      setEndDate(nextRange.endDate);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const networkPerformanceRows = useMemo(
+    () => (reportRange ? buildNetworkPerformanceRows(reportRange.dates) : []),
+    [reportRange],
   );
 
+  const selectedRows = useMemo(
+    () => filterReportRows(networkPerformanceRows, startDate, startTime, endDate, endTime, selectedLocations),
+    [networkPerformanceRows, startDate, startTime, endDate, endTime, selectedLocations],
+  );
+
+  const toggleLocation = (location: string) => {
+    setSelectedLocations((currentLocations) =>
+      currentLocations.includes(location)
+        ? currentLocations.filter((currentLocation) => currentLocation !== location)
+        : [...currentLocations, location],
+    );
+  };
+
+  const selectAllLocations = () => {
+    setSelectedLocations([...availableLocations]);
+  };
+
+  const clearAllLocations = () => {
+    setSelectedLocations([]);
+  };
+
   const openReport = () => {
+    if (!reportRange) {
+      return;
+    }
+
     setErrorMessage("");
     setIsModalOpen(true);
   };
@@ -208,11 +336,21 @@ export default function ReportsPage() {
   };
 
   const downloadReport = (format: ExportFormat) => {
+    if (!reportRange) {
+      setErrorMessage("The current report date range is still being prepared.");
+      return;
+    }
+
     const startTs = `${startDate}T${startTime}:00`;
     const endTs = `${endDate}T${endTime}:59`;
 
     if (startTs > endTs) {
       setErrorMessage("The start date and time must be before the end date and time.");
+      return;
+    }
+
+    if (selectedLocations.length === 0) {
+      setErrorMessage("Select at least one site before downloading the report.");
       return;
     }
 
@@ -242,51 +380,42 @@ export default function ReportsPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div>
                 <SummaryCard label="Reports available" value="1" />
-                <SummaryCard label="Dummy records" value={String(networkPerformanceRows.length)} />
-                <SummaryCard label="Data days" value="5" />
               </div>
             </div>
 
             <div className="mt-6 rounded-[22px] border border-[#cfd8e3] bg-[#f8fafc] p-4 sm:p-5">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div className="min-w-0">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-[#10203a] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
-                      Operational report
+                      National reporting suite
                     </span>
                     <span className="rounded-full bg-[#eaf7ef] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#166534] ring-1 ring-[#86c99a]">
                       Available
                     </span>
                   </div>
-                  <h2 className="mt-3 text-2xl font-black text-[#10203a]">Network Performance Report</h2>
+                  <h2 className="mt-3 text-2xl font-black text-[#10203a]">National Reports</h2>
                   <p className="mt-2 max-w-4xl text-sm font-bold leading-6 text-[#4b5563]">
-                    Downloads completed Network debrief records, including planned and actual timings, DTT and ATT performance, vehicles, trailers, drivers, traffic and asset quantities.
+                    Select the required national report, choose the date, time and reporting sites, then download the completed debrief data.
                   </p>
                   <p className="mt-2 text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">
-                    Dummy data: 18/07/2026 00:00 to 22/07/2026 23:59
+                    {reportRange
+                      ? `Available data: ${formatDateOnly(reportRange.startDate)} 00:00 to ${formatDateOnly(reportRange.endDate)} 23:59`
+                      : "Preparing the latest five completed days"}
                   </p>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={openReport}
-                  className="shrink-0 rounded-xl bg-[#10203a] px-5 py-3 text-sm font-black uppercase tracking-[0.08em] text-white shadow-sm transition hover:bg-[#1e3558]"
-                >
-                  Select dates and download
-                </button>
               </div>
 
-              <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-                <ReportDetail label="Data source" value="Completed Driver Debriefs" />
+              <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <ReportActionCard onOpen={openReport} disabled={!reportRange} />
                 <ReportDetail label="Available formats" value="Excel, CSV and PDF" />
-                <ReportDetail label="Current data volume" value={`${networkPerformanceRows.length} completed legs`} />
               </div>
             </div>
 
             <div className="mt-5 rounded-[18px] border border-dashed border-[#c7d2df] bg-white px-5 py-6 text-center">
-              <p className="text-sm font-black text-[#10203a]">Additional reports can be added beneath the Network Performance Report as the reporting suite develops.</p>
+              <p className="text-sm font-black text-[#10203a]">Additional national reports can be added beneath the Network Performance Report as the reporting suite develops.</p>
             </div>
           </section>
         </main>
@@ -299,11 +428,19 @@ export default function ReportsPage() {
           endDate={endDate}
           endTime={endTime}
           selectedCount={selectedRows.length}
+          availableStartDate={reportRange?.startDate || ""}
+          availableEndDate={reportRange?.endDate || ""}
+          todayDate={reportRange?.today || ""}
+          locations={[...availableLocations]}
+          selectedLocations={selectedLocations}
           errorMessage={errorMessage}
           onStartDateChange={setStartDate}
           onStartTimeChange={setStartTime}
           onEndDateChange={setEndDate}
           onEndTimeChange={setEndTime}
+          onToggleLocation={toggleLocation}
+          onSelectAllLocations={selectAllLocations}
+          onClearAllLocations={clearAllLocations}
           onClose={closeReport}
           onDownload={downloadReport}
         />
@@ -318,11 +455,19 @@ function ReportDownloadModal({
   endDate,
   endTime,
   selectedCount,
+  availableStartDate,
+  availableEndDate,
+  todayDate,
+  locations,
+  selectedLocations,
   errorMessage,
   onStartDateChange,
   onStartTimeChange,
   onEndDateChange,
   onEndTimeChange,
+  onToggleLocation,
+  onSelectAllLocations,
+  onClearAllLocations,
   onClose,
   onDownload,
 }: {
@@ -331,17 +476,31 @@ function ReportDownloadModal({
   endDate: string;
   endTime: string;
   selectedCount: number;
+  availableStartDate: string;
+  availableEndDate: string;
+  todayDate: string;
+  locations: string[];
+  selectedLocations: string[];
   errorMessage: string;
   onStartDateChange: (value: string) => void;
   onStartTimeChange: (value: string) => void;
   onEndDateChange: (value: string) => void;
   onEndTimeChange: (value: string) => void;
+  onToggleLocation: (location: string) => void;
+  onSelectAllLocations: () => void;
+  onClearAllLocations: () => void;
   onClose: () => void;
   onDownload: (format: ExportFormat) => void;
 }) {
+  const [locationSearch, setLocationSearch] = useState("");
+  const filteredLocations = locations.filter((location) =>
+    location.toLowerCase().includes(locationSearch.trim().toLowerCase()),
+  );
+  const allLocationsSelected = selectedLocations.length === locations.length;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#07101f]/65 p-4" role="dialog" aria-modal="true" aria-labelledby="network-report-title">
-      <div className="w-full max-w-3xl overflow-hidden rounded-[24px] border border-[#cfd8e3] bg-white shadow-2xl">
+      <div className="max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-[24px] border border-[#cfd8e3] bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-4 bg-[#10203a] px-5 py-4 text-white sm:px-6">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-white/70">Report download</p>
@@ -357,9 +516,9 @@ function ReportDownloadModal({
           </button>
         </div>
 
-        <div className="p-5 sm:p-6">
+        <div className="max-h-[calc(92vh-82px)] overflow-y-auto p-5 sm:p-6">
           <p className="text-sm font-bold leading-6 text-[#4b5563]">
-            Choose the start and end date and time. The download will contain only completed debrief records whose actual finish time falls inside the selected period.
+            Choose the start and end date and time, then select one or more sites. The download will contain only completed debrief records whose actual finish time and reporting site fall inside your selection.
           </p>
 
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -367,6 +526,8 @@ function ReportDownloadModal({
               title="Start"
               date={startDate}
               time={startTime}
+              minDate={availableStartDate}
+              maxDate={availableEndDate}
               onDateChange={onStartDateChange}
               onTimeChange={onStartTimeChange}
             />
@@ -374,17 +535,94 @@ function ReportDownloadModal({
               title="End"
               date={endDate}
               time={endTime}
+              minDate={availableStartDate}
+              maxDate={availableEndDate}
               onDateChange={onEndDateChange}
               onTimeChange={onEndTimeChange}
             />
           </div>
+
+          <section className="mt-5 overflow-hidden rounded-[18px] border border-[#d7dee9] bg-[#f8fafc]">
+            <div className="flex flex-col gap-3 border-b border-[#d7dee9] bg-[#e9eef9] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#10203a]">Available locations</p>
+                <p className="mt-1 text-xs font-bold text-[#4b5563]">
+                  {selectedLocations.length} of {locations.length} sites selected
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-black text-[#0f3a6d] ring-1 ring-[#c7d2df]">
+                  <input
+                    type="checkbox"
+                    checked={allLocationsSelected}
+                    onChange={() => (allLocationsSelected ? onClearAllLocations() : onSelectAllLocations())}
+                    className="h-4 w-4 accent-[#0f3a6d]"
+                  />
+                  Select all
+                </label>
+                <button
+                  type="button"
+                  onClick={onClearAllLocations}
+                  className="rounded-lg border border-[#c7d2df] bg-white px-3 py-2 text-xs font-black text-[#10203a] transition hover:bg-[#f3f6fa]"
+                >
+                  Clear all
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4">
+              <label className="block">
+                <span className="text-[10px] font-black uppercase tracking-[0.14em] text-[#6b7280]">Search locations</span>
+                <input
+                  type="search"
+                  value={locationSearch}
+                  onChange={(event) => setLocationSearch(event.target.value)}
+                  placeholder="Search by location name"
+                  className="mt-1 h-11 w-full rounded-xl border border-[#cfd8e3] bg-white px-3 text-sm font-bold text-[#10203a] outline-none focus:border-[#0f3a6d]"
+                />
+              </label>
+
+              <div className="mt-3 max-h-72 overflow-y-auto rounded-xl border border-[#d7dee9] bg-white">
+                {filteredLocations.length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2">
+                    {filteredLocations.map((location, index) => {
+                      const checked = selectedLocations.includes(location);
+
+                      return (
+                        <label
+                          key={location}
+                          className={`flex cursor-pointer items-center justify-between gap-4 px-4 py-3 text-sm font-bold text-[#10203a] transition hover:bg-[#eef4ff] ${
+                            index % 2 === 0 ? "bg-[#f4f6ff]" : "bg-white"
+                          } border-b border-[#e5eaf2] lg:border-r`}
+                        >
+                          <span className="min-w-0 break-words">{location}</span>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => onToggleLocation(location)}
+                            className="h-4 w-4 shrink-0 accent-[#0f3a6d]"
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="px-4 py-8 text-center text-sm font-bold text-[#6b7280]">No locations match that search.</p>
+                )}
+              </div>
+            </div>
+          </section>
 
           <div className="mt-4 flex flex-col gap-2 rounded-[16px] border border-[#bfdbfe] bg-[#eff6ff] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#0f3a6d]">Records in selected range</p>
               <p className="mt-1 text-2xl font-black text-[#10203a]">{selectedCount}</p>
             </div>
-            <p className="text-xs font-bold text-[#1e3a5f]">Available dummy data covers the five completed days before {formatDateOnly(MOCK_TODAY)}.</p>
+            <div className="text-right text-xs font-bold text-[#1e3a5f]">
+              <p>{selectedLocations.length} site{selectedLocations.length === 1 ? "" : "s"} selected</p>
+              <p className="mt-1">Available data covers the five completed days before {todayDate ? formatDateOnly(todayDate) : "today"}.</p>
+            </div>
           </div>
 
           {errorMessage ? (
@@ -421,12 +659,16 @@ function DateTimePanel({
   title,
   date,
   time,
+  minDate,
+  maxDate,
   onDateChange,
   onTimeChange,
 }: {
   title: string;
   date: string;
   time: string;
+  minDate: string;
+  maxDate: string;
   onDateChange: (value: string) => void;
   onTimeChange: (value: string) => void;
 }) {
@@ -439,8 +681,8 @@ function DateTimePanel({
           <input
             type="date"
             value={date}
-            min={DEFAULT_START_DATE}
-            max={DEFAULT_END_DATE}
+            min={minDate}
+            max={maxDate}
             onChange={(event) => onDateChange(event.target.value)}
             className="mt-1 h-11 w-full rounded-xl border border-[#cfd8e3] bg-white px-3 text-sm font-black text-[#10203a] outline-none focus:border-[#0f3a6d]"
           />
@@ -481,6 +723,25 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ReportActionCard({ onOpen, disabled }: { onOpen: () => void; disabled: boolean }) {
+  return (
+    <div className="flex flex-col gap-3 rounded-[16px] border border-[#d7dee9] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#6b7280]">Network Performance Report</p>
+        <p className="mt-1 text-sm font-black text-[#10203a]">Completed debrief performance by selected national sites</p>
+      </div>
+      <button
+        type="button"
+        onClick={onOpen}
+        disabled={disabled}
+        className="shrink-0 rounded-xl bg-[#10203a] px-4 py-2.5 text-xs font-black uppercase tracking-[0.07em] text-white shadow-sm transition hover:bg-[#1e3558] disabled:cursor-wait disabled:opacity-50"
+      >
+        Select dates and site download
+      </button>
+    </div>
+  );
+}
+
 function ReportDetail({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[16px] border border-[#d7dee9] bg-white px-4 py-3">
@@ -490,54 +751,97 @@ function ReportDetail({ label, value }: { label: string; value: string }) {
   );
 }
 
-function buildNetworkPerformanceRows(): NetworkPerformanceRow[] {
-  const dates = ["2026-07-18", "2026-07-19", "2026-07-20", "2026-07-21", "2026-07-22"];
-
+function buildNetworkPerformanceRows(dates: string[]): NetworkPerformanceRow[] {
   return dates.flatMap((dutyDate, dayIndex) =>
-    baseLegs.map((leg, legIndex) => {
-      const rowIndex = dayIndex * baseLegs.length + legIndex;
-      const startOffset = startOffsetPattern[rowIndex];
-      const finishOffset = finishOffsetPattern[rowIndex];
-      const plannedStartTs = buildTimestamp(dutyDate, leg.plannedStartMinutes);
-      const actualStartTs = buildTimestamp(dutyDate, leg.plannedStartMinutes + startOffset);
-      const plannedFinishTs = buildTimestamp(dutyDate, leg.plannedStartMinutes + leg.durationMinutes);
-      const actualFinishTs = buildTimestamp(dutyDate, leg.plannedStartMinutes + leg.durationMinutes + finishOffset);
-      const issueCategory = finishOffset >= 9 ? "Late Arrival" : startOffset >= 9 ? "Late Departure" : "No Issue";
-      const outcome = finishOffset >= 21 ? "Part Complete" : "Complete";
+    availableLocations.flatMap((reportingSite, siteIndex) =>
+      baseLegs.slice(0, 2).map((_, legIndex) => {
+        const rowIndex = dayIndex * availableLocations.length * 2 + siteIndex * 2 + legIndex;
+        const startOffset = startOffsetPattern[rowIndex % startOffsetPattern.length];
+        const finishOffset = finishOffsetPattern[rowIndex % finishOffsetPattern.length];
+        const plannedStartMinutes = 120 + ((siteIndex * 17 + legIndex * 75) % 1_140);
+        const durationMinutes = 40 + ((siteIndex + legIndex * 7) % 31);
+        const plannedStartTs = buildTimestamp(dutyDate, plannedStartMinutes);
+        const actualStartTs = buildTimestamp(dutyDate, plannedStartMinutes + startOffset);
+        const plannedFinishTs = buildTimestamp(dutyDate, plannedStartMinutes + durationMinutes);
+        const actualFinishTs = buildTimestamp(dutyDate, plannedStartMinutes + durationMinutes + finishOffset);
+        const issueCategory = finishOffset >= 9 ? "Late Arrival" : startOffset >= 9 ? "Late Departure" : "No Issue";
+        const outcome = finishOffset >= 21 ? "Part Complete" : "Complete";
+        const partnerLocation = nationalPartnerLocations[siteIndex % nationalPartnerLocations.length];
+        const departureLocation = legIndex === 0 ? reportingSite : partnerLocation;
+        const finalDestination = legIndex === 0 ? partnerLocation : reportingSite;
+        const dutyNumber = `${buildSiteCode(reportingSite)}${String((siteIndex % 700) + 100).padStart(3, "0")}`;
 
-      return {
-        id: `${dutyDate}-${leg.dutyNumber}-${leg.dutyOrder}`,
-        debriefStatus: "Debriefed",
-        legState: "Complete",
-        dutyDate,
-        weekNumber: getWeekNumberFromAprilFirst(dutyDate),
-        dutyOrder: leg.dutyOrder,
-        dutyNumber: leg.dutyNumber,
-        division: "Network",
-        driver: drivers[(dayIndex + legIndex) % drivers.length],
-        vehicle: vehicles[(dayIndex * 2 + legIndex) % vehicles.length],
-        trailerNumber: trailers[(dayIndex * 3 + legIndex) % trailers.length],
-        traffic: leg.traffic,
-        departureLocation: leg.departureLocation,
-        plannedStartTs,
-        actualStartTs,
-        startDifference: formatDifference(startOffset),
-        dtt: getTimingCode(startOffset),
-        departureAssets: clampAssetValue(leg.departureAssets + dayIndex * 3 - legIndex),
-        finalDestination: leg.finalDestination,
-        plannedFinishTs,
-        actualFinishTs,
-        finishDifference: formatDifference(finishOffset),
-        att: getTimingCode(finishOffset),
-        arrivalAssets: clampAssetValue(leg.arrivalAssets + dayIndex * 2 + legIndex),
-        issueCategory,
-        driverNotes: buildDriverNotes(issueCategory, leg.finalDestination),
-        outcome,
-        debriefedBy: dayIndex % 2 === 0 ? "Peter Finch" : "Sarah Mitchell",
-        debriefedAtTs: buildTimestamp(dutyDate, leg.plannedStartMinutes + leg.durationMinutes + finishOffset + 20),
-      };
-    }),
+        return {
+          id: `${dutyDate}-${siteIndex}-${legIndex}`,
+          reportingSite,
+          debriefStatus: "Debriefed",
+          legState: "Complete",
+          dutyDate,
+          weekNumber: getWeekNumberFromAprilFirst(dutyDate),
+          dutyOrder: legIndex + 1,
+          dutyNumber,
+          division: "Network",
+          driver: drivers[(dayIndex + siteIndex + legIndex) % drivers.length],
+          vehicle: vehicles[(dayIndex * 2 + siteIndex + legIndex) % vehicles.length],
+          trailerNumber: trailers[(dayIndex * 3 + siteIndex * 2 + legIndex) % trailers.length],
+          traffic: baseLegs[(siteIndex + legIndex) % baseLegs.length].traffic,
+          departureLocation,
+          plannedStartTs,
+          actualStartTs,
+          startDifference: formatDifference(startOffset),
+          dtt: getTimingCode(startOffset),
+          departureAssets: clampAssetValue(18 + ((siteIndex * 7 + dayIndex * 3 + legIndex * 11) % 78)),
+          finalDestination,
+          plannedFinishTs,
+          actualFinishTs,
+          finishDifference: formatDifference(finishOffset),
+          att: getTimingCode(finishOffset),
+          arrivalAssets: clampAssetValue(12 + ((siteIndex * 5 + dayIndex * 4 + legIndex * 13) % 84)),
+          issueCategory,
+          driverNotes: buildDriverNotes(issueCategory, finalDestination),
+          outcome,
+          debriefedBy: (dayIndex + siteIndex) % 2 === 0 ? "Peter Finch" : "Sarah Mitchell",
+          debriefedAtTs: buildTimestamp(dutyDate, plannedStartMinutes + durationMinutes + finishOffset + 20),
+        };
+      }),
+    ),
   );
+}
+
+
+function getDynamicReportRange(): DynamicReportRange {
+  const today = getDateInTimeZone("Europe/London");
+  const dates = Array.from({ length: 5 }, (_, index) => addDays(today, index - 5));
+
+  return {
+    today,
+    startDate: dates[0],
+    endDate: dates[dates.length - 1],
+    dates,
+  };
+}
+
+function getDateInTimeZone(timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const year = parts.find((part) => part.type === "year")?.value || "1970";
+  const month = parts.find((part) => part.type === "month")?.value || "01";
+  const day = parts.find((part) => part.type === "day")?.value || "01";
+
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(dateInput: string, dayOffset: number) {
+  const [year, month, day] = dateInput.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + dayOffset);
+
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }
 
 function filterReportRows(
@@ -546,15 +850,23 @@ function filterReportRows(
   startTime: string,
   endDate: string,
   endTime: string,
+  selectedLocations: string[],
 ) {
   const startTs = `${startDate}T${startTime}:00`;
   const endTs = `${endDate}T${endTime}:59`;
 
-  if (!startDate || !startTime || !endDate || !endTime || startTs > endTs) {
+  if (!startDate || !startTime || !endDate || !endTime || startTs > endTs || selectedLocations.length === 0) {
     return [];
   }
 
-  return rows.filter((row) => row.actualFinishTs >= startTs && row.actualFinishTs <= endTs);
+  const selectedLocationSet = new Set(selectedLocations);
+
+  return rows.filter(
+    (row) =>
+      row.actualFinishTs >= startTs &&
+      row.actualFinishTs <= endTs &&
+      selectedLocationSet.has(row.reportingSite),
+  );
 }
 
 function exportNetworkPerformanceRows(
@@ -564,6 +876,7 @@ function exportNetworkPerformanceRows(
   endDate: string,
 ) {
   const headers = [
+    "Reporting Site",
     "Debrief Status",
     "Leg State",
     "Duty Date",
@@ -595,6 +908,7 @@ function exportNetworkPerformanceRows(
   ];
 
   const exportRows = rows.map((row) => [
+    row.reportingSite,
     row.debriefStatus,
     row.legState,
     formatDateOnly(row.dutyDate),
@@ -692,6 +1006,14 @@ function getWeekNumberFromAprilFirst(dateInput: string) {
 
 function clampAssetValue(value: number) {
   return Math.max(0, Math.min(95, value));
+}
+
+function buildSiteCode(site: string) {
+  const words = site.toUpperCase().match(/[A-Z0-9]+/g) || ["NAT"];
+  const initials = words.map((word) => word[0]).join("");
+  const compactCode = initials.length >= 3 ? initials.slice(0, 3) : words.join("").slice(0, 3);
+
+  return compactCode.padEnd(3, "X");
 }
 
 function buildDriverNotes(issueCategory: string, destination: string) {
