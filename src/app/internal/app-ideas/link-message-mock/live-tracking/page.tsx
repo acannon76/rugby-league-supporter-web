@@ -199,7 +199,7 @@ function RouteMapCard() {
 
         <div className="relative aspect-[1110/586] w-full">
           <Image
-            src="/mock-images/live-tracking-route-analysis.png"
+            src="/images/live-tracking-route-analysis.png"
             alt="Office route analysis map showing the vehicle route"
             fill
             sizes="(max-width: 768px) 100vw, 60vw"
