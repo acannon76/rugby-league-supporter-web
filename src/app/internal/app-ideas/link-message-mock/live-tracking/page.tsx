@@ -1,10 +1,12 @@
+"use client";
+
+import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 
 import {
   liveTrackingEvents,
-  liveTrackingRoute,
   liveTrackingSummary,
-  type RoutePoint,
 } from "../mockOfficeData";
 
 type SidebarItem = {
@@ -15,9 +17,15 @@ type SidebarItem = {
   active?: boolean;
 };
 
-type MapCoordinate = {
-  x: number;
-  y: number;
+type LabelMode = "time" | "speed";
+
+type OverlayLabelPoint = {
+  id: string;
+  place: string;
+  x: string;
+  y: string;
+  time: string;
+  speed: string;
 };
 
 const sidebarItems: SidebarItem[] = [
@@ -34,15 +42,14 @@ const sidebarItems: SidebarItem[] = [
   { label: "A&D Dashboard", icon: "A&D", href: "/internal/app-ideas/link-message-mock/arrivals-departures" },
 ];
 
-const landscapeMapPath = "M38 182 C 72 172, 94 154, 112 142 C 135 126, 151 106, 174 94 C 203 79, 226 74, 247 56 C 266 40, 286 34, 309 28";
-
-const landscapeCoordinates: Record<string, MapCoordinate> = {
-  "Warrington MC": { x: 38, y: 182 },
-  "North West Hub": { x: 112, y: 142 },
-  Skelmersdale: { x: 174, y: 94 },
-  "Current position": { x: 247, y: 56 },
-  "Preston VOC": { x: 309, y: 28 },
-};
+const mapLabelPoints: OverlayLabelPoint[] = [
+  { id: "north-west-hub", place: "North West Hub", x: "26%", y: "82%", time: "10:59", speed: "52 mph" },
+  { id: "manchester-corridor", place: "Manchester corridor", x: "41%", y: "66%", time: "11:11", speed: "44 mph" },
+  { id: "halifax-corridor", place: "Halifax corridor", x: "63%", y: "45%", time: "11:39", speed: "57 mph" },
+  { id: "d5-mc", place: "D5 MC", x: "79%", y: "32%", time: "12:07", speed: "39 mph" },
+  { id: "field-mc", place: "FIELD MC", x: "74%", y: "71%", time: "13:24", speed: "43 mph" },
+  { id: "sheffield-mc", place: "SHF/IELD MC", x: "76%", y: "86%", time: "13:32", speed: "57 mph" },
+];
 
 export default function LiveTrackingPage() {
   const currentEvent = liveTrackingEvents.find((event) => event.status === "Current") || liveTrackingEvents[0];
@@ -137,63 +144,92 @@ export default function LiveTrackingPage() {
 }
 
 function RouteMapCard() {
+  const [showLabels, setShowLabels] = useState(false);
+  const [labelMode, setLabelMode] = useState<LabelMode>("time");
+
   return (
     <section className="min-w-0 rounded-[22px] border border-[#d6dde8] bg-white p-3 shadow-sm xl:p-4">
-      <div className="flex flex-col gap-2 rounded-[16px] border border-[#dce6c6] bg-[#f5f8e9] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 rounded-[16px] border border-[#dce6c6] bg-[#f5f8e9] px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0f3a6d]">Current route</p>
           <h2 className="mt-1 truncate text-lg font-black text-[#10203a] xl:text-xl">{liveTrackingSummary.route}</h2>
         </div>
-        <div className="shrink-0 rounded-full bg-[#10203a] px-3 py-2 text-xs font-black text-white">
-          {liveTrackingSummary.currentStatus}
+
+        <div className="flex flex-col items-start gap-2 sm:items-end">
+          <div className="shrink-0 rounded-full bg-[#10203a] px-3 py-2 text-xs font-black text-white">
+            {liveTrackingSummary.currentStatus}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#d7dee9] bg-white/90 px-3 py-2 shadow-sm">
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-black text-[#10203a]">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-[#9ca3af] text-[#0f3a6d] focus:ring-[#0f3a6d]"
+                checked={showLabels}
+                onChange={(event) => setShowLabels(event.target.checked)}
+              />
+              Show labels
+            </label>
+
+            <div className="flex rounded-full border border-[#cfd8e3] bg-[#f8fafc] p-1">
+              {(["time", "speed"] as LabelMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  disabled={!showLabels}
+                  onClick={() => setLabelMode(mode)}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.12em] transition ${
+                    labelMode === mode && showLabels
+                      ? "bg-[#0f3a6d] text-white"
+                      : "text-[#4b5563]"
+                  } ${showLabels ? "hover:bg-[#dce6f7]" : "cursor-not-allowed opacity-40"}`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="relative mt-3 min-h-[330px] overflow-hidden rounded-[18px] border border-[#c9d5c1] bg-[linear-gradient(180deg,#95bdd9_0%,#95bdd9_42%,#dbe8b1_42%,#dbe8b1_100%)] sm:min-h-[380px] 2xl:min-h-[420px]">
-        <div className="absolute left-0 top-[42%] h-px w-full border-t border-dashed border-white/70" />
-        <div className="absolute left-[12%] top-[54%] h-[90px] w-[90px] rounded-full border border-white/45" />
-        <div className="absolute right-[14%] top-[16%] h-[120px] w-[120px] rounded-full border border-white/35" />
-        <div className="absolute left-3 top-3 rounded-lg bg-white/85 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#10203a] shadow-sm">
-          North West route view
+      <div className="relative mt-3 overflow-hidden rounded-[18px] border border-[#c9d5c1] bg-[#dfe6cf]">
+        <div className="absolute left-3 top-3 z-20 rounded-lg bg-white/90 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#10203a] shadow-sm">
+          Office route analysis
         </div>
 
-        <svg viewBox="0 0 350 215" className="absolute inset-0 h-full w-full p-4 pt-12">
-          <path d={landscapeMapPath} fill="none" stroke="#ffbf00" strokeWidth="15" strokeLinecap="round" />
-          <path d={landscapeMapPath} fill="none" stroke="#d91313" strokeWidth="6" strokeLinecap="round" strokeDasharray="12 8" />
+        <div className="relative aspect-[1110/586] w-full">
+          <Image
+            src="/mock-images/live-tracking-route-analysis.png"
+            alt="Office route analysis map showing the vehicle route"
+            fill
+            sizes="(max-width: 768px) 100vw, 60vw"
+            className="object-cover object-center"
+            priority
+          />
 
-          {liveTrackingRoute.map((point) => (
-            <LandscapeMapPoint key={point.name} point={point} />
-          ))}
-        </svg>
+          {showLabels
+            ? mapLabelPoints.map((point) => (
+                <MapOverlayLabel key={point.id} point={point} labelMode={labelMode} />
+              ))
+            : null}
+        </div>
       </div>
     </section>
   );
 }
 
-function LandscapeMapPoint({ point }: { point: RoutePoint }) {
-  const coordinate = landscapeCoordinates[point.name] || { x: point.x, y: point.y };
-  const fill = point.kind === "current" ? "#0f3a6d" : point.kind === "destination" ? "#f59e0b" : point.kind === "start" ? "#ef4444" : "#15803d";
-  const ring = point.kind === "current" ? "#bfdbfe" : "white";
-  const labelWidth = point.kind === "current" ? 100 : 88;
-  const labelX = Math.min(Math.max(coordinate.x - labelWidth / 2, 5), 345 - labelWidth);
-  const labelY = coordinate.y > 125 ? coordinate.y - 40 : coordinate.y + 18;
-
+function MapOverlayLabel({ point, labelMode }: { point: OverlayLabelPoint; labelMode: LabelMode }) {
   return (
-    <g>
-      <circle cx={coordinate.x} cy={coordinate.y} r={point.kind === "current" ? 13 : 10} fill={fill} stroke={ring} strokeWidth="4" />
-      <text x={coordinate.x} y={coordinate.y + 4} textAnchor="middle" fontSize="7" fontWeight="700" fill="white">
-        {point.shortLabel}
-      </text>
-      <rect x={labelX} y={labelY} rx="7" ry="7" width={labelWidth} height={point.kind === "current" ? 34 : 25} fill="rgba(255,255,255,0.94)" stroke="#cfd8e3" />
-      <text x={labelX + labelWidth / 2} y={labelY + 16} textAnchor="middle" fontSize="9" fontWeight="700" fill="#10203a">
-        {point.name}
-      </text>
-      {point.kind === "current" ? (
-        <text x={labelX + labelWidth / 2} y={labelY + 28} textAnchor="middle" fontSize="7.5" fontWeight="700" fill="#4b5563">
-          {point.eta} • {point.mph} mph
-        </text>
-      ) : null}
-    </g>
+    <div
+      className="absolute z-20 -translate-x-1/2 -translate-y-full"
+      style={{ left: point.x, top: point.y }}
+    >
+      <div className="rounded-lg border border-[#cfd8e3] bg-white/95 px-2 py-1 shadow-md backdrop-blur-[1px]">
+        <p className="whitespace-nowrap text-[10px] font-black uppercase tracking-[0.12em] text-[#6b7280]">{point.place}</p>
+        <p className="mt-0.5 whitespace-nowrap text-xs font-black text-[#10203a]">{labelMode === "time" ? point.time : point.speed}</p>
+      </div>
+      <div className="mx-auto h-2.5 w-2.5 rounded-full border-2 border-white bg-[#e40000] shadow-sm" />
+    </div>
   );
 }
 
@@ -256,7 +292,7 @@ function CurrentEventCard({ currentEvent }: { currentEvent: (typeof liveTracking
       <div className="mt-3 rounded-[16px] border border-[#bfdbfe] bg-[#eff6ff] p-3">
         <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0f3a6d]">Office note</p>
         <p className="mt-1 text-sm font-bold leading-5 text-[#1e3a5f]">
-          Compact monitor layout with the map, current event and movement list visible without leaving a large unused area.
+          The map now uses the office-style route screenshot and can optionally show label callouts for either time or speed.
         </p>
       </div>
     </aside>
