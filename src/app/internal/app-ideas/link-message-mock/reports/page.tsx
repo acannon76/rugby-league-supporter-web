@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { exportTabularData, type ExportFormat } from "../../exportData";
 import { downloadNetworkPerformancePdf } from "./networkPerformancePdf";
+import { NationalLocalPlanReport } from "./NationalLocalPlanReport";
 
 type SidebarItem = {
   label: string;
@@ -438,7 +439,7 @@ export default function ReportsPage() {
               </div>
 
               <div>
-                <SummaryCard label="Reports available" value="1" />
+                <SummaryCard label="Reports available" value="2" />
               </div>
             </div>
 
@@ -465,14 +466,20 @@ export default function ReportsPage() {
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-                <ReportActionCard onOpen={openReport} disabled={!reportRange} />
-                <ReportDetail label="Available formats" value="Excel, CSV and PDF" />
+              <div className="mt-5 grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <ReportActionCard onOpen={openReport} disabled={!reportRange} />
+                  <ReportDetail label="Available formats" value="Excel, CSV and PDF" />
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <NationalLocalPlanReport locations={[...availableLocations]} />
+                  <ReportDetail label="Available formats" value="Excel, CSV and PDF" />
+                </div>
               </div>
             </div>
 
             <div className="mt-5 rounded-[18px] border border-dashed border-[#c7d2df] bg-white px-5 py-6 text-center">
-              <p className="text-sm font-black text-[#10203a]">Additional national reports can be added beneath the Network Performance Report as the reporting suite develops.</p>
+              <p className="text-sm font-black text-[#10203a]">Additional national reports can be added beneath the existing reports as the reporting suite develops.</p>
             </div>
           </section>
         </main>
