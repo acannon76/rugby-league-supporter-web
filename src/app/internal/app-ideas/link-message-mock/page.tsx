@@ -760,13 +760,13 @@ export default function LinkMessageMockPage() {
                       setShowIssuesOnly(event.target.checked);
                       setSelectedDetail(
                         event.target.checked
-                          ? "Show Issues enabled. Displaying duties with driver messages or late travel legs."
-                          : "Show Issues disabled. Displaying all duties in the selected tab.",
+                          ? "Focus on Issues enabled. Displaying duties with driver messages or late travel legs."
+                          : "Focus on Issues disabled. Displaying all duties in the selected tab.",
                       );
                     }}
                     className="h-4 w-4 rounded border-[#cbd5e1]"
                   />
-                  Show Issues
+                  Focus on Issues
                 </label>
                 <button
                   type="button"
