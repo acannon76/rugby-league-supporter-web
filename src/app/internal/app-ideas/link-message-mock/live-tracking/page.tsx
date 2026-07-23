@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
+import routeAnalysisMap from "./live-tracking-route-analysis.png";
+
 import {
   liveTrackingEvents,
   liveTrackingSummary,
@@ -199,7 +201,7 @@ function RouteMapCard() {
 
         <div className="relative aspect-[1110/586] w-full">
           <Image
-            src="/images/live-tracking-route-analysis.png"
+            src={routeAnalysisMap}
             alt="Office route analysis map showing the vehicle route"
             fill
             sizes="(max-width: 768px) 100vw, 60vw"
