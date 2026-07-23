@@ -311,7 +311,7 @@ function filterRows(
         return true;
       }
 
-      const haystack = [row.departing, row.destination, row.jobReference, row.resources, row.traffic, row.delay]
+      const haystack = [row.departing, row.destination, row.jobReference, row.resources, row.assets, row.traffic, row.delay]
         .join(" ")
         .toLowerCase();
       return haystack.includes(term);
@@ -431,6 +431,7 @@ function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow
                 <p className="mt-1 text-base font-bold text-[#4b5563]">{row.resources}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                <AssetsBadge value={row.assets} showLabel />
                 <TrafficBadge value={row.traffic} />
                 <StatusBadge status={status} delay={row.delay} />
               </div>
@@ -455,6 +456,7 @@ function DepartureBoardTable({ site, rows, hidden }: { site: string; rows: Arriv
               <th className="px-4 py-4">Destination</th>
               <th className="px-4 py-4">Job reference</th>
               <th className="px-4 py-4">Resources</th>
+              <th className="px-4 py-4">Assets</th>
               <th className="px-4 py-4">Traffic</th>
               <th className="px-4 py-4">Delay</th>
               <th className="px-4 py-4">Status</th>
@@ -470,13 +472,14 @@ function DepartureBoardTable({ site, rows, hidden }: { site: string; rows: Arriv
                   <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-lg font-black text-[#10203a]">{row.destination}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-lg font-black text-[#10203a]">{row.jobReference}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-base font-bold text-[#4b5563]">{row.resources}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-4 py-5"><AssetsBadge value={row.assets} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-4 py-5"><TrafficBadge value={row.traffic} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-lg font-black text-[#10203a]">{row.delay}</td>
                   <td className="rounded-r-2xl border-y border-r border-[#e2e8f0] bg-white px-4 py-5"><StatusBadge status={row.departureStatus} delay={row.delay} /></td>
                 </tr>
               ))
             ) : (
-              <EmptyRow colSpan={7} />
+              <EmptyRow colSpan={8} />
             )}
           </tbody>
         </table>
@@ -499,6 +502,7 @@ function ArrivalBoardTable({ site, rows, hidden }: { site: string; rows: Arrival
               <th className="px-4 py-4">Job reference</th>
               <th className="px-4 py-4">Traffic</th>
               <th className="px-4 py-4">Resources</th>
+              <th className="px-4 py-4">Assets</th>
               <th className="px-4 py-4">Delay</th>
               <th className="px-4 py-4">Status</th>
             </tr>
@@ -514,12 +518,13 @@ function ArrivalBoardTable({ site, rows, hidden }: { site: string; rows: Arrival
                   <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-lg font-black text-[#10203a]">{row.jobReference}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-4 py-5"><TrafficBadge value={row.traffic} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-base font-bold text-[#4b5563]">{row.resources}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-4 py-5"><AssetsBadge value={row.assets} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-lg font-black text-[#10203a]">{row.delay}</td>
                   <td className="rounded-r-2xl border-y border-r border-[#e2e8f0] bg-white px-4 py-5"><StatusBadge status={row.arrivalStatus} delay={row.delay} /></td>
                 </tr>
               ))
             ) : (
-              <EmptyRow colSpan={7} />
+              <EmptyRow colSpan={8} />
             )}
           </tbody>
         </table>
@@ -550,6 +555,14 @@ function EmptyRow({ colSpan }: { colSpan: number }) {
         No rows match the current filters.
       </td>
     </tr>
+  );
+}
+
+function AssetsBadge({ value, showLabel = false }: { value: number; showLabel?: boolean }) {
+  return (
+    <span className="inline-flex min-w-12 justify-center rounded-xl border border-[#c7d4e5] bg-[#f8fbfe] px-3 py-2 text-base font-black text-[#10203a]">
+      {showLabel ? `Assets: ${value}` : value}
+    </span>
   );
 }
 
