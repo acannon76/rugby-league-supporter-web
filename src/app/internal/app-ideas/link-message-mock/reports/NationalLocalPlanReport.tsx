@@ -53,8 +53,8 @@ export function NationalLocalPlanReport({ locations }: { locations: string[] }) 
     <>
       <div className="flex flex-col gap-3 rounded-[16px] border border-[#d7dee9] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#6b7280]">National vs Local Plan Report</p>
-          <p className="mt-1 text-sm font-black text-[#10203a]">Daily national duties, local changes and VE/E/OT/L/VL/F performance</p>
+          <p className="text-base font-black text-[#10203a]">National vs Local Plan Report</p>
+          <p className="mt-1 text-sm font-semibold text-[#4b5563]">Daily national duties, local changes and VE/E/OT/L/VL/F performance</p>
         </div>
         <button type="button" onClick={() => setOpen(true)} className="shrink-0 rounded-xl bg-[#10203a] px-4 py-2.5 text-xs font-black uppercase tracking-[0.07em] text-white hover:bg-[#1e3558]">Select dates and site download</button>
       </div>

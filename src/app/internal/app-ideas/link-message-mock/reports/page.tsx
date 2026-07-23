@@ -450,18 +450,10 @@ export default function ReportsPage() {
                     <span className="rounded-full bg-[#10203a] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
                       National reporting suite
                     </span>
-                    <span className="rounded-full bg-[#eaf7ef] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#166534] ring-1 ring-[#86c99a]">
-                      Available
-                    </span>
                   </div>
                   <h2 className="mt-3 text-2xl font-black text-[#10203a]">National Reports</h2>
                   <p className="mt-2 max-w-4xl text-sm font-bold leading-6 text-[#4b5563]">
                     Select the required national report, choose the date, time and reporting sites, then download the completed debrief data.
-                  </p>
-                  <p className="mt-2 text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">
-                    {reportRange
-                      ? `Available data: ${formatDateOnly(reportRange.startDate)} 00:00 to ${formatDateOnly(reportRange.endDate)} 23:59`
-                      : "Preparing the latest five completed days"}
                   </p>
                 </div>
               </div>
@@ -835,8 +827,8 @@ function ReportActionCard({ onOpen, disabled }: { onOpen: () => void; disabled: 
   return (
     <div className="flex flex-col gap-3 rounded-[16px] border border-[#d7dee9] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#6b7280]">Network Performance Report</p>
-        <p className="mt-1 text-sm font-black text-[#10203a]">Completed debrief performance by selected national sites</p>
+        <p className="text-base font-black text-[#10203a]">Network Performance Report</p>
+        <p className="mt-1 text-sm font-semibold text-[#4b5563]">Completed debrief performance by selected national sites</p>
       </div>
       <button
         type="button"
