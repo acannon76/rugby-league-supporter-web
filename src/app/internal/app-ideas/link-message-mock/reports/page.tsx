@@ -193,6 +193,31 @@ const availableLocations = [
   "YORKSHIRE DC VOC",
   "YPC VOC",
 ] as const;
+const dueToConveyOptions = [
+  "1C 24 Mail",
+  "2C 48 Mail",
+  "Collection",
+  "Container Repatriation",
+  "D2D",
+  "Delievery",
+  "Empty",
+  "Flex",
+  "HV Returns",
+  "International",
+  "PF 24Parcels",
+  "PF 48 Parcels",
+  "RDC 24 Tracked",
+  "RDC 48 Tracked",
+  "RDC Presort",
+  "RDC Tracked",
+  "RM Relay",
+  "Shunting",
+  "Tracked",
+  "TRacked Collection",
+  "ULD Repatriation",
+  "Unit Only",
+] as const;
+
 
 const nationalPartnerLocations = [
   "National Distribution Centre",
@@ -283,6 +308,7 @@ export default function ReportsPage() {
   const [endDate, setEndDate] = useState("");
   const [endTime, setEndTime] = useState("23:59");
   const [selectedLocations, setSelectedLocations] = useState<string[]>([...availableLocations]);
+  const [selectedDueToConvey, setSelectedDueToConvey] = useState<string[]>([...dueToConveyOptions]);
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
@@ -302,8 +328,17 @@ export default function ReportsPage() {
   );
 
   const selectedRows = useMemo(
-    () => filterReportRows(networkPerformanceRows, startDate, startTime, endDate, endTime, selectedLocations),
-    [networkPerformanceRows, startDate, startTime, endDate, endTime, selectedLocations],
+    () =>
+      filterReportRows(
+        networkPerformanceRows,
+        startDate,
+        startTime,
+        endDate,
+        endTime,
+        selectedLocations,
+        selectedDueToConvey,
+      ),
+    [networkPerformanceRows, startDate, startTime, endDate, endTime, selectedLocations, selectedDueToConvey],
   );
 
   const toggleLocation = (location: string) => {
@@ -320,6 +355,22 @@ export default function ReportsPage() {
 
   const clearAllLocations = () => {
     setSelectedLocations([]);
+  };
+
+  const toggleDueToConvey = (value: string) => {
+    setSelectedDueToConvey((currentValues) =>
+      currentValues.includes(value)
+        ? currentValues.filter((currentValue) => currentValue !== value)
+        : [...currentValues, value],
+    );
+  };
+
+  const selectAllDueToConvey = () => {
+    setSelectedDueToConvey([...dueToConveyOptions]);
+  };
+
+  const clearAllDueToConvey = () => {
+    setSelectedDueToConvey([]);
   };
 
   const openReport = () => {
@@ -352,6 +403,11 @@ export default function ReportsPage() {
 
     if (selectedLocations.length === 0) {
       setErrorMessage("Select at least one site before downloading the report.");
+      return;
+    }
+
+    if (selectedDueToConvey.length === 0) {
+      setErrorMessage("Select at least one Due to Convey option before downloading the report.");
       return;
     }
 
@@ -428,12 +484,12 @@ export default function ReportsPage() {
           startTime={startTime}
           endDate={endDate}
           endTime={endTime}
-          selectedCount={selectedRows.length}
           availableStartDate={reportRange?.startDate || ""}
           availableEndDate={reportRange?.endDate || ""}
-          todayDate={reportRange?.today || ""}
           locations={[...availableLocations]}
           selectedLocations={selectedLocations}
+          dueToConveyOptions={[...dueToConveyOptions]}
+          selectedDueToConvey={selectedDueToConvey}
           errorMessage={errorMessage}
           onStartDateChange={setStartDate}
           onStartTimeChange={setStartTime}
@@ -442,6 +498,9 @@ export default function ReportsPage() {
           onToggleLocation={toggleLocation}
           onSelectAllLocations={selectAllLocations}
           onClearAllLocations={clearAllLocations}
+          onToggleDueToConvey={toggleDueToConvey}
+          onSelectAllDueToConvey={selectAllDueToConvey}
+          onClearAllDueToConvey={clearAllDueToConvey}
           onClose={closeReport}
           onDownload={downloadReport}
         />
@@ -455,12 +514,12 @@ function ReportDownloadModal({
   startTime,
   endDate,
   endTime,
-  selectedCount,
   availableStartDate,
   availableEndDate,
-  todayDate,
   locations,
   selectedLocations,
+  dueToConveyOptions,
+  selectedDueToConvey,
   errorMessage,
   onStartDateChange,
   onStartTimeChange,
@@ -469,6 +528,9 @@ function ReportDownloadModal({
   onToggleLocation,
   onSelectAllLocations,
   onClearAllLocations,
+  onToggleDueToConvey,
+  onSelectAllDueToConvey,
+  onClearAllDueToConvey,
   onClose,
   onDownload,
 }: {
@@ -476,12 +538,12 @@ function ReportDownloadModal({
   startTime: string;
   endDate: string;
   endTime: string;
-  selectedCount: number;
   availableStartDate: string;
   availableEndDate: string;
-  todayDate: string;
   locations: string[];
   selectedLocations: string[];
+  dueToConveyOptions: string[];
+  selectedDueToConvey: string[];
   errorMessage: string;
   onStartDateChange: (value: string) => void;
   onStartTimeChange: (value: string) => void;
@@ -490,6 +552,9 @@ function ReportDownloadModal({
   onToggleLocation: (location: string) => void;
   onSelectAllLocations: () => void;
   onClearAllLocations: () => void;
+  onToggleDueToConvey: (value: string) => void;
+  onSelectAllDueToConvey: () => void;
+  onClearAllDueToConvey: () => void;
   onClose: () => void;
   onDownload: (format: ExportFormat) => void;
 }) {
@@ -498,6 +563,7 @@ function ReportDownloadModal({
     location.toLowerCase().includes(locationSearch.trim().toLowerCase()),
   );
   const allLocationsSelected = selectedLocations.length === locations.length;
+  const allDueToConveySelected = selectedDueToConvey.length === dueToConveyOptions.length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#07101f]/65 p-4" role="dialog" aria-modal="true" aria-labelledby="network-report-title">
@@ -519,7 +585,7 @@ function ReportDownloadModal({
 
         <div className="max-h-[calc(92vh-82px)] overflow-y-auto p-5 sm:p-6">
           <p className="text-sm font-bold leading-6 text-[#4b5563]">
-            Choose the start and end date and time, then select one or more sites. The download will contain only completed debrief records whose actual finish time and reporting site fall inside your selection.
+            Choose the start and end date and time, then select one or more sites and Due to Convey options. The download will contain only completed debrief records that match every selection.
           </p>
 
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -615,16 +681,50 @@ function ReportDownloadModal({
             </div>
           </section>
 
-          <div className="mt-4 flex flex-col gap-2 rounded-[16px] border border-[#bfdbfe] bg-[#eff6ff] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#0f3a6d]">Records in selected range</p>
-              <p className="mt-1 text-2xl font-black text-[#10203a]">{selectedCount}</p>
+          <section className="mt-5 overflow-hidden rounded-[18px] border border-[#d7dee9] bg-[#f8fafc]">
+            <div className="flex flex-col gap-3 border-b border-[#d7dee9] bg-[#e9eef9] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#10203a]">Due to Convey</p>
+                <p className="mt-1 text-xs font-bold text-[#4b5563]">Choose one or more traffic types to include in the download.</p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-black text-[#0f3a6d] ring-1 ring-[#c7d2df]">
+                  <input
+                    type="checkbox"
+                    checked={allDueToConveySelected}
+                    onChange={() => (allDueToConveySelected ? onClearAllDueToConvey() : onSelectAllDueToConvey())}
+                    className="h-4 w-4 accent-[#0f3a6d]"
+                  />
+                  Select all
+                </label>
+                <button
+                  type="button"
+                  onClick={onClearAllDueToConvey}
+                  className="rounded-lg border border-[#c7d2df] bg-white px-3 py-2 text-xs font-black text-[#10203a] transition hover:bg-[#f3f6fa]"
+                >
+                  Clear all
+                </button>
+              </div>
             </div>
-            <div className="text-right text-xs font-bold text-[#1e3a5f]">
-              <p>{selectedLocations.length} site{selectedLocations.length === 1 ? "" : "s"} selected</p>
-              <p className="mt-1">Available data covers the five completed days before {todayDate ? formatDateOnly(todayDate) : "today"}.</p>
+
+            <div className="grid grid-cols-1 gap-px bg-[#d7dee9] sm:grid-cols-2 lg:grid-cols-3">
+              {dueToConveyOptions.map((value) => (
+                <label
+                  key={value}
+                  className="flex cursor-pointer items-center justify-between gap-4 bg-white px-4 py-3 text-sm font-bold text-[#10203a] transition hover:bg-[#eef4ff]"
+                >
+                  <span>{value}</span>
+                  <input
+                    type="checkbox"
+                    checked={selectedDueToConvey.includes(value)}
+                    onChange={() => onToggleDueToConvey(value)}
+                    className="h-4 w-4 shrink-0 accent-[#0f3a6d]"
+                  />
+                </label>
+              ))}
             </div>
-          </div>
+          </section>
 
           {errorMessage ? (
             <div className="mt-4 rounded-[14px] border border-[#ef4444] bg-[#fff1f2] px-4 py-3 text-sm font-black text-[#991b1b]">
@@ -785,7 +885,7 @@ function buildNetworkPerformanceRows(dates: string[]): NetworkPerformanceRow[] {
           driver: drivers[(dayIndex + siteIndex + legIndex) % drivers.length],
           vehicle: vehicles[(dayIndex * 2 + siteIndex + legIndex) % vehicles.length],
           trailerNumber: trailers[(dayIndex * 3 + siteIndex * 2 + legIndex) % trailers.length],
-          traffic: baseLegs[(siteIndex + legIndex) % baseLegs.length].traffic,
+          traffic: dueToConveyOptions[(dayIndex + siteIndex * 2 + legIndex) % dueToConveyOptions.length],
           departureLocation,
           plannedStartTs,
           actualStartTs,
@@ -852,21 +952,32 @@ function filterReportRows(
   endDate: string,
   endTime: string,
   selectedLocations: string[],
+  selectedDueToConvey: string[],
 ) {
   const startTs = `${startDate}T${startTime}:00`;
   const endTs = `${endDate}T${endTime}:59`;
 
-  if (!startDate || !startTime || !endDate || !endTime || startTs > endTs || selectedLocations.length === 0) {
+  if (
+    !startDate ||
+    !startTime ||
+    !endDate ||
+    !endTime ||
+    startTs > endTs ||
+    selectedLocations.length === 0 ||
+    selectedDueToConvey.length === 0
+  ) {
     return [];
   }
 
   const selectedLocationSet = new Set(selectedLocations);
+  const selectedDueToConveySet = new Set(selectedDueToConvey);
 
   return rows.filter(
     (row) =>
       row.actualFinishTs >= startTs &&
       row.actualFinishTs <= endTs &&
-      selectedLocationSet.has(row.reportingSite),
+      selectedLocationSet.has(row.reportingSite) &&
+      selectedDueToConveySet.has(row.traffic),
   );
 }
 
@@ -902,7 +1013,7 @@ function exportNetworkPerformanceRows(
     "Driver",
     "Vehicle",
     "Trailer Number",
-    "Traffic",
+    "Due to Convey",
     "Departure Location",
     "Planned Start",
     "Actual Start",

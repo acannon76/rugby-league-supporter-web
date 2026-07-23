@@ -88,7 +88,7 @@ const tableColumns = [
   { title: "DRIVER", width: 67, key: "driver" },
   { title: "VEHICLE", width: 45, key: "vehicle" },
   { title: "TRAILER", width: 48, key: "trailer" },
-  { title: "TRAFFIC", width: 65, key: "traffic" },
+  { title: "DUE TO CONVEY", width: 65, key: "traffic" },
   { title: "PLAN START", width: 48, key: "plannedStart" },
   { title: "ACT START", width: 48, key: "actualStart" },
   { title: "DTT", width: 24, key: "dtt" },
