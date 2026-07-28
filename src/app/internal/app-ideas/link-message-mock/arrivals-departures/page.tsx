@@ -153,15 +153,15 @@ export default function ArrivalsDeparturesPage() {
               <h1 className="text-2xl font-black sm:text-3xl">Arrival & Departure Board</h1>
             </div>
 
-            <div className="px-4 py-3">
-              <div className="grid grid-cols-1 gap-3 xl:grid-cols-[auto_minmax(240px,320px)_auto_auto] xl:items-end">
-                <div className="inline-flex flex-wrap gap-1 rounded-xl bg-[#f3f7fb] p-1">
+            <div className="px-3 py-2.5 sm:px-4">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[auto_minmax(180px,230px)_auto_minmax(190px,1fr)_minmax(145px,190px)_auto] xl:items-end">
+                <div className="inline-flex flex-wrap gap-1 rounded-xl bg-[#f3f7fb] p-1 xl:flex-nowrap">
                   {(["Overview", "Departures", "Arrivals"] as BoardView[]).map((view) => (
                     <button
                       key={view}
                       type="button"
                       onClick={() => setBoardView(view)}
-                      className={`rounded-lg px-4 py-2 text-sm font-black transition ${
+                      className={`rounded-lg px-3 py-2 text-sm font-black transition ${
                         boardView === view ? "bg-[#10203a] text-white shadow-sm" : "text-[#10203a] hover:bg-white"
                       }`}
                     >
@@ -174,7 +174,7 @@ export default function ArrivalsDeparturesPage() {
                   <select
                     value={selectedSite}
                     onChange={(event) => setSelectedSite(event.target.value as SiteOption)}
-                    className="w-full rounded-lg border border-[#cfdae7] bg-white px-3 py-2 font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
+                    className="w-full rounded-lg border border-[#cfdae7] bg-white px-2.5 py-2 text-sm font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
                   >
                     {siteOptions.map((site) => (
                       <option key={site} value={site}>
@@ -184,23 +184,17 @@ export default function ArrivalsDeparturesPage() {
                   </select>
                 </FilterField>
 
-                <div className="flex items-center gap-2 text-sm font-black text-[#10203a]">
-                  <span className="rounded-lg border border-[#d8e3ef] bg-[#f7fbff] px-3 py-2">Departures: {departureRows.length}</span>
-                  <span className="rounded-lg border border-[#d8e3ef] bg-[#f7fbff] px-3 py-2">Arrivals: {arrivalRows.length}</span>
+                <div className="flex items-end gap-1.5 whitespace-nowrap text-sm font-black text-[#10203a]">
+                  <span className="rounded-lg border border-[#d8e3ef] bg-[#f7fbff] px-2.5 py-2">Departures: {departureRows.length}</span>
+                  <span className="rounded-lg border border-[#d8e3ef] bg-[#f7fbff] px-2.5 py-2">Arrivals: {arrivalRows.length}</span>
                 </div>
 
-                <div className="rounded-lg border border-[#c7d4e5] bg-[#f8fbfe] px-3 py-2 text-sm font-black text-[#10203a] xl:justify-self-end">
-                  Last updated: <span className="text-[#e40000]">{formatDateTime(refreshTime)}</span>
-                </div>
-              </div>
-
-              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(320px,1.5fr)_minmax(240px,1fr)]">
                 <FilterField label="Search">
                   <input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Route, resource, traffic or duty number"
-                    className="w-full rounded-lg border border-[#cfdae7] px-3 py-2 font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
+                    placeholder="Route, resource, traffic or duty"
+                    className="w-full rounded-lg border border-[#cfdae7] px-2.5 py-2 text-sm font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
                   />
                 </FilterField>
 
@@ -208,7 +202,7 @@ export default function ArrivalsDeparturesPage() {
                   <select
                     value={trafficFilter}
                     onChange={(event) => setTrafficFilter(event.target.value as ArrivalDepartureRow["traffic"] | "All")}
-                    className="w-full rounded-lg border border-[#cfdae7] px-3 py-2 font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
+                    className="w-full rounded-lg border border-[#cfdae7] px-2.5 py-2 text-sm font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
                   >
                     <option value="All">All traffic</option>
                     {trafficOptions.map((option) => (
@@ -218,6 +212,10 @@ export default function ArrivalsDeparturesPage() {
                     ))}
                   </select>
                 </FilterField>
+
+                <div className="whitespace-nowrap rounded-lg border border-[#c7d4e5] bg-[#f8fbfe] px-2.5 py-2 text-sm font-black text-[#10203a] xl:justify-self-end">
+                  Last updated: <span className="text-[#e40000]">{formatDateTime(refreshTime)}</span>
+                </div>
               </div>
             </div>
           </section>
