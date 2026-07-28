@@ -99,52 +99,30 @@ export default function ArrivalsDeparturesPage() {
     [selectedArrivalRows, search, trafficFilter, statusFilter, refreshTime],
   );
 
-  const combinedRows = [...departureRows, ...arrivalRows];
-  const delayedCount = combinedRows.filter((row) => row.delay.startsWith("+")).length;
-  const activeCount = combinedRows.filter(
-    (row) =>
-      row.departureStatus === "Actual" ||
-      row.departureStatus === "ETD" ||
-      row.arrivalStatus === "Actual" ||
-      row.arrivalStatus === "ETA",
-  ).length;
-  const trafficCount = new Set(combinedRows.map((row) => row.traffic)).size;
-
   return (
     <div className="min-h-screen bg-[#edf3f8] text-[#111827]">
       <OfficeHeader title="MOCK UP" subtitle="Arrival & Departure Dashboard" />
       <div className="flex">
         <OfficeSidebar />
 
-        <main className="flex-1 p-4 sm:p-6">
-          <section className="overflow-hidden rounded-[28px] border border-[#d9e3ee] bg-white shadow-sm">
-            <div className="bg-[#e40000] px-6 py-7 text-white sm:px-8">
-              <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-                <div className="max-w-4xl">
-                  <h1 className="text-3xl font-black sm:text-4xl">Arrival & Departure Control Centre</h1>
-                  <p className="mt-4 max-w-3xl text-sm font-bold leading-6 text-white/90">
-                    Select a site and switch between Overview, Departures and Arrivals. Arrivals now show anything arrived in the last 30 minutes plus ETA movements in the next 2 hours, and departures drop off 30 minutes after departure.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:min-w-[880px]">
-                  <HeroStat label="Total board rows" value={String(combinedRows.length)} />
-                  <HeroStat label="Live / ETA / ETD" value={String(activeCount)} />
-                  <HeroStat label="Delayed" value={String(delayedCount)} />
-                  <HeroStat label="Traffic types" value={String(trafficCount)} />
-                </div>
-              </div>
+        <main className="flex-1 p-2 sm:p-3">
+          <section className="overflow-hidden rounded-[20px] border border-[#d9e3ee] bg-white shadow-sm">
+            <div className="bg-[#e40000] px-5 py-3 text-white sm:px-6">
+              <h1 className="text-2xl font-black sm:text-3xl">Arrival & Departure Board</h1>
+              <p className="mt-1 text-xs font-bold text-white/90 sm:text-sm">
+                Select a site and choose Overview, Departures or Arrivals.
+              </p>
             </div>
 
-            <div className="px-5 py-5 sm:px-6">
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-[auto_minmax(260px,340px)_auto] xl:items-center xl:justify-between">
-                <div className="inline-flex flex-wrap gap-2 rounded-2xl bg-[#f3f7fb] p-2">
+            <div className="px-4 py-3">
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-[auto_minmax(240px,320px)_auto_auto] xl:items-end">
+                <div className="inline-flex flex-wrap gap-1 rounded-xl bg-[#f3f7fb] p-1">
                   {(["Overview", "Departures", "Arrivals"] as BoardView[]).map((view) => (
                     <button
                       key={view}
                       type="button"
                       onClick={() => setBoardView(view)}
-                      className={`rounded-xl px-4 py-3 text-sm font-black transition ${
+                      className={`rounded-lg px-4 py-2 text-sm font-black transition ${
                         boardView === view ? "bg-[#10203a] text-white shadow-sm" : "text-[#10203a] hover:bg-white"
                       }`}
                     >
@@ -157,7 +135,7 @@ export default function ArrivalsDeparturesPage() {
                   <select
                     value={selectedSite}
                     onChange={(event) => setSelectedSite(event.target.value as SiteOption)}
-                    className="w-full rounded-xl border border-[#cfdae7] bg-white px-4 py-3 font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
+                    className="w-full rounded-lg border border-[#cfdae7] bg-white px-3 py-2 font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
                   >
                     {siteOptions.map((site) => (
                       <option key={site} value={site}>
@@ -167,18 +145,23 @@ export default function ArrivalsDeparturesPage() {
                   </select>
                 </FilterField>
 
-                <div className="rounded-2xl border border-[#c7d4e5] bg-[#f8fbfe] px-4 py-3 text-base font-black text-[#10203a] xl:justify-self-end">
+                <div className="flex items-center gap-2 text-sm font-black text-[#10203a]">
+                  <span className="rounded-lg border border-[#d8e3ef] bg-[#f7fbff] px-3 py-2">Departures: {departureRows.length}</span>
+                  <span className="rounded-lg border border-[#d8e3ef] bg-[#f7fbff] px-3 py-2">Arrivals: {arrivalRows.length}</span>
+                </div>
+
+                <div className="rounded-lg border border-[#c7d4e5] bg-[#f8fbfe] px-3 py-2 text-sm font-black text-[#10203a] xl:justify-self-end">
                   Last updated: <span className="text-[#e40000]">{formatDateTime(refreshTime)}</span>
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(280px,1.4fr)_minmax(220px,1fr)_minmax(220px,1fr)]">
                 <FilterField label="Search">
                   <input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Route, resource, traffic or job reference"
-                    className="w-full rounded-xl border border-[#cfdae7] px-4 py-3 font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
+                    className="w-full rounded-lg border border-[#cfdae7] px-3 py-2 font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
                   />
                 </FilterField>
 
@@ -186,7 +169,7 @@ export default function ArrivalsDeparturesPage() {
                   <select
                     value={trafficFilter}
                     onChange={(event) => setTrafficFilter(event.target.value as ArrivalDepartureRow["traffic"] | "All")}
-                    className="w-full rounded-xl border border-[#cfdae7] px-4 py-3 font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
+                    className="w-full rounded-lg border border-[#cfdae7] px-3 py-2 font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
                   >
                     <option value="All">All traffic</option>
                     {trafficOptions.map((option) => (
@@ -201,7 +184,7 @@ export default function ArrivalsDeparturesPage() {
                   <select
                     value={statusFilter}
                     onChange={(event) => setStatusFilter(event.target.value as MovementStatus | "All")}
-                    className="w-full rounded-xl border border-[#cfdae7] px-4 py-3 font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
+                    className="w-full rounded-lg border border-[#cfdae7] px-3 py-2 font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
                   >
                     <option value="All">All statuses</option>
                     <option value="Actual">Actual</option>
@@ -210,15 +193,12 @@ export default function ArrivalsDeparturesPage() {
                     <option value="ETA">ETA</option>
                   </select>
                 </FilterField>
-
-                <FilterStat label="Departure rows" value={String(departureRows.length)} />
-                <FilterStat label="Arrival rows" value={String(arrivalRows.length)} />
               </div>
             </div>
           </section>
 
           {boardView === "Overview" ? (
-            <section className="mt-5 grid grid-cols-1 gap-5 2xl:grid-cols-2">
+            <section className="mt-3 grid grid-cols-1 gap-3 2xl:grid-cols-2">
               <BoardCard title={`${selectedSite} Departure Board`} subtitle="Planned departure time order" count={departureRows.length} accent="blue">
                 <CompactBoardList rows={departureRows.slice(0, 6)} mode="Departures" emptyText="No departures match the current filters." />
               </BoardCard>
@@ -230,13 +210,13 @@ export default function ArrivalsDeparturesPage() {
           ) : null}
 
           {boardView === "Departures" || boardView === "Overview" ? (
-            <section className="mt-5">
+            <section className="mt-3">
               <DepartureBoardTable site={selectedSite} rows={departureRows} hidden={boardView !== "Departures"} />
             </section>
           ) : null}
 
           {boardView === "Arrivals" || boardView === "Overview" ? (
-            <section className="mt-5">
+            <section className="mt-3">
               <ArrivalBoardTable site={selectedSite} rows={arrivalRows} hidden={boardView !== "Arrivals"} />
             </section>
           ) : null}
@@ -346,30 +326,12 @@ function getPrimaryTimeForMode(row: ArrivalDepartureRow, mode: BoardMode) {
   return mode === "Departures" ? row.departureDateTime : row.arrivalDateTime;
 }
 
-function HeroStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-4 backdrop-blur-sm">
-      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#bfdbfe]">{label}</p>
-      <p className="mt-2 text-3xl font-black text-white">{value}</p>
-    </div>
-  );
-}
-
 function FilterField({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="text-sm font-black text-[#10203a]">
-      <span className="mb-2 block">{label}</span>
+    <label className="text-xs font-black text-[#10203a]">
+      <span className="mb-1 block">{label}</span>
       {children}
     </label>
-  );
-}
-
-function FilterStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-[#d8e3ef] bg-[#f7fbff] px-4 py-4">
-      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#6b7280]">{label}</p>
-      <p className="mt-2 text-2xl font-black text-[#10203a]">{value}</p>
-    </div>
   );
 }
 
@@ -390,45 +352,45 @@ function BoardCard({
     accent === "blue" ? "from-[#eff6ff] to-[#f8fbff] border-[#bfdbfe]" : "from-[#ecfdf3] to-[#f7fffa] border-[#bbf7d0]";
 
   return (
-    <section className={`rounded-[26px] border bg-gradient-to-br ${accentClasses} p-5 shadow-sm`}>
+    <section className={`rounded-[20px] border bg-gradient-to-br ${accentClasses} p-3 shadow-sm`}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e40000]">Overview panel</p>
-          <h2 className="mt-2 text-2xl font-black text-[#10203a]">{title}</h2>
-          <p className="mt-2 text-sm font-bold text-[#4b5563]">{subtitle}</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#e40000]">Overview panel</p>
+          <h2 className="mt-1 text-xl font-black text-[#10203a]">{title}</h2>
+          <p className="mt-1 text-xs font-bold text-[#4b5563]">{subtitle}</p>
         </div>
-        <div className="rounded-2xl bg-white px-4 py-3 text-center shadow-sm">
+        <div className="rounded-xl bg-white px-3 py-2 text-center shadow-sm">
           <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#6b7280]">Rows</p>
-          <p className="mt-2 text-2xl font-black text-[#10203a]">{count}</p>
+          <p className="mt-1 text-xl font-black text-[#10203a]">{count}</p>
         </div>
       </div>
-      <div className="mt-4">{children}</div>
+      <div className="mt-2">{children}</div>
     </section>
   );
 }
 
 function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow[]; mode: BoardMode; emptyText: string }) {
   if (!rows.length) {
-    return <p className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white px-4 py-5 text-base font-bold text-[#6b7280]">{emptyText}</p>;
+    return <p className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white px-3 py-3 text-sm font-bold text-[#6b7280]">{emptyText}</p>;
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {rows.map((row, index) => {
         const status = getStatusForMode(row, mode);
         const time = getPrimaryTimeForMode(row, mode);
         const route = mode === "Departures" ? row.destination : row.departing;
 
         return (
-          <div key={`${row.jobReference}-${index}`} className="rounded-2xl border border-white/70 bg-white px-4 py-4 shadow-sm">
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[250px_1fr_auto] lg:items-center">
+          <div key={`${row.jobReference}-${index}`} className="rounded-xl border border-white/70 bg-white px-3 py-2.5 shadow-sm">
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-[220px_1fr_auto] lg:items-center">
               <div>
-                <p className="text-xl font-black text-[#10203a]">{time}</p>
-                <p className="mt-1 text-base font-black text-[#e40000]">{row.jobReference}</p>
+                <p className="text-base font-black text-[#10203a]">{time}</p>
+                <p className="text-sm font-black text-[#e40000]">{row.jobReference}</p>
               </div>
               <div>
-                <p className="text-lg font-black text-[#10203a]">{mode === "Departures" ? `Destination: ${route}` : `Origin: ${route}`}</p>
-                <p className="mt-1 text-base font-bold text-[#4b5563]">{row.resources}</p>
+                <p className="text-base font-black text-[#10203a]">{mode === "Departures" ? `Destination: ${route}` : `Origin: ${route}`}</p>
+                <p className="text-sm font-bold text-[#4b5563]">{row.resources}</p>
               </div>
               <div className="flex items-center gap-2 lg:justify-end">
                 <div className="flex flex-col items-end gap-1">
@@ -447,37 +409,37 @@ function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow
 
 function DepartureBoardTable({ site, rows, hidden }: { site: string; rows: ArrivalDepartureRow[]; hidden?: boolean }) {
   return (
-    <section className={`rounded-[28px] border border-[#d9e3ee] bg-white p-5 shadow-sm ${hidden ? "hidden" : "block"}`}>
+    <section className={`rounded-[20px] border border-[#d9e3ee] bg-white p-3 shadow-sm ${hidden ? "hidden" : "block"}`}>
       <BoardHeader title={`${site} Departure Board`} subtitle="Planned departure time order" rowCount={rows.length} />
 
-      <div className="mt-5 overflow-x-auto rounded-[24px] border border-[#dbe5f0] bg-[#f8fbff] p-2">
-        <table className="min-w-full border-separate border-spacing-y-2 text-base">
+      <div className="mt-3 overflow-x-auto rounded-[16px] border border-[#dbe5f0] bg-[#f8fbff] p-1">
+        <table className="min-w-full border-separate border-spacing-y-1 text-sm">
           <thead>
             <tr className="text-left text-[12px] font-black uppercase tracking-[0.18em] text-[#6b7280]">
-              <th className="px-4 py-4">Planned departure time</th>
-              <th className="px-4 py-4">Destination</th>
-              <th className="px-4 py-4">Job reference</th>
-              <th className="px-4 py-4">Resources</th>
-              <th className="px-4 py-4">Assets</th>
-              <th className="px-4 py-4">Traffic</th>
-              <th className="px-4 py-4">Delay</th>
-              <th className="px-4 py-4">Status</th>
+              <th className="px-3 py-2">Planned departure time</th>
+              <th className="px-3 py-2">Destination</th>
+              <th className="px-3 py-2">Job reference</th>
+              <th className="px-3 py-2">Resources</th>
+              <th className="px-3 py-2">Assets</th>
+              <th className="px-3 py-2">Traffic</th>
+              <th className="px-3 py-2">Delay</th>
+              <th className="px-3 py-2">Status</th>
             </tr>
           </thead>
           <tbody>
             {rows.length ? (
               rows.map((row, index) => (
                 <tr key={`${row.jobReference}-${index}`}>
-                  <td className="rounded-l-2xl border-y border-l border-[#e2e8f0] bg-white px-4 py-5">
+                  <td className="rounded-l-2xl border-y border-l border-[#e2e8f0] bg-white px-3 py-3">
                     <DateTimePill dateTime={row.departureDateTime} status={row.departureStatus} delay={row.delay} />
                   </td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-lg font-black text-[#10203a]">{row.destination}</td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-lg font-black text-[#10203a]">{row.jobReference}</td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-base font-bold text-[#4b5563]">{row.resources}</td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-4 py-5"><AssetsBadge value={row.assets} /></td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-4 py-5"><TrafficBadge value={row.traffic} /></td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-lg font-black text-[#10203a]">{row.delay}</td>
-                  <td className="rounded-r-2xl border-y border-r border-[#e2e8f0] bg-white px-4 py-5"><StatusBadge status={row.departureStatus} delay={row.delay} /></td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.destination}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.jobReference}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-sm font-bold text-[#4b5563]">{row.resources}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><AssetsBadge value={row.assets} /></td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><TrafficBadge value={row.traffic} /></td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.delay}</td>
+                  <td className="rounded-r-2xl border-y border-r border-[#e2e8f0] bg-white px-3 py-3"><StatusBadge status={row.departureStatus} delay={row.delay} /></td>
                 </tr>
               ))
             ) : (
@@ -492,37 +454,37 @@ function DepartureBoardTable({ site, rows, hidden }: { site: string; rows: Arriv
 
 function ArrivalBoardTable({ site, rows, hidden }: { site: string; rows: ArrivalDepartureRow[]; hidden?: boolean }) {
   return (
-    <section className={`rounded-[28px] border border-[#d9e3ee] bg-white p-5 shadow-sm ${hidden ? "hidden" : "block"}`}>
+    <section className={`rounded-[20px] border border-[#d9e3ee] bg-white p-3 shadow-sm ${hidden ? "hidden" : "block"}`}>
       <BoardHeader title={`${site} Arrival Board`} subtitle="Planned arrival time order" rowCount={rows.length} />
 
-      <div className="mt-5 overflow-x-auto rounded-[24px] border border-[#dbe5f0] bg-[#f8fbff] p-2">
-        <table className="min-w-full border-separate border-spacing-y-2 text-base">
+      <div className="mt-3 overflow-x-auto rounded-[16px] border border-[#dbe5f0] bg-[#f8fbff] p-1">
+        <table className="min-w-full border-separate border-spacing-y-1 text-sm">
           <thead>
             <tr className="text-left text-[12px] font-black uppercase tracking-[0.18em] text-[#6b7280]">
-              <th className="px-4 py-4">Planned arrival time</th>
-              <th className="px-4 py-4">Origin</th>
-              <th className="px-4 py-4">Job reference</th>
-              <th className="px-4 py-4">Traffic</th>
-              <th className="px-4 py-4">Resources</th>
-              <th className="px-4 py-4">Assets</th>
-              <th className="px-4 py-4">Delay</th>
-              <th className="px-4 py-4">Status</th>
+              <th className="px-3 py-2">Planned arrival time</th>
+              <th className="px-3 py-2">Origin</th>
+              <th className="px-3 py-2">Job reference</th>
+              <th className="px-3 py-2">Traffic</th>
+              <th className="px-3 py-2">Resources</th>
+              <th className="px-3 py-2">Assets</th>
+              <th className="px-3 py-2">Delay</th>
+              <th className="px-3 py-2">Status</th>
             </tr>
           </thead>
           <tbody>
             {rows.length ? (
               rows.map((row, index) => (
                 <tr key={`${row.jobReference}-${index}`}>
-                  <td className="rounded-l-2xl border-y border-l border-[#e2e8f0] bg-white px-4 py-5">
+                  <td className="rounded-l-2xl border-y border-l border-[#e2e8f0] bg-white px-3 py-3">
                     <DateTimePill dateTime={row.arrivalDateTime} status={row.arrivalStatus} delay={row.delay} />
                   </td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-lg font-black text-[#10203a]">{row.departing}</td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-lg font-black text-[#10203a]">{row.jobReference}</td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-4 py-5"><TrafficBadge value={row.traffic} /></td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-base font-bold text-[#4b5563]">{row.resources}</td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-4 py-5"><AssetsBadge value={row.assets} /></td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-4 py-5 text-lg font-black text-[#10203a]">{row.delay}</td>
-                  <td className="rounded-r-2xl border-y border-r border-[#e2e8f0] bg-white px-4 py-5"><StatusBadge status={row.arrivalStatus} delay={row.delay} /></td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.departing}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.jobReference}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><TrafficBadge value={row.traffic} /></td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-sm font-bold text-[#4b5563]">{row.resources}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><AssetsBadge value={row.assets} /></td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.delay}</td>
+                  <td className="rounded-r-2xl border-y border-r border-[#e2e8f0] bg-white px-3 py-3"><StatusBadge status={row.arrivalStatus} delay={row.delay} /></td>
                 </tr>
               ))
             ) : (
@@ -537,13 +499,13 @@ function ArrivalBoardTable({ site, rows, hidden }: { site: string; rows: Arrival
 
 function BoardHeader({ title, subtitle, rowCount }: { title: string; subtitle: string; rowCount: number }) {
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
       <div>
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e40000]">Detailed board</p>
-        <h2 className="mt-2 text-4xl font-black text-[#10203a]">{title}</h2>
-        <p className="mt-2 text-base font-bold text-[#4b5563]">{subtitle}</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#e40000]">Detailed board</p>
+        <h2 className="mt-1 text-2xl font-black text-[#10203a]">{title}</h2>
+        <p className="mt-1 text-sm font-bold text-[#4b5563]">{subtitle}</p>
       </div>
-      <div className="rounded-2xl border border-[#d7e2ef] bg-[#f8fbfe] px-4 py-3 text-base font-black text-[#10203a]">
+      <div className="rounded-xl border border-[#d7e2ef] bg-[#f8fbfe] px-3 py-2 text-sm font-black text-[#10203a]">
         Showing {rowCount} row(s)
       </div>
     </div>
@@ -553,7 +515,7 @@ function BoardHeader({ title, subtitle, rowCount }: { title: string; subtitle: s
 function EmptyRow({ colSpan }: { colSpan: number }) {
   return (
     <tr>
-      <td colSpan={colSpan} className="rounded-2xl bg-white px-4 py-10 text-center text-base font-bold text-[#6b7280]">
+      <td colSpan={colSpan} className="rounded-2xl bg-white px-4 py-10 text-center text-sm font-bold text-[#6b7280]">
         No rows match the current filters.
       </td>
     </tr>
@@ -561,7 +523,7 @@ function EmptyRow({ colSpan }: { colSpan: number }) {
 }
 
 function AssetsBadge({ value, showLabel = false, compact = false }: { value: number; showLabel?: boolean; compact?: boolean }) {
-  const sizeClasses = compact ? "min-w-0 rounded-lg px-3 py-1 text-xs" : "min-w-12 rounded-xl px-3 py-2 text-base";
+  const sizeClasses = compact ? "min-w-0 rounded-lg px-3 py-1 text-xs" : "min-w-10 rounded-lg px-2.5 py-1.5 text-sm";
 
   return (
     <span className={`inline-flex justify-center border border-[#c7d4e5] bg-[#f8fbfe] font-black text-[#10203a] ${sizeClasses}`}>
@@ -571,7 +533,7 @@ function AssetsBadge({ value, showLabel = false, compact = false }: { value: num
 }
 
 function TrafficBadge({ value, compact = false }: { value: string; compact?: boolean }) {
-  const sizeClasses = compact ? "px-3 py-1 text-xs" : "px-4 py-2 text-sm";
+  const sizeClasses = compact ? "px-3 py-1 text-xs" : "px-3 py-1.5 text-xs";
 
   return (
     <span className={`inline-flex rounded-full bg-[#ecf5ff] font-black uppercase tracking-[0.12em] text-[#0f3a6d] ring-1 ring-[#bfdbfe] ${sizeClasses}`}>
@@ -588,7 +550,7 @@ function StatusBadge({ status, delay }: { status: MovementStatus; delay: string 
       ? "border-[#f59e0b] bg-[#fff7ed] text-[#b45309]"
       : "border-[#16a34a] bg-[#edfdf1] text-[#166534]";
 
-  return <span className={`inline-flex rounded-full border px-4 py-2 text-sm font-black uppercase tracking-[0.14em] ${classes}`}>{status}</span>;
+  return <span className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] ${classes}`}>{status}</span>;
 }
 
 function DateTimePill({ dateTime, status, delay }: { dateTime: string; status: MovementStatus; delay: string }) {
@@ -599,22 +561,22 @@ function DateTimePill({ dateTime, status, delay }: { dateTime: string; status: M
       ? "bg-[#f59e0b] text-white"
       : "bg-[#16a34a] text-white";
 
-  return <span className={`inline-flex rounded-xl px-4 py-3 text-base font-black ${classes}`}>{dateTime}</span>;
+  return <span className={`inline-flex rounded-lg px-3 py-2 text-sm font-black ${classes}`}>{dateTime}</span>;
 }
 
 function OfficeHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <header className="flex min-h-[64px] items-center justify-between bg-[#e40000] text-white shadow-sm">
+    <header className="flex min-h-[56px] items-center justify-between bg-[#e40000] text-white shadow-sm">
       <div className="flex h-full items-center">
         <Link
           href="/internal/app-ideas/link-message-mock"
-          className="flex h-[64px] w-[68px] items-center justify-center border-r border-white/30 text-3xl font-black text-white no-underline transition hover:bg-white/10"
+          className="flex h-[56px] w-[68px] items-center justify-center border-r border-white/30 text-3xl font-black text-white no-underline transition hover:bg-white/10"
           aria-label="Back to Duty Execution"
         >
           ≡
         </Link>
         <div className="px-5">
-          <p className="text-2xl font-black uppercase tracking-wide">{title}</p>
+          <p className="text-xl font-black uppercase tracking-wide">{title}</p>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/80">{subtitle}</p>
         </div>
       </div>
@@ -638,14 +600,14 @@ function OfficeHeader({ title, subtitle }: { title: string; subtitle: string }) 
 
 function OfficeSidebar() {
   return (
-    <aside className="flex min-h-[calc(100vh-64px)] w-[68px] flex-col bg-[#252c33] text-white">
+    <aside className="flex min-h-[calc(100vh-56px)] w-[68px] flex-col bg-[#252c33] text-white">
       {sidebarItems.map((item) => (
         <Link
           key={item.label}
           href={item.href}
           aria-label={item.label}
           title={item.label}
-          className={`relative flex h-[64px] items-center justify-center border-b border-white/10 no-underline transition ${
+          className={`relative flex h-[56px] items-center justify-center border-b border-white/10 no-underline transition ${
             item.icon.length > 2 ? "text-sm font-black" : "text-3xl"
           } ${item.active ? "bg-[#11171d] text-white" : "text-white/75 hover:bg-[#11171d] hover:text-white"}`}
         >
