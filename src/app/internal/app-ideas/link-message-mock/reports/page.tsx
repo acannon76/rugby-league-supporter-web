@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { exportTabularData, type ExportFormat } from "../../exportData";
 import { downloadNetworkPerformancePdf } from "./networkPerformancePdf";
 import { NationalLocalPlanReport } from "./NationalLocalPlanReport";
+import { ProximityReport } from "./ProximityReport";
 
 type SidebarItem = {
   label: string;
@@ -439,7 +440,7 @@ export default function ReportsPage() {
               </div>
 
               <div>
-                <SummaryCard label="Reports available" value="2" />
+                <SummaryCard label="Reports available" value="3" />
               </div>
             </div>
 
@@ -465,6 +466,10 @@ export default function ReportsPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <NationalLocalPlanReport locations={[...availableLocations]} />
+                  <ReportDetail label="Available formats" value="Excel, CSV and PDF" />
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <ProximityReport locations={[...availableLocations]} />
                   <ReportDetail label="Available formats" value="Excel, CSV and PDF" />
                 </div>
               </div>
