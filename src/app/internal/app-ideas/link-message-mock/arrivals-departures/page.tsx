@@ -61,25 +61,50 @@ const sidebarItems: SidebarItem[] = [
   { label: "A&D Dashboard", icon: "A&D", href: "/internal/app-ideas/link-message-mock/arrivals-departures", active: true },
 ];
 
-const departureOffsets = [-24, -10, 6, 22, 38, 54, 72, 89, 104, 118, 134, 149];
-const arrivalOffsets = [-28, -18, -6, 9, 24, 39, 57, 74, 93, 111];
+const departureOffsets = [-24, -16, -8, 0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128];
+const arrivalOffsets = [-28, -19, -10, -1, 8, 17, 26, 35, 44, 53, 62, 71, 80, 89, 98, 107, 116];
 
 const departureDutyNumbers = [
-  "MSVX5025b",
-  "MSVP5032b",
-  "PEV2020c",
-  "WAV3052a",
-  "PRD2011a",
-  "YDC2030b",
+  "MSVx5025b",
+  "MSVp5032b",
+  "PEVt2020c",
+  "WAVx3052a",
+  "PRDx2011a",
+  "YDCx2030b",
+  "HCNp3054a",
+  "BOUa4014a",
+  "MANv1132b",
+  "LONp2021a",
+  "VOCx1550a",
+  "NWHx2540b",
+  "BRVt3002b",
+  "CMVx4009a",
+  "EXVt3023b",
+  "GWVp2006b",
+  "MHVt3056b",
+  "NRVp5003a",
+  "SNVp2004a",
+  "WKVc3034b",
 ];
 
 const arrivalDutyNumbers = [
-  "VPL3012a",
-  "NWV4002c",
-  "MVO2003a",
-  "HFV3023a",
-  "PEV4018b",
-  "WAV3052a",
+  "VPLt3012a",
+  "NWVx4002c",
+  "MVOt2003a",
+  "HFVt3023a",
+  "PEVt4018b",
+  "WAVx3052a",
+  "CRYp9021a",
+  "LONp4552a",
+  "BOUv1473a",
+  "YDCx6112b",
+  "PLVp3002a",
+  "SWVp4023a",
+  "SOVx2003a",
+  "STVx3002b",
+  "WRTx2007c",
+  "LSAp4034a",
+  "SEVx3004b",
 ];
 
 export default function ArrivalsDeparturesPage() {
@@ -124,11 +149,8 @@ export default function ArrivalsDeparturesPage() {
 
         <main className="flex-1 p-2 sm:p-3">
           <section className="overflow-hidden rounded-[20px] border border-[#d9e3ee] bg-white shadow-sm">
-            <div className="bg-[#e40000] px-5 py-3 text-white sm:px-6">
+            <div className="bg-[#e40000] px-5 py-2.5 text-white sm:px-6">
               <h1 className="text-2xl font-black sm:text-3xl">Arrival & Departure Board</h1>
-              <p className="mt-1 text-xs font-bold text-white/90 sm:text-sm">
-                Select a site and choose Overview, Departures or Arrivals.
-              </p>
             </div>
 
             <div className="px-4 py-3">
@@ -196,7 +218,6 @@ export default function ArrivalsDeparturesPage() {
                     ))}
                   </select>
                 </FilterField>
-
               </div>
             </div>
           </section>
@@ -287,12 +308,11 @@ function filterRows(
         return false;
       }
 
-
       if (!term) {
         return true;
       }
 
-      const haystack = [row.departing, row.destination, row.jobReference, row.resources, row.assets, row.traffic, row.delay]
+      const haystack = [row.departing, row.destination, row.jobReference, row.c3Bay, row.resources, row.assets, row.traffic, row.delay]
         .join(" ")
         .toLowerCase();
       return haystack.includes(term);
@@ -403,9 +423,10 @@ function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow
 
   return (
     <div className="overflow-x-auto rounded-xl border border-[#dbe5f0] bg-white">
-      <div className="min-w-[820px]">
-        <div className="grid grid-cols-[92px_112px_minmax(150px,1fr)_minmax(215px,1.35fr)_145px_72px_92px] items-center gap-2 border-b border-[#dbe5f0] bg-[#f8fbff] px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#6b7280]">
+      <div className="min-w-[890px]">
+        <div className="grid grid-cols-[92px_66px_112px_minmax(150px,1fr)_minmax(215px,1.35fr)_145px_72px_92px] items-center gap-2 border-b border-[#dbe5f0] bg-[#f8fbff] px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#6b7280]">
           <span>{plannedHeading}</span>
+          <span>C3 Bay</span>
           <span>Duty</span>
           <span>{routeHeading}</span>
           <span>Resources</span>
@@ -420,9 +441,10 @@ function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow
           return (
             <div
               key={`${row.jobReference}-${index}`}
-              className="grid grid-cols-[92px_112px_minmax(150px,1fr)_minmax(215px,1.35fr)_145px_72px_92px] items-center gap-2 border-b border-[#edf1f5] px-3 py-2 last:border-b-0"
+              className="grid grid-cols-[92px_66px_112px_minmax(150px,1fr)_minmax(215px,1.35fr)_145px_72px_92px] items-center gap-2 border-b border-[#edf1f5] px-3 py-2 last:border-b-0"
             >
               <span className="text-base font-black text-[#10203a]">{formatTimeOnly(getPrimaryTimeForMode(row, mode))}</span>
+              <C3BayBadge value={row.c3Bay} compact />
               <span className="text-sm font-black text-[#e40000]">{row.jobReference}</span>
               <span className="text-sm font-black text-[#10203a]">{route}</span>
               <span className="text-xs font-bold leading-snug text-[#4b5563]">{row.resources}</span>
@@ -446,22 +468,24 @@ function DepartureBoardTable({ site, rows, hidden }: { site: string; rows: Arriv
         <table className="min-w-full table-fixed border-separate border-spacing-y-1 text-sm">
           <colgroup>
             <col className="w-[10%]" />
+            <col className="w-[7%]" />
             <col className="w-[16%]" />
             <col className="w-[12%]" />
             <col className="w-[23%]" />
-            <col className="w-[7%]" />
             <col className="w-[13%]" />
-            <col className="w-[8%]" />
-            <col className="w-[11%]" />
+            <col className="w-[7%]" />
+            <col className="w-[6%]" />
+            <col className="w-[10%]" />
           </colgroup>
           <thead>
             <tr className="text-left text-[11px] font-black uppercase tracking-[0.14em] text-[#6b7280]">
               <th className="px-3 py-2">Planned departure</th>
+              <th className="px-3 py-2">C3 Bay</th>
               <th className="px-3 py-2">Destination</th>
               <th className="px-3 py-2">Duty number</th>
               <th className="px-3 py-2">Resources</th>
-              <th className="px-3 py-2">Assets</th>
               <th className="px-3 py-2">Traffic</th>
+              <th className="px-3 py-2">Assets</th>
               <th className="px-3 py-2">Delay</th>
               <th className="px-3 py-2">Expected time</th>
             </tr>
@@ -473,11 +497,12 @@ function DepartureBoardTable({ site, rows, hidden }: { site: string; rows: Arriv
                   <td className="rounded-l-2xl border-y border-l border-[#e2e8f0] bg-white px-3 py-3">
                     <PlannedTimePill time={formatTimeOnly(row.departureDateTime)} />
                   </td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><C3BayBadge value={row.c3Bay} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.destination}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#e40000]">{row.jobReference}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-sm font-bold text-[#4b5563]">{row.resources}</td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><AssetsBadge value={row.assets} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><TrafficBadge value={row.traffic} /></td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><AssetsBadge value={row.assets} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.delay}</td>
                   <td className="rounded-r-2xl border-y border-r border-[#e2e8f0] bg-white px-3 py-3">
                     <ExpectedTimePill time={getExpectedTime(row, "Departures")} late={isRunningLate(row.delay)} />
@@ -485,7 +510,7 @@ function DepartureBoardTable({ site, rows, hidden }: { site: string; rows: Arriv
                 </tr>
               ))
             ) : (
-              <EmptyRow colSpan={8} />
+              <EmptyRow colSpan={9} />
             )}
           </tbody>
         </table>
@@ -503,17 +528,19 @@ function ArrivalBoardTable({ site, rows, hidden }: { site: string; rows: Arrival
         <table className="min-w-full table-fixed border-separate border-spacing-y-1 text-sm">
           <colgroup>
             <col className="w-[10%]" />
+            <col className="w-[7%]" />
             <col className="w-[16%]" />
             <col className="w-[12%]" />
             <col className="w-[13%]" />
             <col className="w-[23%]" />
             <col className="w-[7%]" />
-            <col className="w-[8%]" />
-            <col className="w-[11%]" />
+            <col className="w-[6%]" />
+            <col className="w-[10%]" />
           </colgroup>
           <thead>
             <tr className="text-left text-[11px] font-black uppercase tracking-[0.14em] text-[#6b7280]">
               <th className="px-3 py-2">Planned arrival</th>
+              <th className="px-3 py-2">C3 Bay</th>
               <th className="px-3 py-2">Origin</th>
               <th className="px-3 py-2">Duty number</th>
               <th className="px-3 py-2">Traffic</th>
@@ -530,6 +557,7 @@ function ArrivalBoardTable({ site, rows, hidden }: { site: string; rows: Arrival
                   <td className="rounded-l-2xl border-y border-l border-[#e2e8f0] bg-white px-3 py-3">
                     <PlannedTimePill time={formatTimeOnly(row.arrivalDateTime)} />
                   </td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><C3BayBadge value={row.c3Bay} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.departing}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#e40000]">{row.jobReference}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><TrafficBadge value={row.traffic} /></td>
@@ -542,7 +570,7 @@ function ArrivalBoardTable({ site, rows, hidden }: { site: string; rows: Arrival
                 </tr>
               ))
             ) : (
-              <EmptyRow colSpan={8} />
+              <EmptyRow colSpan={9} />
             )}
           </tbody>
         </table>
@@ -573,6 +601,16 @@ function EmptyRow({ colSpan }: { colSpan: number }) {
         No rows match the current filters.
       </td>
     </tr>
+  );
+}
+
+function C3BayBadge({ value, compact = false }: { value: string; compact?: boolean }) {
+  const sizeClasses = compact ? "min-w-[48px] rounded-lg px-2 py-1 text-xs" : "min-w-[56px] rounded-lg px-2.5 py-1.5 text-sm";
+
+  return (
+    <span className={`inline-flex justify-center border border-[#c7d4e5] bg-[#f8fbfe] font-black text-[#10203a] ${sizeClasses}`}>
+      {value}
+    </span>
   );
 }
 
