@@ -344,16 +344,16 @@ export default function LiveTrackingPage() {
         <OfficeSidebar />
 
         <main className="min-w-0 flex-1 p-3 sm:p-4 xl:p-5">
-          <section className="rounded-[22px] border border-[#d6dde8] bg-white p-4 shadow-sm xl:p-5">
-            <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(430px,0.78fr)] xl:items-start">
+          <section className="rounded-[18px] border border-[#d6dde8] bg-white p-3 shadow-sm">
+            <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(500px,0.72fr)] xl:items-start">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e40000]">Vehicle tracking mockup</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#e40000]">Vehicle tracking mockup</p>
                   <TrackingModeChip isCurrent={isCurrentDay} />
                 </div>
-                <h1 className="mt-1 text-2xl font-black text-[#10203a] xl:text-3xl">{liveTrackingSummary.title}</h1>
-                <p className="mt-2 max-w-4xl text-sm font-bold leading-5 text-[#4b5563]">
-                  Select today for live vehicle progress, or choose any day from the previous week to review the completed route and recorded events.
+                <h1 className="mt-0.5 text-xl font-black text-[#10203a] xl:text-2xl">{liveTrackingSummary.title}</h1>
+                <p className="mt-1 max-w-4xl text-xs font-bold leading-4 text-[#4b5563]">
+                  Select today for live progress, or choose a previous date to review the completed route and recorded events.
                 </p>
               </div>
 
@@ -373,32 +373,29 @@ export default function LiveTrackingPage() {
               />
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4 xl:grid-cols-8">
               <SummaryCard label="Resource" value={selectedTrackingDay.resource} />
               <SummaryCard label="Duty" value={selectedTrackingDay.duty} />
               <SummaryCard label="Vehicle" value={selectedTrackingDay.vehicle} />
               <SummaryCard label="Trailer" value={selectedTrackingDay.trailer} />
-            </div>
-
-            <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
               <MetricCard label="Driver" value={selectedTrackingDay.driver} detail="Assigned driver" />
               {isCurrentDay ? (
                 <>
                   <MetricCard label="Last updated" value={formatDateTime(now)} detail="Live GPS refresh" />
                   <MetricCard label="Speed" value={liveTrackingSummary.speed} detail="Current speed" />
-                  <MetricCard label="ETA" value={liveTrackingSummary.eta} detail="Next recorded point" />
+                  <MetricCard label="ETA" value={liveTrackingSummary.eta} detail="Next point" />
                 </>
               ) : (
                 <>
-                  <MetricCard label="Tracking period" value={`${selectedTrackingDay.startTime}–${selectedTrackingDay.endTime}`} detail="Recorded start and finish" />
-                  <MetricCard label="Distance travelled" value={selectedTrackingDay.distance ?? "—"} detail="Historical route total" />
-                  <MetricCard label="Driving time" value={selectedTrackingDay.drivingTime ?? "—"} detail="Recorded moving time" />
+                  <MetricCard label="Tracking period" value={`${selectedTrackingDay.startTime}–${selectedTrackingDay.endTime}`} detail="Start and finish" />
+                  <MetricCard label="Distance" value={selectedTrackingDay.distance ?? "—"} detail="Route total" />
+                  <MetricCard label="Driving time" value={selectedTrackingDay.drivingTime ?? "—"} detail="Moving time" />
                 </>
               )}
             </div>
           </section>
 
-          <section className="mt-4 grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(330px,0.85fr)] 2xl:grid-cols-[minmax(480px,1.2fr)_minmax(350px,0.86fr)_minmax(270px,0.56fr)]">
+          <section className="mt-3 grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(330px,0.85fr)] 2xl:grid-cols-[minmax(480px,1.2fr)_minmax(350px,0.86fr)_minmax(270px,0.56fr)]">
             <RouteMapCard trackingDay={selectedTrackingDay} selectedDateLabel={selectedDateLabel} />
             <MovementListCard events={selectedTrackingDay.events} isCurrent={isCurrentDay} selectedDateLabel={selectedDateLabel} />
             <JourneyStatusCard trackingDay={selectedTrackingDay} currentEvent={currentEvent} selectedDateLabel={selectedDateLabel} />
@@ -484,25 +481,25 @@ function DateSelector({
   onToday: () => void;
 }) {
   return (
-    <div className="rounded-[18px] border border-[#cbd7e6] bg-[#f8fbfe] p-3 shadow-sm">
+    <div className="rounded-[14px] border border-[#cbd7e6] bg-[#f8fbfe] p-2 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.17em] text-[#6b7280]">Tracking date</p>
-          <p className="mt-1 text-sm font-black text-[#10203a]">{relativeLabel} • {dateLabel}</p>
+        <div className="min-w-0">
+          <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#6b7280]">Tracking date</p>
+          <p className="mt-0.5 truncate text-xs font-black text-[#10203a]">{relativeLabel} • {dateLabel}</p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${
+        <span className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] ${
           isCurrent ? "bg-[#dcfce7] text-[#166534] ring-1 ring-[#86efac]" : "bg-[#e8eef8] text-[#0f3a6d] ring-1 ring-[#bfdbfe]"
         }`}>
-          {isCurrent ? "Live tracking" : "Historical tracking"}
+          {isCurrent ? "Live tracking" : "Historical"}
         </span>
       </div>
 
-      <div className="mt-3 grid grid-cols-[auto_minmax(160px,1fr)_auto] gap-2">
+      <div className="mt-1.5 grid grid-cols-[auto_minmax(150px,1fr)_auto_auto] gap-1.5">
         <button
           type="button"
           onClick={onEarlier}
           disabled={!canMoveEarlier}
-          className="rounded-lg border border-[#cbd7e6] bg-white px-3 py-2 text-sm font-black text-[#10203a] transition hover:bg-[#edf4fb] disabled:cursor-not-allowed disabled:opacity-35"
+          className="rounded-md border border-[#cbd7e6] bg-white px-2.5 py-1.5 text-xs font-black text-[#10203a] transition hover:bg-[#edf4fb] disabled:cursor-not-allowed disabled:opacity-35"
           aria-label="Previous tracking day"
         >
           ←
@@ -513,28 +510,27 @@ function DateSelector({
           min={min}
           max={max}
           onChange={(event) => onChange(event.target.value)}
-          className="min-w-0 rounded-lg border border-[#cbd7e6] bg-white px-3 py-2 text-sm font-black text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
+          className="min-w-0 rounded-md border border-[#cbd7e6] bg-white px-2.5 py-1.5 text-xs font-black text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
           aria-label="Select vehicle tracking date"
         />
         <button
           type="button"
           onClick={onLater}
           disabled={!canMoveLater}
-          className="rounded-lg border border-[#cbd7e6] bg-white px-3 py-2 text-sm font-black text-[#10203a] transition hover:bg-[#edf4fb] disabled:cursor-not-allowed disabled:opacity-35"
+          className="rounded-md border border-[#cbd7e6] bg-white px-2.5 py-1.5 text-xs font-black text-[#10203a] transition hover:bg-[#edf4fb] disabled:cursor-not-allowed disabled:opacity-35"
           aria-label="Next tracking day"
         >
           →
         </button>
+        <button
+          type="button"
+          onClick={onToday}
+          disabled={isCurrent}
+          className="rounded-md bg-[#10203a] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-white transition hover:bg-[#18335c] disabled:cursor-default disabled:bg-[#9aa7b8]"
+        >
+          Today
+        </button>
       </div>
-
-      <button
-        type="button"
-        onClick={onToday}
-        disabled={isCurrent}
-        className="mt-2 w-full rounded-lg bg-[#10203a] px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#18335c] disabled:cursor-default disabled:bg-[#9aa7b8]"
-      >
-        {isCurrent ? "Showing today" : "Return to today’s live tracking"}
-      </button>
     </div>
   );
 }
@@ -740,19 +736,19 @@ function JourneyStatusCard({
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-xl border border-[#d7dee9] bg-[#f8fafc] px-3 py-2.5">
-      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#6b7280]">{label}</p>
-      <p className="mt-1 truncate text-sm font-black text-[#10203a]" title={value}>{value}</p>
+    <div className="min-w-0 rounded-lg border border-[#d7dee9] bg-[#f8fafc] px-2 py-1.5">
+      <p className="text-[8px] font-black uppercase tracking-[0.14em] text-[#6b7280]">{label}</p>
+      <p className="mt-0.5 truncate text-xs font-black text-[#10203a]" title={value}>{value}</p>
     </div>
   );
 }
 
 function MetricCard({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <div className="min-w-0 rounded-xl border border-[#d7dee9] bg-[#f8fafc] px-3 py-2.5">
-      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#6b7280]">{label}</p>
-      <p className="mt-1 truncate text-base font-black text-[#10203a]" title={value}>{value}</p>
-      <p className="mt-0.5 text-xs font-bold text-[#4b5563]">{detail}</p>
+    <div className="min-w-0 rounded-lg border border-[#d7dee9] bg-[#f8fafc] px-2 py-1.5">
+      <p className="text-[8px] font-black uppercase tracking-[0.14em] text-[#6b7280]">{label}</p>
+      <p className="mt-0.5 truncate text-xs font-black text-[#10203a]" title={value}>{value}</p>
+      <p className="mt-0.5 truncate text-[9px] font-bold leading-3 text-[#4b5563]">{detail}</p>
     </div>
   );
 }
