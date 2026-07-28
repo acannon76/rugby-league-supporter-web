@@ -92,8 +92,6 @@ export function ProximityReport({ locations }: ProximityReportProps) {
     });
   }, [startDate, startTime, endDate, endTime, latitude, longitude, radius, selectedLocations]);
 
-  const vehicleCount = new Set(previewRows.map((row) => `${row.vehicle}-${row.registration}`)).size;
-  const trailerCount = new Set(previewRows.map((row) => row.trailer)).size;
 
   const toggleLocation = (location: string) => {
     setSelectedLocations((current) =>
@@ -280,11 +278,6 @@ export function ProximityReport({ locations }: ProximityReportProps) {
                 </div>
               </section>
 
-              <section className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <ResultSummary label="Mock events found" value={String(previewRows.length)} />
-                <ResultSummary label="Vehicles found" value={String(vehicleCount)} />
-                <ResultSummary label="Trailers found" value={String(trailerCount)} />
-              </section>
 
               {errorMessage ? (
                 <div className="mt-4 rounded-[14px] border border-[#ef4444] bg-[#fff1f2] px-4 py-3 text-sm font-black text-[#991b1b]">
@@ -384,15 +377,6 @@ function NumberField({
         className="mt-1 h-11 w-full rounded-xl border border-[#cfd8e3] bg-white px-3 text-sm font-black text-[#10203a] outline-none focus:border-[#0f3a6d]"
       />
     </label>
-  );
-}
-
-function ResultSummary({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[16px] border border-[#cfd8e3] bg-[#f8fafc] px-4 py-3">
-      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#6b7280]">{label}</p>
-      <p className="mt-1 text-xl font-black text-[#10203a]">{value}</p>
-    </div>
   );
 }
 
