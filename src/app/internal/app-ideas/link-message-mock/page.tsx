@@ -402,8 +402,13 @@ function buildTravelTooltip(row: DutyRow, segmentIndex: number) {
   const travelIndex = travelSegments.findIndex(({ index }) => index === segmentIndex);
   const dutyIndex = getDutyNumericIndex(row.duty);
   const routeBaseIndex = (dutyIndex + Math.max(travelIndex, 0)) % (mockTravelLocations.length - 1);
-  const fromLocation = mockTravelLocations[routeBaseIndex];
-  const toLocation = mockTravelLocations[routeBaseIndex + 1];
+  const nwh005RouteOverrides = [
+    { from: "North West Hub", to: "PRDC" },
+    { from: "PRDC", to: "North West Hub" },
+  ];
+  const routeOverride = row.duty === "NWH005" ? nwh005RouteOverrides[travelIndex] : undefined;
+  const fromLocation = routeOverride?.from ?? mockTravelLocations[routeBaseIndex];
+  const toLocation = routeOverride?.to ?? mockTravelLocations[routeBaseIndex + 1];
   const vehicle =
     mockVehicleRegistrations[(dutyIndex + Math.max(travelIndex, 0)) % mockVehicleRegistrations.length];
   const trailer = mockTrailerNumbers[(dutyIndex + Math.max(travelIndex, 0)) % mockTrailerNumbers.length];
@@ -850,8 +855,24 @@ export default function LinkMessageMockPage() {
                         index % 2 === 0 ? "bg-[#f4f7fb]" : "bg-white"
                       }`}
                     >
-                      <div className="z-20 border-r border-[#d9dee6] px-3 py-2">
-                        <div className="flex items-center gap-2">
+                      <div className="relative z-20 overflow-hidden border-r border-[#d9dee6] px-3 py-2">
+                        {duty.duty === "NWH005" ? (
+                          <>
+                            <span
+                              aria-hidden="true"
+                              className="absolute inset-x-0 top-0 h-[4px] bg-[#facc15]"
+                            />
+                            <span
+                              aria-hidden="true"
+                              className="absolute right-0 top-0 h-[38px] w-[64px] bg-[#facc15]"
+                              style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%)" }}
+                            />
+                            <span className="pointer-events-none absolute right-1.5 top-1 z-10 text-[10px] font-black uppercase leading-none text-[#1f2937]">
+                              LDN
+                            </span>
+                          </>
+                        ) : null}
+                        <div className="relative z-10 flex items-center gap-2">
                           <span className={`h-3 w-3 rounded-full ${driverMessageDutyIds.includes(duty.duty) ? "bg-[#e40000]" : "bg-[#2c80e5]"}`} />
                           <p className={`font-black ${driverMessageDutyIds.includes(duty.duty) ? "text-[#e40000]" : "text-[#374151]"}`}>{duty.duty}</p>
                           {driverMessageDutyIds.includes(duty.duty) ? (
