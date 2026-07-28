@@ -61,8 +61,8 @@ const sidebarItems: SidebarItem[] = [
   { label: "A&D Dashboard", icon: "A&D", href: "/internal/app-ideas/link-message-mock/arrivals-departures", active: true },
 ];
 
-const departureOffsets = [-24, -16, -8, 0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128];
-const arrivalOffsets = [-28, -19, -10, -1, 8, 17, 26, 35, 44, 53, 62, 71, 80, 89, 98, 107, 116];
+const departureOffsets = [2, 8, 14, 20, 26, 32, 38, 44, 50, 56, 62, 68, 74, 80, 86, 92, 98, 104, 110, 116];
+const arrivalOffsets = [4, 11, 18, 25, 32, 39, 46, 53, 60, 67, 74, 81, 88, 95, 102, 109, 116];
 
 const departureDutyNumbers = [
   "MSVx5025b",
@@ -225,11 +225,11 @@ export default function ArrivalsDeparturesPage() {
           {boardView === "Overview" ? (
             <section className="mt-3 grid grid-cols-1 gap-3 2xl:grid-cols-2">
               <BoardCard title={`${selectedSite} Arrival Board`} subtitle="Planned arrival time order" count={arrivalRows.length} accent="green">
-                <CompactBoardList rows={arrivalRows.slice(0, 6)} mode="Arrivals" emptyText="No arrivals match the current filters." />
+                <CompactBoardList rows={arrivalRows} mode="Arrivals" emptyText="No arrivals match the current filters." />
               </BoardCard>
 
               <BoardCard title={`${selectedSite} Departure Board`} subtitle="Planned departure time order" count={departureRows.length} accent="blue">
-                <CompactBoardList rows={departureRows.slice(0, 6)} mode="Departures" emptyText="No departures match the current filters." />
+                <CompactBoardList rows={departureRows} mode="Departures" emptyText="No departures match the current filters." />
               </BoardCard>
             </section>
           ) : null}
@@ -288,15 +288,16 @@ function filterRows(
 ) {
   const term = search.trim().toLowerCase();
   const nowMs = now.getTime();
-  const lowerDepartureWindow = nowMs - 30 * 60 * 1000;
-  const lowerArrivalWindow = nowMs - 30 * 60 * 1000;
+  const lowerDepartureWindow = nowMs;
+  const upperDepartureWindow = nowMs + 120 * 60 * 1000;
+  const lowerArrivalWindow = nowMs;
   const upperArrivalWindow = nowMs + 120 * 60 * 1000;
 
   return [...rows]
     .filter((row) => {
       const primaryTimeMs = parseDateTime(getPrimaryTimeForMode(row, mode));
 
-      if (mode === "Departures" && primaryTimeMs < lowerDepartureWindow) {
+      if (mode === "Departures" && (primaryTimeMs < lowerDepartureWindow || primaryTimeMs > upperDepartureWindow)) {
         return false;
       }
 
@@ -422,17 +423,17 @@ function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow
   const plannedHeading = mode === "Departures" ? "Planned departure" : "Planned arrival";
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-[#dbe5f0] bg-white">
-      <div className="min-w-[890px]">
-        <div className="grid grid-cols-[92px_66px_112px_minmax(150px,1fr)_minmax(215px,1.35fr)_145px_72px_92px] items-center gap-2 border-b border-[#dbe5f0] bg-[#f8fbff] px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#6b7280]">
-          <span>{plannedHeading}</span>
-          <span>C3 Bay</span>
+    <div className="max-h-[calc(100vh-390px)] min-h-[420px] overflow-y-auto overflow-x-hidden rounded-xl border border-[#dbe5f0] bg-white">
+      <div className="w-full min-w-0">
+        <div className="sticky top-0 z-10 grid grid-cols-[70px_36px_88px_minmax(90px,1fr)_minmax(120px,1.15fr)_100px_40px_64px] items-center gap-x-1 border-b border-[#dbe5f0] bg-[#f8fbff] px-1.5 py-2 text-[9px] font-black uppercase tracking-[0.1em] text-[#6b7280]">
+          <span className="leading-tight">{plannedHeading}</span>
+          <span className="text-center leading-[1.05]">C3<br />Bay</span>
           <span>Duty</span>
           <span>{routeHeading}</span>
           <span>Resources</span>
           <span>Traffic</span>
-          <span>Assets</span>
-          <span>Expected</span>
+          <span className="text-center">Assets</span>
+          <span className="text-center leading-tight">Expected</span>
         </div>
 
         {rows.map((row, index) => {
@@ -441,13 +442,13 @@ function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow
           return (
             <div
               key={`${row.jobReference}-${index}`}
-              className="grid grid-cols-[92px_66px_112px_minmax(150px,1fr)_minmax(215px,1.35fr)_145px_72px_92px] items-center gap-2 border-b border-[#edf1f5] px-3 py-2 last:border-b-0"
+              className="grid grid-cols-[70px_36px_88px_minmax(90px,1fr)_minmax(120px,1.15fr)_100px_40px_64px] items-center gap-x-1 border-b border-[#edf1f5] px-1.5 py-2 last:border-b-0"
             >
-              <span className="text-base font-black text-[#10203a]">{formatTimeOnly(getPrimaryTimeForMode(row, mode))}</span>
+              <span className="text-[13px] font-black text-[#10203a]">{formatTimeOnly(getPrimaryTimeForMode(row, mode))}</span>
               <C3BayBadge value={row.c3Bay} compact />
-              <span className="text-sm font-black text-[#e40000]">{row.jobReference}</span>
-              <span className="text-sm font-black text-[#10203a]">{route}</span>
-              <span className="text-xs font-bold leading-snug text-[#4b5563]">{row.resources}</span>
+              <span className="break-words text-[11px] font-black leading-tight text-[#e40000]">{row.jobReference}</span>
+              <span className="break-words text-[11px] font-black leading-tight text-[#10203a]">{route}</span>
+              <span className="break-words text-[10px] font-bold leading-tight text-[#4b5563]">{row.resources}</span>
               <TrafficBadge value={row.traffic} compact />
               <AssetsBadge value={row.assets} compact />
               <ExpectedTimePill time={getExpectedTime(row, mode)} late={isRunningLate(row.delay)} compact />
@@ -605,7 +606,7 @@ function EmptyRow({ colSpan }: { colSpan: number }) {
 }
 
 function C3BayBadge({ value, compact = false }: { value: string; compact?: boolean }) {
-  const sizeClasses = compact ? "min-w-[48px] rounded-lg px-2 py-1 text-xs" : "min-w-[56px] rounded-lg px-2.5 py-1.5 text-sm";
+  const sizeClasses = compact ? "min-w-[32px] rounded-md px-1 py-1 text-[10px]" : "min-w-[56px] rounded-lg px-2.5 py-1.5 text-sm";
 
   return (
     <span className={`inline-flex justify-center border border-[#c7d4e5] bg-[#f8fbfe] font-black text-[#10203a] ${sizeClasses}`}>
@@ -615,7 +616,7 @@ function C3BayBadge({ value, compact = false }: { value: string; compact?: boole
 }
 
 function AssetsBadge({ value, showLabel = false, compact = false }: { value: number; showLabel?: boolean; compact?: boolean }) {
-  const sizeClasses = compact ? "min-w-0 rounded-lg px-3 py-1 text-xs" : "min-w-10 rounded-lg px-2.5 py-1.5 text-sm";
+  const sizeClasses = compact ? "min-w-[34px] rounded-md px-1 py-1 text-[10px]" : "min-w-10 rounded-lg px-2.5 py-1.5 text-sm";
 
   return (
     <span className={`inline-flex justify-center border border-[#c7d4e5] bg-[#f8fbfe] font-black text-[#10203a] ${sizeClasses}`}>
@@ -625,7 +626,7 @@ function AssetsBadge({ value, showLabel = false, compact = false }: { value: num
 }
 
 function TrafficBadge({ value, compact = false }: { value: string; compact?: boolean }) {
-  const sizeClasses = compact ? "px-3 py-1 text-xs" : "px-3 py-1.5 text-xs";
+  const sizeClasses = compact ? "w-full justify-center px-1.5 py-1 text-[9px] leading-[1.05]" : "px-3 py-1.5 text-xs";
 
   return (
     <span className={`inline-flex rounded-full bg-[#ecf5ff] font-black uppercase tracking-[0.12em] text-[#0f3a6d] ring-1 ring-[#bfdbfe] ${sizeClasses}`}>
@@ -643,7 +644,7 @@ function PlannedTimePill({ time }: { time: string }) {
 }
 
 function ExpectedTimePill({ time, late, compact = false }: { time: string; late: boolean; compact?: boolean }) {
-  const sizeClasses = compact ? "min-w-[72px] px-2 py-1 text-xs" : "min-w-[78px] px-3 py-2 text-sm";
+  const sizeClasses = compact ? "min-w-[60px] px-1 py-1 text-[10px]" : "min-w-[78px] px-3 py-2 text-sm";
   const colourClasses = late
     ? "border-[#ef4444] bg-[#fff1f2] text-[#b42318]"
     : "border-[#16a34a] bg-[#edfdf1] text-[#166534]";
