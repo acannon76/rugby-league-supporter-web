@@ -272,7 +272,6 @@ export default function HgvDriverPdaMockupClient() {
               <p className="text-xs font-black uppercase tracking-[0.16em]">
                 {messageConfig.heading}
               </p>
-              <p className="mt-2 text-base font-black">{messageAlert.latestText || messageConfig.text}</p>
             </div>
 
             <div className="flex shrink-0 items-center gap-2" aria-label="Message priority options">
