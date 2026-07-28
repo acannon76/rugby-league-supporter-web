@@ -64,12 +64,29 @@ const sidebarItems: SidebarItem[] = [
 const departureOffsets = [-24, -10, 6, 22, 38, 54, 72, 89, 104, 118, 134, 149];
 const arrivalOffsets = [-28, -18, -6, 9, 24, 39, 57, 74, 93, 111];
 
+const departureDutyNumbers = [
+  "MSVX5025b",
+  "MSVP5032b",
+  "PEV2020c",
+  "WAV3052a",
+  "PRD2011a",
+  "YDC2030b",
+];
+
+const arrivalDutyNumbers = [
+  "VPL3012a",
+  "NWV4002c",
+  "MVO2003a",
+  "HFV3023a",
+  "PEV4018b",
+  "WAV3052a",
+];
+
 export default function ArrivalsDeparturesPage() {
   const [boardView, setBoardView] = useState<BoardView>("Overview");
   const [selectedSite, setSelectedSite] = useState<SiteOption>("Midlands Super Hub");
   const [search, setSearch] = useState("");
   const [trafficFilter, setTrafficFilter] = useState<ArrivalDepartureRow["traffic"] | "All">("All");
-  const [statusFilter, setStatusFilter] = useState<MovementStatus | "All">("All");
   const [refreshTime, setRefreshTime] = useState(() => new Date());
 
   useEffect(() => {
@@ -91,12 +108,12 @@ export default function ArrivalsDeparturesPage() {
   );
 
   const departureRows = useMemo(
-    () => filterRows(selectedDepartureRows, search, trafficFilter, statusFilter, "Departures", refreshTime),
-    [selectedDepartureRows, search, trafficFilter, statusFilter, refreshTime],
+    () => filterRows(selectedDepartureRows, search, trafficFilter, "Departures", refreshTime),
+    [selectedDepartureRows, search, trafficFilter, refreshTime],
   );
   const arrivalRows = useMemo(
-    () => filterRows(selectedArrivalRows, search, trafficFilter, statusFilter, "Arrivals", refreshTime),
-    [selectedArrivalRows, search, trafficFilter, statusFilter, refreshTime],
+    () => filterRows(selectedArrivalRows, search, trafficFilter, "Arrivals", refreshTime),
+    [selectedArrivalRows, search, trafficFilter, refreshTime],
   );
 
   return (
@@ -155,12 +172,12 @@ export default function ArrivalsDeparturesPage() {
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(280px,1.4fr)_minmax(220px,1fr)_minmax(220px,1fr)]">
+              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(320px,1.5fr)_minmax(240px,1fr)]">
                 <FilterField label="Search">
                   <input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Route, resource, traffic or job reference"
+                    placeholder="Route, resource, traffic or duty number"
                     className="w-full rounded-lg border border-[#cfdae7] px-3 py-2 font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
                   />
                 </FilterField>
@@ -180,31 +197,18 @@ export default function ArrivalsDeparturesPage() {
                   </select>
                 </FilterField>
 
-                <FilterField label="Status">
-                  <select
-                    value={statusFilter}
-                    onChange={(event) => setStatusFilter(event.target.value as MovementStatus | "All")}
-                    className="w-full rounded-lg border border-[#cfdae7] px-3 py-2 font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
-                  >
-                    <option value="All">All statuses</option>
-                    <option value="Actual">Actual</option>
-                    <option value="Planned">Planned</option>
-                    <option value="ETD">ETD</option>
-                    <option value="ETA">ETA</option>
-                  </select>
-                </FilterField>
               </div>
             </div>
           </section>
 
           {boardView === "Overview" ? (
             <section className="mt-3 grid grid-cols-1 gap-3 2xl:grid-cols-2">
-              <BoardCard title={`${selectedSite} Departure Board`} subtitle="Planned departure time order" count={departureRows.length} accent="blue">
-                <CompactBoardList rows={departureRows.slice(0, 6)} mode="Departures" emptyText="No departures match the current filters." />
-              </BoardCard>
-
               <BoardCard title={`${selectedSite} Arrival Board`} subtitle="Planned arrival time order" count={arrivalRows.length} accent="green">
                 <CompactBoardList rows={arrivalRows.slice(0, 6)} mode="Arrivals" emptyText="No arrivals match the current filters." />
+              </BoardCard>
+
+              <BoardCard title={`${selectedSite} Departure Board`} subtitle="Planned departure time order" count={departureRows.length} accent="blue">
+                <CompactBoardList rows={departureRows.slice(0, 6)} mode="Departures" emptyText="No departures match the current filters." />
               </BoardCard>
             </section>
           ) : null}
@@ -240,6 +244,7 @@ function buildDynamicRows(rows: ArrivalDepartureRow[], mode: BoardMode, selected
         departing: selectedSite,
         departureDateTime: primaryTime,
         departureStatus: (offset < 0 ? "Actual" : offset <= 45 ? "ETD" : "Planned") as MovementStatus,
+        jobReference: departureDutyNumbers[index] ?? row.jobReference,
       };
     }
 
@@ -248,6 +253,7 @@ function buildDynamicRows(rows: ArrivalDepartureRow[], mode: BoardMode, selected
       destination: selectedSite,
       arrivalDateTime: primaryTime,
       arrivalStatus: (offset <= 0 ? "Actual" : "ETA") as MovementStatus,
+      jobReference: arrivalDutyNumbers[index] ?? row.jobReference,
     };
   });
 }
@@ -256,7 +262,6 @@ function filterRows(
   rows: ArrivalDepartureRow[],
   search: string,
   trafficFilter: ArrivalDepartureRow["traffic"] | "All",
-  statusFilter: MovementStatus | "All",
   mode: BoardMode,
   now: Date,
 ) {
@@ -282,10 +287,6 @@ function filterRows(
         return false;
       }
 
-      const relevantStatus = getStatusForMode(row, mode);
-      if (statusFilter !== "All" && relevantStatus !== statusFilter) {
-        return false;
-      }
 
       if (!term) {
         return true;
@@ -318,12 +319,35 @@ function parseDateTime(dateTime: string) {
   return new Date(year, month - 1, day, hour, minute).getTime();
 }
 
-function getStatusForMode(row: ArrivalDepartureRow, mode: BoardMode) {
-  return mode === "Departures" ? row.departureStatus : row.arrivalStatus;
-}
-
 function getPrimaryTimeForMode(row: ArrivalDepartureRow, mode: BoardMode) {
   return mode === "Departures" ? row.departureDateTime : row.arrivalDateTime;
+}
+
+function formatTimeOnly(dateTime: string) {
+  return dateTime.split(" ")[1] ?? dateTime;
+}
+
+function parseDelayMinutes(delay: string) {
+  const match = delay.match(/^([+-]?)(\d{2}):(\d{2})$/);
+
+  if (!match) {
+    return 0;
+  }
+
+  const sign = match[1] === "-" ? -1 : 1;
+  return sign * (Number(match[2]) * 60 + Number(match[3]));
+}
+
+function getExpectedTime(row: ArrivalDepartureRow, mode: BoardMode) {
+  const expectedDate = new Date(
+    parseDateTime(getPrimaryTimeForMode(row, mode)) + parseDelayMinutes(row.delay) * 60 * 1000,
+  );
+
+  return `${pad(expectedDate.getHours())}:${pad(expectedDate.getMinutes())}`;
+}
+
+function isRunningLate(delay: string) {
+  return parseDelayMinutes(delay) > 0;
 }
 
 function FilterField({ label, children }: { label: string; children: ReactNode }) {
@@ -374,35 +398,41 @@ function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow
     return <p className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white px-3 py-3 text-sm font-bold text-[#6b7280]">{emptyText}</p>;
   }
 
-  return (
-    <div className="space-y-2">
-      {rows.map((row, index) => {
-        const status = getStatusForMode(row, mode);
-        const time = getPrimaryTimeForMode(row, mode);
-        const route = mode === "Departures" ? row.destination : row.departing;
+  const routeHeading = mode === "Departures" ? "Destination" : "Origin";
+  const plannedHeading = mode === "Departures" ? "Planned departure" : "Planned arrival";
 
-        return (
-          <div key={`${row.jobReference}-${index}`} className="rounded-xl border border-white/70 bg-white px-3 py-2.5 shadow-sm">
-            <div className="grid grid-cols-1 gap-2 lg:grid-cols-[220px_1fr_auto] lg:items-center">
-              <div>
-                <p className="text-base font-black text-[#10203a]">{time}</p>
-                <p className="text-sm font-black text-[#e40000]">{row.jobReference}</p>
-              </div>
-              <div>
-                <p className="text-base font-black text-[#10203a]">{mode === "Departures" ? `Destination: ${route}` : `Origin: ${route}`}</p>
-                <p className="text-sm font-bold text-[#4b5563]">{row.resources}</p>
-              </div>
-              <div className="flex items-center gap-2 lg:justify-end">
-                <div className="flex flex-col items-end gap-1">
-                  <TrafficBadge value={row.traffic} compact />
-                  <AssetsBadge value={row.assets} showLabel compact />
-                </div>
-                <StatusBadge status={status} delay={row.delay} />
-              </div>
+  return (
+    <div className="overflow-x-auto rounded-xl border border-[#dbe5f0] bg-white">
+      <div className="min-w-[820px]">
+        <div className="grid grid-cols-[92px_112px_minmax(150px,1fr)_minmax(215px,1.35fr)_145px_72px_92px] items-center gap-2 border-b border-[#dbe5f0] bg-[#f8fbff] px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#6b7280]">
+          <span>{plannedHeading}</span>
+          <span>Duty</span>
+          <span>{routeHeading}</span>
+          <span>Resources</span>
+          <span>Traffic</span>
+          <span>Assets</span>
+          <span>Expected</span>
+        </div>
+
+        {rows.map((row, index) => {
+          const route = mode === "Departures" ? row.destination : row.departing;
+
+          return (
+            <div
+              key={`${row.jobReference}-${index}`}
+              className="grid grid-cols-[92px_112px_minmax(150px,1fr)_minmax(215px,1.35fr)_145px_72px_92px] items-center gap-2 border-b border-[#edf1f5] px-3 py-2 last:border-b-0"
+            >
+              <span className="text-base font-black text-[#10203a]">{formatTimeOnly(getPrimaryTimeForMode(row, mode))}</span>
+              <span className="text-sm font-black text-[#e40000]">{row.jobReference}</span>
+              <span className="text-sm font-black text-[#10203a]">{route}</span>
+              <span className="text-xs font-bold leading-snug text-[#4b5563]">{row.resources}</span>
+              <TrafficBadge value={row.traffic} compact />
+              <AssetsBadge value={row.assets} compact />
+              <ExpectedTimePill time={getExpectedTime(row, mode)} late={isRunningLate(row.delay)} compact />
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -413,17 +443,27 @@ function DepartureBoardTable({ site, rows, hidden }: { site: string; rows: Arriv
       <BoardHeader title={`${site} Departure Board`} subtitle="Planned departure time order" rowCount={rows.length} />
 
       <div className="mt-3 overflow-x-auto rounded-[16px] border border-[#dbe5f0] bg-[#f8fbff] p-1">
-        <table className="min-w-full border-separate border-spacing-y-1 text-sm">
+        <table className="min-w-full table-fixed border-separate border-spacing-y-1 text-sm">
+          <colgroup>
+            <col className="w-[10%]" />
+            <col className="w-[16%]" />
+            <col className="w-[12%]" />
+            <col className="w-[23%]" />
+            <col className="w-[7%]" />
+            <col className="w-[13%]" />
+            <col className="w-[8%]" />
+            <col className="w-[11%]" />
+          </colgroup>
           <thead>
-            <tr className="text-left text-[12px] font-black uppercase tracking-[0.18em] text-[#6b7280]">
-              <th className="px-3 py-2">Planned departure time</th>
+            <tr className="text-left text-[11px] font-black uppercase tracking-[0.14em] text-[#6b7280]">
+              <th className="px-3 py-2">Planned departure</th>
               <th className="px-3 py-2">Destination</th>
-              <th className="px-3 py-2">Job reference</th>
+              <th className="px-3 py-2">Duty number</th>
               <th className="px-3 py-2">Resources</th>
               <th className="px-3 py-2">Assets</th>
               <th className="px-3 py-2">Traffic</th>
               <th className="px-3 py-2">Delay</th>
-              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Expected time</th>
             </tr>
           </thead>
           <tbody>
@@ -431,15 +471,17 @@ function DepartureBoardTable({ site, rows, hidden }: { site: string; rows: Arriv
               rows.map((row, index) => (
                 <tr key={`${row.jobReference}-${index}`}>
                   <td className="rounded-l-2xl border-y border-l border-[#e2e8f0] bg-white px-3 py-3">
-                    <DateTimePill dateTime={row.departureDateTime} status={row.departureStatus} delay={row.delay} />
+                    <PlannedTimePill time={formatTimeOnly(row.departureDateTime)} />
                   </td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.destination}</td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.jobReference}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#e40000]">{row.jobReference}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-sm font-bold text-[#4b5563]">{row.resources}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><AssetsBadge value={row.assets} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><TrafficBadge value={row.traffic} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.delay}</td>
-                  <td className="rounded-r-2xl border-y border-r border-[#e2e8f0] bg-white px-3 py-3"><StatusBadge status={row.departureStatus} delay={row.delay} /></td>
+                  <td className="rounded-r-2xl border-y border-r border-[#e2e8f0] bg-white px-3 py-3">
+                    <ExpectedTimePill time={getExpectedTime(row, "Departures")} late={isRunningLate(row.delay)} />
+                  </td>
                 </tr>
               ))
             ) : (
@@ -458,17 +500,27 @@ function ArrivalBoardTable({ site, rows, hidden }: { site: string; rows: Arrival
       <BoardHeader title={`${site} Arrival Board`} subtitle="Planned arrival time order" rowCount={rows.length} />
 
       <div className="mt-3 overflow-x-auto rounded-[16px] border border-[#dbe5f0] bg-[#f8fbff] p-1">
-        <table className="min-w-full border-separate border-spacing-y-1 text-sm">
+        <table className="min-w-full table-fixed border-separate border-spacing-y-1 text-sm">
+          <colgroup>
+            <col className="w-[10%]" />
+            <col className="w-[16%]" />
+            <col className="w-[12%]" />
+            <col className="w-[13%]" />
+            <col className="w-[23%]" />
+            <col className="w-[7%]" />
+            <col className="w-[8%]" />
+            <col className="w-[11%]" />
+          </colgroup>
           <thead>
-            <tr className="text-left text-[12px] font-black uppercase tracking-[0.18em] text-[#6b7280]">
-              <th className="px-3 py-2">Planned arrival time</th>
+            <tr className="text-left text-[11px] font-black uppercase tracking-[0.14em] text-[#6b7280]">
+              <th className="px-3 py-2">Planned arrival</th>
               <th className="px-3 py-2">Origin</th>
-              <th className="px-3 py-2">Job reference</th>
+              <th className="px-3 py-2">Duty number</th>
               <th className="px-3 py-2">Traffic</th>
               <th className="px-3 py-2">Resources</th>
               <th className="px-3 py-2">Assets</th>
               <th className="px-3 py-2">Delay</th>
-              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Expected time</th>
             </tr>
           </thead>
           <tbody>
@@ -476,15 +528,17 @@ function ArrivalBoardTable({ site, rows, hidden }: { site: string; rows: Arrival
               rows.map((row, index) => (
                 <tr key={`${row.jobReference}-${index}`}>
                   <td className="rounded-l-2xl border-y border-l border-[#e2e8f0] bg-white px-3 py-3">
-                    <DateTimePill dateTime={row.arrivalDateTime} status={row.arrivalStatus} delay={row.delay} />
+                    <PlannedTimePill time={formatTimeOnly(row.arrivalDateTime)} />
                   </td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.departing}</td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.jobReference}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#e40000]">{row.jobReference}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><TrafficBadge value={row.traffic} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-sm font-bold text-[#4b5563]">{row.resources}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><AssetsBadge value={row.assets} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.delay}</td>
-                  <td className="rounded-r-2xl border-y border-r border-[#e2e8f0] bg-white px-3 py-3"><StatusBadge status={row.arrivalStatus} delay={row.delay} /></td>
+                  <td className="rounded-r-2xl border-y border-r border-[#e2e8f0] bg-white px-3 py-3">
+                    <ExpectedTimePill time={getExpectedTime(row, "Arrivals")} late={isRunningLate(row.delay)} />
+                  </td>
                 </tr>
               ))
             ) : (
@@ -542,26 +596,25 @@ function TrafficBadge({ value, compact = false }: { value: string; compact?: boo
   );
 }
 
-function StatusBadge({ status, delay }: { status: MovementStatus; delay: string }) {
-  const isDelayed = delay.startsWith("+") && (status === "Actual" || status === "ETA" || status === "ETD");
-  const classes = isDelayed
-    ? "border-[#ef4444] bg-[#fff1f2] text-[#b42318]"
-    : status === "Planned"
-      ? "border-[#f59e0b] bg-[#fff7ed] text-[#b45309]"
-      : "border-[#16a34a] bg-[#edfdf1] text-[#166534]";
-
-  return <span className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] ${classes}`}>{status}</span>;
+function PlannedTimePill({ time }: { time: string }) {
+  return (
+    <span className="inline-flex min-w-[72px] justify-center rounded-lg bg-[#10203a] px-3 py-2 text-sm font-black text-white">
+      {time}
+    </span>
+  );
 }
 
-function DateTimePill({ dateTime, status, delay }: { dateTime: string; status: MovementStatus; delay: string }) {
-  const isDelayed = delay.startsWith("+") && (status === "Actual" || status === "ETA" || status === "ETD");
-  const classes = isDelayed
-    ? "bg-[#ef4444] text-white"
-    : status === "Planned"
-      ? "bg-[#f59e0b] text-white"
-      : "bg-[#16a34a] text-white";
+function ExpectedTimePill({ time, late, compact = false }: { time: string; late: boolean; compact?: boolean }) {
+  const sizeClasses = compact ? "min-w-[72px] px-2 py-1 text-xs" : "min-w-[78px] px-3 py-2 text-sm";
+  const colourClasses = late
+    ? "border-[#ef4444] bg-[#fff1f2] text-[#b42318]"
+    : "border-[#16a34a] bg-[#edfdf1] text-[#166534]";
 
-  return <span className={`inline-flex rounded-lg px-3 py-2 text-sm font-black ${classes}`}>{dateTime}</span>;
+  return (
+    <span className={`inline-flex justify-center rounded-lg border font-black ${sizeClasses} ${colourClasses}`}>
+      {time}
+    </span>
+  );
 }
 
 function OfficeHeader({ title, subtitle }: { title: string; subtitle: string }) {
