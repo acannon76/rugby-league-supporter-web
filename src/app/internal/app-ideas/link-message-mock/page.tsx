@@ -260,6 +260,13 @@ const mockTravelLocations = [
   "Liverpool Mail Centre",
   "North West Hub",
 ];
+
+const dutyTravelRouteOverrides: Record<string, Array<{ from: string; to: string }>> = {
+  NWH005: [
+    { from: "North West Hub", to: "PRDC" },
+    { from: "PRDC", to: "North West Hub" },
+  ],
+};
 const mockVehicleRegistrations = [
   "PE68UHD",
   "PO70KVT",
@@ -401,9 +408,11 @@ function buildTravelTooltip(row: DutyRow, segmentIndex: number) {
     .filter(({ item }) => item.label === "Travel");
   const travelIndex = travelSegments.findIndex(({ index }) => index === segmentIndex);
   const dutyIndex = getDutyNumericIndex(row.duty);
-  const routeBaseIndex = (dutyIndex + Math.max(travelIndex, 0)) % (mockTravelLocations.length - 1);
-  const fromLocation = mockTravelLocations[routeBaseIndex];
-  const toLocation = mockTravelLocations[routeBaseIndex + 1];
+  const safeTravelIndex = Math.max(travelIndex, 0);
+  const routeBaseIndex = (dutyIndex + safeTravelIndex) % (mockTravelLocations.length - 1);
+  const routeOverride = dutyTravelRouteOverrides[row.duty]?.[safeTravelIndex];
+  const fromLocation = routeOverride?.from ?? mockTravelLocations[routeBaseIndex];
+  const toLocation = routeOverride?.to ?? mockTravelLocations[routeBaseIndex + 1];
   const vehicle =
     mockVehicleRegistrations[(dutyIndex + Math.max(travelIndex, 0)) % mockVehicleRegistrations.length];
   const trailer = mockTrailerNumbers[(dutyIndex + Math.max(travelIndex, 0)) % mockTrailerNumbers.length];
@@ -851,12 +860,25 @@ export default function LinkMessageMockPage() {
                       }`}
                     >
                       <div
-                        className={`z-20 border-r border-[#d9dee6] px-3 py-2 ${
+                        className={`relative z-20 overflow-hidden border-r border-[#d9dee6] px-3 py-2 ${
+                          duty.duty === "NWH005" ? "border-t-4 border-t-[#facc15] pt-1" : ""
+                        } ${
                           driverMessageDutyIds.includes(duty.duty)
                             ? "rounded-[2px] ring-2 ring-inset ring-[#e40000]"
                             : ""
                         }`}
                       >
+                        {duty.duty === "NWH005" ? (
+                          <>
+                            <span
+                              aria-hidden="true"
+                              className="pointer-events-none absolute right-0 top-0 h-0 w-0 border-l-[50px] border-t-[36px] border-l-transparent border-t-[#facc15]"
+                            />
+                            <span className="pointer-events-none absolute right-1 top-1 z-10 text-[9px] font-black uppercase tracking-wide text-[#1f2937]">
+                              LDN
+                            </span>
+                          </>
+                        ) : null}
                         <div className="flex items-center gap-2">
                           <span className={`h-3 w-3 rounded-full ${driverMessageDutyIds.includes(duty.duty) ? "bg-[#e40000]" : "bg-[#2c80e5]"}`} />
                           <p className={`font-black ${driverMessageDutyIds.includes(duty.duty) ? "text-[#e40000]" : "text-[#374151]"}`}>{duty.duty}</p>
