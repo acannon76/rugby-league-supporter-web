@@ -20,7 +20,7 @@ export default function VehicleCheckTypePage() {
                 Check Type
               </p>
               <p className="text-sm font-black leading-none text-[#ffd9df]">
-                Driver PDA Concept
+                DriverOS Concept
               </p>
             </div>
           </div>

@@ -343,7 +343,7 @@ const initialCommsItems: CommsItem[] = [
     title: "Driver message received",
     summary: "Driver asks for confirmation of the next collection point.",
     message: {
-      route: "PDA Messaging > Other",
+      route: "DriverOS Messaging > Other",
       messageText: "Can you confirm if I still need to go to Preston MC after unloading at NWH?",
     },
   },
@@ -361,7 +361,7 @@ const initialCommsItems: CommsItem[] = [
     title: "Driver running late message",
     summary: "Driver has sent a delay message for office awareness.",
     message: {
-      route: "PDA Messaging > Other",
+      route: "DriverOS Messaging > Other",
       messageText: "Traffic is heavy leaving Manchester. I may be around 20 minutes late arriving back at the Hub.",
     },
   },
@@ -379,7 +379,7 @@ const initialCommsItems: CommsItem[] = [
     title: "Driver requesting site contact",
     summary: "Driver needs a contact number for the next site.",
     message: {
-      route: "PDA Messaging > Other",
+      route: "DriverOS Messaging > Other",
       messageText: "Please send the site contact for the Manchester drop. Gatehouse is not answering.",
     },
   },
@@ -397,7 +397,7 @@ const initialCommsItems: CommsItem[] = [
     title: "Trailer query from driver",
     summary: "Driver is querying whether to take the allocated trailer or wait for a swap.",
     message: {
-      route: "PDA Messaging > Other",
+      route: "DriverOS Messaging > Other",
       messageText: "Trailer 7338014 is still being loaded. Do you want me to wait or take the spare trailer?",
     },
   },
@@ -503,7 +503,7 @@ const sourceCards: { source: CommsSource; icon: string; description: string }[] 
   {
     source: "RTC",
     icon: "RTC",
-    description: "Road traffic collision reports from the Driver PDA.",
+    description: "Road traffic collision reports from DriverOS.",
   },
   {
     source: "Breakdown",
@@ -823,7 +823,7 @@ export default function LinkCommsDashboardPage() {
                 <div>
                   <h1 className="text-2xl font-black text-[#111827]">Office Communications</h1>
                   <p className="text-sm font-bold text-[#6b7280]">
-                    Driver PDA messages, RTC reports, breakdown requests, PMT confirmations and retained unread office messages in one office queue.
+                    DriverOS messages, RTC reports, breakdown requests, PMT confirmations and retained unread office messages in one office queue.
                   </p>
                 </div>
               </div>
@@ -1525,7 +1525,7 @@ function OfficeHeader({ title, subtitle }: { title: string; subtitle: string }) 
           href="/internal/app-ideas"
           className="hidden rounded-lg border border-white/70 px-4 py-2 text-sm font-black text-white no-underline transition hover:bg-white/15 sm:block"
         >
-          ← Back to PDA Home
+          ← Back to DriverOS Home
         </Link>
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl text-[#e40000]">●</div>
         <div className="hidden text-right sm:block">

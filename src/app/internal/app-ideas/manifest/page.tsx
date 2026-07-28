@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import ManifestMockupClient from "./ManifestMockupClient";
 
 export const metadata: Metadata = {
-  title: "Driver PDA Manifest Mockup",
-  description: "Hidden Driver PDA manifest mockup.",
+  title: "DriverOS Manifest Mockup",
+  description: "Hidden DriverOS manifest mockup.",
   robots: {
     index: false,
     follow: false,

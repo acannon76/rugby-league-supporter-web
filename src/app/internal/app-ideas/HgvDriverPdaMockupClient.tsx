@@ -222,7 +222,7 @@ export default function HgvDriverPdaMockupClient() {
     resetAllDriverPdaMocks();
     writeDriverReadKeys([]);
     setMessageAlert({ level: "none", count: 0, latestText: "" });
-    window.alert("All Driver PDA mock journeys have been reset.");
+    window.alert("All DriverOS mock journeys have been reset.");
   }
 
 
@@ -242,7 +242,7 @@ export default function HgvDriverPdaMockupClient() {
 
             <div>
               <h1 className="text-xl font-black leading-none sm:text-2xl">
-                Driver PDA
+                DriverOS
               </h1>
               <p className="text-sm font-black leading-none sm:text-base">
                 Concept Mockup
@@ -504,7 +504,7 @@ function DriverLoginScreen({ onLogin }: { onLogin: (driverName: string) => void 
                   HGV
                 </div>
                 <div>
-                  <h1 className="text-2xl font-black leading-none sm:text-3xl">Driver PDA</h1>
+                  <h1 className="text-2xl font-black leading-none sm:text-3xl">DriverOS</h1>
                   <p className="mt-1 text-sm font-black uppercase tracking-[0.16em] text-white/80">
                     Concept Mockup
                   </p>
@@ -515,7 +515,7 @@ function DriverLoginScreen({ onLogin }: { onLogin: (driverName: string) => void 
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-white/75">Driver access</p>
                 <h2 className="mt-4 text-4xl font-black leading-tight sm:text-5xl">Log on to begin your duty.</h2>
                 <p className="mt-6 text-base font-bold leading-7 text-white/80">
-                  Enter any driver name for the mockup. The name will be shown throughout the Driver PDA screens.
+                  Enter any driver name for the mockup. The name will be shown throughout the DriverOS screens.
                 </p>
               </div>
             </div>

@@ -190,7 +190,7 @@ function DctWebScreen({
                 DCT-style output view
               </h2>
               <p className="mt-3 max-w-[980px] text-sm font-bold leading-6 text-[#4b5563]">
-                This shows the output created from the Driver PDA Manifest mockup.
+                This shows the output created from the DriverOS Manifest mockup.
                 Planned values show first. Actual timings, DTT and ATT populate only as each Manifest / 318 leg is completed.
               </p>
             </div>
@@ -313,7 +313,7 @@ function DctWebScreen({
             </p>
             <p className="mt-3 text-sm font-bold leading-6 text-[#4b5563]">
               {rows.length === 0
-                ? "Open Manifest from the Driver PDA dashboard first, then run one or more legs. Return here to view the DCT-style output."
+                ? "Open Manifest from the DriverOS dashboard first, then run one or more legs. Return here to view the DCT-style output."
                 : "Clear or change the DCT filters to show the reporting rows again."}
             </p>
           </section>

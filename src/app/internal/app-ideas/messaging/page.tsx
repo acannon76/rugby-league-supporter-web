@@ -281,7 +281,7 @@ export default function MessagingPage() {
       breakdown:
         composeCategory === "Breakdown"
           ? {
-              location: "Driver PDA mock location",
+              location: "DriverOS mock location",
               direction: "Driver generated message",
               fault: text,
               safeStatus: "Driver has requested office support.",
@@ -325,7 +325,7 @@ export default function MessagingPage() {
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-white text-base font-black">HGV</div>
             <div>
               <h1 className="text-xl font-black leading-none sm:text-2xl">Messaging</h1>
-              <p className="text-sm font-black leading-none sm:text-base">Driver PDA Concept</p>
+              <p className="text-sm font-black leading-none sm:text-base">DriverOS Concept</p>
             </div>
           </div>
 

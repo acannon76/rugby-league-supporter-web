@@ -1175,7 +1175,7 @@ function OfficeHeader({ title, subtitle }: { title: string; subtitle: string }) 
           href="/internal/app-ideas"
           className="hidden rounded-lg border border-white/70 px-4 py-2 text-sm font-black text-white no-underline transition hover:bg-white/15 sm:block"
         >
-          ← Back to PDA Home
+          ← Back to DriverOS Home
         </Link>
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl text-[#e40000]">●</div>
         <div className="hidden text-right sm:block">

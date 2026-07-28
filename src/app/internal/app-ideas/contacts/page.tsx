@@ -28,7 +28,7 @@ export default function ContactsPage() {
                 Contacts
               </h1>
               <p className="text-sm font-black leading-none sm:text-base">
-                Driver PDA Concept
+                DriverOS Concept
               </p>
             </div>
           </div>

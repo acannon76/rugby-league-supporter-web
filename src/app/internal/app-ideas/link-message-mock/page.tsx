@@ -544,7 +544,7 @@ export default function LinkMessageMockPage() {
             href="/internal/app-ideas"
             className="hidden rounded-lg border border-white/70 px-4 py-2 text-sm font-black text-white no-underline transition hover:bg-white/15 sm:block"
           >
-            ← Back to PDA Home
+            ← Back to DriverOS Home
           </Link>
           <button
             type="button"

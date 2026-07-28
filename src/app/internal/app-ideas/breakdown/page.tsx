@@ -106,7 +106,7 @@ export default function BreakdownPage() {
                 Breakdown
               </h1>
               <p className="text-sm font-black leading-none sm:text-base">
-                Driver PDA Concept
+                DriverOS Concept
               </p>
             </div>
           </div>

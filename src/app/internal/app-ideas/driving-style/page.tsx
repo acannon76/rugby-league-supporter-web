@@ -4,7 +4,8 @@ import VehicleCheckTimer from "../../vehicle-checks/VehicleCheckTimer";
 
 type DrivingMetric = {
   title: string;
-  value: number;
+  dutyStartValue: number;
+  sevenDayValue: number;
   note: string;
   rating: "Good" | "Watch" | "Improve";
 };
@@ -12,61 +13,71 @@ type DrivingMetric = {
 const drivingMetrics: DrivingMetric[] = [
   {
     title: "Smooth acceleration",
-    value: 88,
+    dutyStartValue: 88,
+    sevenDayValue: 84,
     note: "Good throttle control with minimal harsh pull-away events.",
     rating: "Good",
   },
   {
     title: "Harsh braking",
-    value: 76,
+    dutyStartValue: 76,
+    sevenDayValue: 81,
     note: "A few sharper braking events detected; increase distance where possible.",
     rating: "Watch",
   },
   {
     title: "Speed compliance",
-    value: 94,
+    dutyStartValue: 94,
+    sevenDayValue: 91,
     note: "Very strong speed control across the journey.",
     rating: "Good",
   },
   {
     title: "Cornering control",
-    value: 82,
+    dutyStartValue: 82,
+    sevenDayValue: 85,
     note: "Generally smooth with one tighter cornering event recorded.",
     rating: "Good",
   },
   {
     title: "Idling management",
-    value: 68,
+    dutyStartValue: 68,
+    sevenDayValue: 72,
     note: "Idle time higher than expected during depot waiting time.",
     rating: "Watch",
   },
   {
     title: "Fuel efficient driving",
-    value: 86,
+    dutyStartValue: 86,
+    sevenDayValue: 83,
     note: "Good steady driving pattern and efficient gear use.",
     rating: "Good",
   },
   {
     title: "Engine over-revving",
-    value: 91,
+    dutyStartValue: 91,
+    sevenDayValue: 89,
     note: "Very low number of over-revving events.",
     rating: "Good",
   },
   {
     title: "Reversing events",
-    value: 79,
+    dutyStartValue: 79,
+    sevenDayValue: 82,
     note: "Normal level of reversing activity for depot work.",
     rating: "Watch",
   },
   {
     title: "Defensive driving",
-    value: 90,
+    dutyStartValue: 90,
+    sevenDayValue: 87,
     note: "Good anticipation and stable journey profile.",
     rating: "Good",
   },
   {
     title: "Overall journey score",
-    value: 84,
+    dutyStartValue: 84,
+    sevenDayValue: 85,
     note: "Strong overall driving style score for this mock duty.",
     rating: "Good",
   },
@@ -87,7 +98,7 @@ export default function DrivingStylePage() {
                 Driving Style
               </h1>
               <p className="text-sm font-black leading-none sm:text-base">
-                Driver PDA Concept
+                DriverOS Concept
               </p>
             </div>
           </div>
@@ -124,8 +135,8 @@ export default function DrivingStylePage() {
             </h2>
 
             <p className="mt-4 max-w-[780px] text-base font-bold leading-7 text-[#61748b]">
-              These mock indicators use percentage bars so the driver can quickly
-              see the strongest areas and any driving behaviours that need attention.
+              Compare performance from the start of the current duty with the rolling
+              7-day score to quickly identify strengths and behaviours needing attention.
             </p>
           </section>
 
@@ -148,13 +159,6 @@ function DrivingMetricCard({ metric }: { metric: DrivingMetric }) {
       ? "border-[#f59e0b] bg-[#fff7ed] text-[#92400e]"
       : "border-[#c4002f] bg-[#fff0f2] text-[#c4002f]";
 
-  const barColour =
-    metric.value >= 85
-      ? "#067a35"
-      : metric.value >= 70
-      ? "#f59e0b"
-      : "#c4002f";
-
   return (
     <article className="rounded-[24px] border border-[#d0d7df] bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
@@ -174,18 +178,31 @@ function DrivingMetricCard({ metric }: { metric: DrivingMetric }) {
         </span>
       </div>
 
-      <div className="mt-5 flex items-center gap-4">
-        <div className="h-4 flex-1 overflow-hidden rounded-full bg-[#e5e7eb]">
-          <div
-            className="h-full rounded-full"
-            style={{ width: `${metric.value}%`, backgroundColor: barColour }}
-          />
-        </div>
-
-        <p className="w-14 text-right text-xl font-black text-[#001b3a]">
-          {metric.value}%
-        </p>
+      <div className="mt-5 space-y-3">
+        <DrivingScoreBar label="Duty Start" value={metric.dutyStartValue} />
+        <DrivingScoreBar label="7 Days" value={metric.sevenDayValue} />
       </div>
     </article>
+  );
+}
+
+
+function DrivingScoreBar({ label, value }: { label: string; value: number }) {
+  const barColour =
+    value >= 85 ? "#067a35" : value >= 70 ? "#f59e0b" : "#c4002f";
+
+  return (
+    <div className="grid grid-cols-[88px_1fr_54px] items-center gap-3">
+      <p className="text-xs font-black uppercase tracking-[0.1em] text-[#61748b]">
+        {label}
+      </p>
+      <div className="h-4 overflow-hidden rounded-full bg-[#e5e7eb]">
+        <div
+          className="h-full rounded-full transition-[width]"
+          style={{ width: `${value}%`, backgroundColor: barColour }}
+        />
+      </div>
+      <p className="text-right text-lg font-black text-[#001b3a]">{value}%</p>
+    </div>
   );
 }

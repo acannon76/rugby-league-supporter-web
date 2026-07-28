@@ -253,7 +253,7 @@ export default function DebriefPage() {
                 <div>
                   <h1 className="text-2xl font-black text-[#111827]">Driver Debrief Dashboard</h1>
                   <p className="text-sm font-bold text-[#6b7280]">
-                    DCT-style mockup for reviewing completed duties and recording office debrief actions. Duty detail fields now populate from the Driver PDA Manifest / 318 mock as each leg is completed.
+                    DCT-style mockup for reviewing completed duties and recording office debrief actions. Duty detail fields now populate from the DriverOS Manifest / 318 mock as each leg is completed.
                   </p>
                 </div>
               </div>
@@ -814,7 +814,7 @@ function OfficeHeader({ title, subtitle }: { title: string; subtitle: string }) 
           href="/internal/app-ideas"
           className="hidden rounded-lg border border-white/70 px-4 py-2 text-sm font-black text-white no-underline transition hover:bg-white/15 sm:block"
         >
-          ← Back to PDA Home
+          ← Back to DriverOS Home
         </Link>
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl text-[#e40000]">●</div>
         <div className="hidden text-right sm:block">
