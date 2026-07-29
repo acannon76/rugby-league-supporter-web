@@ -91,7 +91,7 @@ const sidebarItems: SidebarItem[] = [
 const DEFAULT_TRACKING_RESOURCE = "PE68UHD";
 
 const trackingResourceOptions = [
-  "NW600 PE68UHD",
+  "PE68UHD",
   "1318018 (DD98)",
   "1318021 (DD98)",
   "1318053 (DD98)",
