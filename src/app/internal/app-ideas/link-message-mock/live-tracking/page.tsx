@@ -514,7 +514,7 @@ export default function LiveTrackingPage() {
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-3">
                   <h1 className="text-xl font-black text-[#10203a] xl:text-2xl">
-                    {isCurrentDay ? "VEHICLE LIVE TRACKING" : "Vehicle Tracking History"}
+                    {isCurrentDay ? "Vehicle Live Tracking" : "Vehicle Tracking History"}
                   </h1>
                   <div className="inline-flex min-w-0 max-w-full items-center gap-2 rounded-xl border-2 border-[#e40000] bg-[#fff5f5] px-3 py-1.5 shadow-sm">
                     <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.16em] text-[#b00000]">Resource</span>
