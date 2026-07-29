@@ -86,6 +86,7 @@ const sidebarItems: SidebarItem[] = [
   { label: "Live Tracking", icon: "GPS", href: "/internal/app-ideas/link-message-mock/live-tracking", active: true },
   { label: "Reports", icon: "REP", href: "/internal/app-ideas/link-message-mock/reports" },
   { label: "A&D Dashboard", icon: "A&D", href: "/internal/app-ideas/link-message-mock/arrivals-departures" },
+  { label: "Configurations", icon: "⚙", href: "/internal/app-ideas/link-message-mock/arrivals-departures/configurations" },
 ];
 
 const DEFAULT_TRACKING_RESOURCE = "PE68UHD";

@@ -75,6 +75,11 @@ const sideButtons: SideButton[] = [
     icon: "A&D",
     href: "/internal/app-ideas/link-message-mock/arrivals-departures",
   },
+  {
+    label: "Configurations",
+    icon: "⚙",
+    href: "/internal/app-ideas/link-message-mock/arrivals-departures/configurations",
+  },
 ];
 
 const dutyActions: DutyAction[] = [

@@ -59,6 +59,7 @@ const sidebarItems: SidebarItem[] = [
   { label: "Live Tracking", icon: "GPS", href: "/internal/app-ideas/link-message-mock/live-tracking" },
   { label: "Reports", icon: "REP", href: "/internal/app-ideas/link-message-mock/reports" },
   { label: "A&D Dashboard", icon: "A&D", href: "/internal/app-ideas/link-message-mock/arrivals-departures", active: true },
+  { label: "Configurations", icon: "⚙", href: "/internal/app-ideas/link-message-mock/arrivals-departures/configurations" },
 ];
 
 const departureOffsets = [2, 8, 14, 20, 26, 32, 38, 44, 50, 56, 62, 68, 74, 80, 86, 92, 98, 104, 110, 116];
@@ -156,7 +157,7 @@ export default function ArrivalsDeparturesPage() {
             <div className="px-3 py-2.5 sm:px-4">
               <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[auto_minmax(180px,230px)_auto_minmax(190px,1fr)_minmax(145px,190px)_auto] xl:items-end">
                 <div className="inline-flex flex-wrap gap-1 rounded-xl bg-[#f3f7fb] p-1 xl:flex-nowrap">
-                  {(["Overview", "Departures", "Arrivals"] as BoardView[]).map((view) => (
+                  {(["Overview", "Arrivals", "Departures"] as BoardView[]).map((view) => (
                     <button
                       key={view}
                       type="button"
@@ -423,7 +424,7 @@ function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow
   return (
     <div className="max-h-[calc(100vh-390px)] min-h-[420px] overflow-y-auto overflow-x-hidden rounded-xl border border-[#dbe5f0] bg-white">
       <div className="w-full min-w-0">
-        <div className="sticky top-0 z-10 grid grid-cols-[70px_36px_88px_minmax(90px,1fr)_minmax(120px,1.15fr)_100px_40px_64px] items-center gap-x-1 border-b border-[#dbe5f0] bg-[#f8fbff] px-1.5 py-2 text-[9px] font-black uppercase tracking-[0.1em] text-[#6b7280]">
+        <div className="sticky top-0 z-10 grid grid-cols-[70px_36px_88px_minmax(90px,1fr)_minmax(120px,1.15fr)_100px_42px_70px] items-center gap-x-2 border-b border-[#dbe5f0] bg-[#f8fbff] px-1.5 py-2 text-[9px] font-black uppercase tracking-[0.1em] text-[#6b7280]">
           <span className="leading-tight">{plannedHeading}</span>
           <span className="text-center leading-[1.05]">C3<br />Bay</span>
           <span>Duty</span>
@@ -431,7 +432,7 @@ function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow
           <span>Resources</span>
           <span>Traffic</span>
           <span className="text-center">Assets</span>
-          <span className="text-center leading-tight">Expected</span>
+          <span className="border-l border-[#dbe5f0] pl-2 text-center leading-tight">Expected</span>
         </div>
 
         {rows.map((row, index) => {
@@ -440,7 +441,7 @@ function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow
           return (
             <div
               key={`${row.jobReference}-${index}`}
-              className="grid grid-cols-[70px_36px_88px_minmax(90px,1fr)_minmax(120px,1.15fr)_100px_40px_64px] items-center gap-x-1 border-b border-[#edf1f5] px-1.5 py-2 last:border-b-0"
+              className="grid grid-cols-[70px_36px_88px_minmax(90px,1fr)_minmax(120px,1.15fr)_100px_42px_70px] items-center gap-x-2 border-b border-[#edf1f5] px-1.5 py-2 last:border-b-0"
             >
               <span className="text-[13px] font-black text-[#10203a]">{formatTimeOnly(getPrimaryTimeForMode(row, mode))}</span>
               <C3BayBadge value={row.c3Bay} compact />
@@ -449,7 +450,7 @@ function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow
               <span className="break-words text-[10px] font-bold leading-tight text-[#4b5563]">{row.resources}</span>
               <TrafficBadge value={row.traffic} compact />
               <AssetsBadge value={row.assets} compact />
-              <ExpectedTimePill time={getExpectedTime(row, mode)} late={isRunningLate(row.delay)} compact />
+              <div className="border-l border-[#edf1f5] pl-2"><ExpectedTimePill time={getExpectedTime(row, mode)} late={isRunningLate(row.delay)} compact /></div>
             </div>
           );
         })}
