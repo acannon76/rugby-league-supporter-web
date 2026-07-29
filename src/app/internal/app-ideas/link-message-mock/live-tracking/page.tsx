@@ -87,6 +87,141 @@ const sidebarItems: SidebarItem[] = [
   { label: "A&D Dashboard", icon: "A&D", href: "/internal/app-ideas/link-message-mock/arrivals-departures" },
 ];
 
+const DEFAULT_TRACKING_RESOURCE = "PE68UHD";
+
+const trackingResourceOptions = [
+  "PE68UHD",
+  "1318018 (DD98)",
+  "1318021 (DD98)",
+  "1318053 (DD98)",
+  "1318060 (DD98)",
+  "1318064 (DD98)",
+  "1318078 (DD98)",
+  "1319004 (DD98)",
+  "1319005 (DD98)",
+  "1319008 (DD98)",
+  "1319037 (DD98)",
+  "1319050 (DD98)",
+  "NW GAS41 (FX22 UHZ) 21255001",
+  "NW GAS43 (FX22 UHY) 21255003",
+  "NW GAS44 (FX22 UHF) 21255016",
+  "NW200 (PO13 EHE) 2370004",
+  "NW202 (PO13 EHW) 2370019",
+  "NW203 (PO13 EJF) 2370027",
+  "NW204 (PE64 EYL) 4370002",
+  "NW205 (PE64 EYM) 4370003",
+  "NW206 (PE64 EYS) 4370007",
+  "NW207 (PE65 VCG) 5370062",
+  "NW208 (PE65 VCK) 5370064",
+  "NW209 (PE65VCM) 5370066",
+  "NW210 (PF66YCD) 6370148",
+  "NW211 (PE18 LWZ) 8370204",
+  "NW212 (PF68 UVW) 8376025",
+  "NW400 (BF69 DPN) 19251417",
+  "NW401 (BF69 DNY) 19251408",
+  "NW405 (BF69 DRZ) 19251426",
+  "NW406 (BF69 DRV) 19251424",
+  "NW408 (BF69 DOA) 19251415",
+  "NW409 (BF69 DOH) 11691587",
+  "NW411 (BF69 DSZ) 11691645",
+  "NW412 (BF69 DPO) 19251405",
+  "NW414 (BF69 DPZ) 19251404",
+  "NW415 (BF69 DSV) 19251430",
+  "NW416 (PJ24SNN) 24250105",
+  "NW418 (PJ24SVF)",
+  "NW419 (PJ24SVE)",
+  "NW420 (PJ24SXH)",
+  "NW421 PJ24SXO 24250184",
+  "NW422 (PJ24 SVK) 24250148",
+  "NW423 (PJ24 SVG) 24250147",
+  "NW424 PJ24SXE",
+  "NW426 PJ24SXR",
+  "NW427 (PE18 MDN) 8251058",
+  "NW428 PJ24SXP",
+  "NW430 (PE18 MDV) 8251061",
+  "NW432 (PK19VJV) 19251011",
+  "NW433 (PN70BUA) 20250071",
+  "NW434 (PN70 BRX) 20250064",
+  "NW435 (PN20 CME) 7200115",
+  "NW436 (PK67 VCZ) 7251002",
+  "NW437 (PK67 VDC) 7251004",
+  "NW439 PJ24JKZ 24250075",
+  "NW440 PJ24JKV 24250072",
+  "NW441 (PJ24 JKX) 24250073",
+  "NW442 PJ24SXC",
+  "NW443 PJ24SPX",
+  "NW444 (PJ24 SPV)",
+  "NW445 (PJ24 JKY) 24250074",
+  "NW446 PJ24JKU 24250071",
+  "NW447 PJ24SXF 24250177",
+  "NW448 PJ24SXT 24250187",
+  "NW450 (PN25BUV) (25250048) No Tracker Fitted",
+  "NW451 (PN25BUW) 25250049 No Tracker Fitted",
+  "NW601 (PJ67 WJA) 7231182",
+  "NW602 (PJ67 WLW) 7231210",
+  "NW620 (PJ67 WLX) 7231211",
+  "NW628 (PE18MFF) 8231004",
+  "NW629 (PE17 HNW) 6230136",
+  "NWGAS33 (FX22 UHM) 21255019",
+  "NWGAS36 (FX22 UKB) 21255039",
+  "NWGAS37 (FX22 UHL) 21255017",
+  "7330228",
+  "7330229",
+  "7330230",
+  "7330231",
+  "7330232",
+  "7330233",
+  "7330234",
+  "7330235",
+  "7330236",
+  "7330237",
+  "7330238",
+  "7330239",
+  "7330240",
+  "7330241",
+  "7330242",
+  "7330243",
+  "7330244",
+  "7330245",
+  "7330246",
+  "7330247",
+  "7330248",
+  "7330249",
+  "7330250",
+  "7330251",
+  "7330253",
+  "7330254",
+  "7330255",
+  "7330256",
+  "7330257 T/L",
+  "7330258",
+  "7330259",
+  "7330260",
+  "7330261",
+  "7330263",
+  "7330264",
+  "7330265",
+  "7330266",
+  "7330267",
+  "7330268",
+  "7330269",
+  "7330270",
+  "7330271",
+  "7330272",
+  "7330273",
+  "7330274",
+  "7330275",
+  "7330276",
+  "7330277",
+  "7330278",
+  "7330279",
+  "7330280",
+  "7330281",
+  "7330282",
+  "7330283",
+  "7330284",
+] as const;
+
 const mapLabelPoints: OverlayLabelPoint[] = [
   { id: "north-west-hub", place: "North West Hub", x: "26%", y: "82%", time: "10:59", speed: "52 mph" },
   { id: "manchester-corridor", place: "Manchester corridor", x: "41%", y: "66%", time: "11:11", speed: "44 mph" },
@@ -282,6 +417,7 @@ export default function LiveTrackingPage() {
   const [now, setNow] = useState(() => new Date());
   const [today] = useState(() => startOfDay(new Date()));
   const [selectedDateValue, setSelectedDateValue] = useState(() => toDateInputValue(startOfDay(new Date())));
+  const [selectedResource, setSelectedResource] = useState(DEFAULT_TRACKING_RESOURCE);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 60000);
@@ -298,7 +434,7 @@ export default function LiveTrackingPage() {
         isCurrent: true,
         map: routeAnalysisMap,
         route: liveTrackingSummary.route,
-        resource: liveTrackingSummary.resource,
+        resource: selectedResource,
         duty: liveTrackingSummary.duty,
         vehicle: liveTrackingSummary.vehicle,
         trailer: liveTrackingSummary.trailer,
@@ -311,7 +447,7 @@ export default function LiveTrackingPage() {
         isCurrent: false,
         map: historicalDay.map,
         route: historicalDay.route,
-        resource: historicalDay.resource,
+        resource: selectedResource,
         duty: historicalDay.duty,
         vehicle: historicalDay.vehicle,
         trailer: historicalDay.trailer,
@@ -345,39 +481,53 @@ export default function LiveTrackingPage() {
 
         <main className="min-w-0 flex-1 p-3 sm:p-4 xl:p-5">
           <section className="rounded-[18px] border border-[#d6dde8] bg-white p-3 shadow-sm">
-            <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(500px,0.72fr)] xl:items-start">
+            <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(300px,0.65fr)_minmax(680px,1.35fr)] xl:items-start">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#e40000]">Vehicle tracking mockup</p>
                   <TrackingModeChip isCurrent={isCurrentDay} />
                 </div>
-                <h1 className="mt-0.5 text-xl font-black text-[#10203a] xl:text-2xl">{liveTrackingSummary.title}</h1>
+                <div className="mt-1 flex flex-wrap items-center gap-3">
+                  <h1 className="text-xl font-black text-[#10203a] xl:text-2xl">
+                    {isCurrentDay ? "VEHICLE LIVE TRACKING" : "Vehicle Tracking History"}
+                  </h1>
+                  <div className="inline-flex min-w-0 max-w-full items-center gap-2 rounded-xl border-2 border-[#e40000] bg-[#fff5f5] px-3 py-1.5 shadow-sm">
+                    <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.16em] text-[#b00000]">Resource</span>
+                    <span className="truncate text-base font-black text-[#10203a]" title={selectedTrackingDay.resource}>
+                      {selectedTrackingDay.resource}
+                    </span>
+                  </div>
+                </div>
                 <p className="mt-1 max-w-4xl text-xs font-bold leading-4 text-[#4b5563]">
                   Select today for live progress, or choose a previous date to review the completed route and recorded events.
                 </p>
               </div>
 
-              <DateSelector
-                value={selectedDateValue}
-                min={minimumDate}
-                max={maximumDate}
-                dateLabel={selectedDateLabel}
-                relativeLabel={relativeDateLabel}
-                isCurrent={isCurrentDay}
-                canMoveEarlier={selectedDateValue > minimumDate}
-                canMoveLater={selectedDateValue < maximumDate}
-                onChange={setSelectedDateValue}
-                onEarlier={() => changeSelectedDate(-1)}
-                onLater={() => changeSelectedDate(1)}
-                onToday={() => setSelectedDateValue(maximumDate)}
-              />
+              <div className="grid min-w-0 grid-cols-1 gap-2 md:grid-cols-[minmax(230px,0.72fr)_minmax(430px,1.28fr)]">
+                <ResourceSelector
+                  value={selectedResource}
+                  options={trackingResourceOptions}
+                  onChange={setSelectedResource}
+                />
+                <DateSelector
+                  value={selectedDateValue}
+                  min={minimumDate}
+                  max={maximumDate}
+                  dateLabel={selectedDateLabel}
+                  relativeLabel={relativeDateLabel}
+                  isCurrent={isCurrentDay}
+                  canMoveEarlier={selectedDateValue > minimumDate}
+                  canMoveLater={selectedDateValue < maximumDate}
+                  onChange={setSelectedDateValue}
+                  onEarlier={() => changeSelectedDate(-1)}
+                  onLater={() => changeSelectedDate(1)}
+                  onToday={() => setSelectedDateValue(maximumDate)}
+                />
+              </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4 xl:grid-cols-8">
-              <SummaryCard label="Resource" value={selectedTrackingDay.resource} />
-              <SummaryCard label="Duty" value={selectedTrackingDay.duty} />
-              <SummaryCard label="Vehicle" value={selectedTrackingDay.vehicle} />
-              <SummaryCard label="Trailer" value={selectedTrackingDay.trailer} />
+            <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-3 xl:grid-cols-5">
+              <MetricCard label="Duty" value={selectedTrackingDay.duty} detail="Assigned duty" />
               <MetricCard label="Driver" value={selectedTrackingDay.driver} detail="Assigned driver" />
               {isCurrentDay ? (
                 <>
@@ -449,6 +599,39 @@ export default function LiveTrackingPage() {
           </section>
         </main>
       </div>
+    </div>
+  );
+}
+
+function ResourceSelector({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: readonly string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="rounded-[14px] border border-[#cbd7e6] bg-[#f8fbfe] p-2 shadow-sm">
+      <div className="min-w-0">
+        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#6b7280]">Tracking resource</p>
+        <p className="mt-0.5 truncate text-xs font-black text-[#10203a]">Select a vehicle or trailer</p>
+      </div>
+
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1.5 w-full min-w-0 rounded-md border border-[#cbd7e6] bg-white px-2.5 py-1.5 text-xs font-black text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
+        aria-label="Select tracking resource"
+        title={value}
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
@@ -731,15 +914,6 @@ function JourneyStatusCard({
         </p>
       </div>
     </aside>
-  );
-}
-
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-lg border border-[#d7dee9] bg-[#f8fafc] px-2 py-1.5">
-      <p className="text-[8px] font-black uppercase tracking-[0.14em] text-[#6b7280]">{label}</p>
-      <p className="mt-0.5 truncate text-xs font-black text-[#10203a]" title={value}>{value}</p>
-    </div>
   );
 }
 
