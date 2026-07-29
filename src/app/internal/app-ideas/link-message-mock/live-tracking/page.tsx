@@ -27,6 +27,7 @@ type SidebarItem = {
 };
 
 type LabelMode = "time" | "speed";
+type ResourceType = "vehicle" | "trailer";
 type TrackingEvent = (typeof liveTrackingEvents)[number];
 
 type OverlayLabelPoint = {
@@ -221,6 +222,13 @@ const trackingResourceOptions = [
   "7330283",
   "7330284",
 ] as const;
+
+function getResourceType(resource: string): ResourceType {
+  return /^\d/.test(resource.trim()) ? "trailer" : "vehicle";
+}
+
+const vehicleResourceOptions = trackingResourceOptions.filter((resource) => getResourceType(resource) === "vehicle");
+const trailerResourceOptions = trackingResourceOptions.filter((resource) => getResourceType(resource) === "trailer");
 
 const mapLabelPoints: OverlayLabelPoint[] = [
   { id: "north-west-hub", place: "North West Hub", x: "26%", y: "82%", time: "10:59", speed: "52 mph" },
@@ -417,6 +425,7 @@ export default function LiveTrackingPage() {
   const [now, setNow] = useState(() => new Date());
   const [today] = useState(() => startOfDay(new Date()));
   const [selectedDateValue, setSelectedDateValue] = useState(() => toDateInputValue(startOfDay(new Date())));
+  const [selectedResourceType, setSelectedResourceType] = useState<ResourceType>("vehicle");
   const [selectedResource, setSelectedResource] = useState(DEFAULT_TRACKING_RESOURCE);
 
   useEffect(() => {
@@ -466,6 +475,21 @@ export default function LiveTrackingPage() {
   const currentEvent = selectedTrackingDay.events.find((event) => event.status === "Current") ?? selectedTrackingDay.events.at(-1) ?? selectedTrackingDay.events[0];
   const minimumDate = toDateInputValue(addDays(today, -7));
   const maximumDate = toDateInputValue(today);
+  const filteredResourceOptions = selectedResourceType === "trailer" ? trailerResourceOptions : vehicleResourceOptions;
+
+  const changeResourceType = (resourceType: ResourceType) => {
+    setSelectedResourceType(resourceType);
+
+    if (getResourceType(selectedResource) !== resourceType) {
+      const nextResource = resourceType === "vehicle"
+        ? vehicleResourceOptions.find((resource) => resource === DEFAULT_TRACKING_RESOURCE) ?? vehicleResourceOptions[0]
+        : trailerResourceOptions[0];
+
+      if (nextResource) {
+        setSelectedResource(nextResource);
+      }
+    }
+  };
 
   const changeSelectedDate = (days: number) => {
     const nextDate = addDays(selectedDate, days);
@@ -506,7 +530,9 @@ export default function LiveTrackingPage() {
               <div className="grid min-w-0 grid-cols-1 gap-2 md:grid-cols-[minmax(230px,0.72fr)_minmax(430px,1.28fr)]">
                 <ResourceSelector
                   value={selectedResource}
-                  options={trackingResourceOptions}
+                  resourceType={selectedResourceType}
+                  options={filteredResourceOptions}
+                  onResourceTypeChange={changeResourceType}
                   onChange={setSelectedResource}
                 />
                 <DateSelector
@@ -605,25 +631,45 @@ export default function LiveTrackingPage() {
 
 function ResourceSelector({
   value,
+  resourceType,
   options,
+  onResourceTypeChange,
   onChange,
 }: {
   value: string;
+  resourceType: ResourceType;
   options: readonly string[];
+  onResourceTypeChange: (resourceType: ResourceType) => void;
   onChange: (value: string) => void;
 }) {
   return (
     <div className="rounded-[14px] border border-[#cbd7e6] bg-[#f8fbfe] p-2 shadow-sm">
-      <div className="min-w-0">
-        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#6b7280]">Tracking resource</p>
-        <p className="mt-0.5 truncate text-xs font-black text-[#10203a]">Select a vehicle or trailer</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#6b7280]">Tracking resource</p>
+          <p className="mt-0.5 truncate text-xs font-black text-[#10203a]">Select a {resourceType}</p>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-lg border border-[#cbd7e6] bg-white px-2.5 py-1.5" role="group" aria-label="Resource type">
+          {(["vehicle", "trailer"] as ResourceType[]).map((type) => (
+            <label key={type} className="flex cursor-pointer items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-[#10203a]">
+              <input
+                type="checkbox"
+                checked={resourceType === type}
+                onChange={() => onResourceTypeChange(type)}
+                className="h-3.5 w-3.5 rounded border-[#9ca3af] text-[#0f3a6d] focus:ring-[#0f3a6d]"
+              />
+              {type}
+            </label>
+          ))}
+        </div>
       </div>
 
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="mt-1.5 w-full min-w-0 rounded-md border border-[#cbd7e6] bg-white px-2.5 py-1.5 text-xs font-black text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
-        aria-label="Select tracking resource"
+        aria-label={`Select tracking ${resourceType}`}
         title={value}
       >
         {options.map((option) => (
