@@ -9,7 +9,15 @@ const codes: TimingCode[] = ["VE", "E", "OT", "L", "VL", "F"];
 
 type ReportRow = NationalLocalPlanPdfRow & { date: string };
 
-export function NationalLocalPlanReport({ locations }: { locations: string[] }) {
+export function NationalLocalPlanReport({
+  locations,
+  onSchedule,
+  scheduledCount = 0,
+}: {
+  locations: string[];
+  onSchedule: () => void;
+  scheduledCount?: number;
+}) {
   const [open, setOpen] = useState(false);
   const [range] = useState(() => getSevenDayRange());
   const [startDate, setStartDate] = useState(range.startDate);
@@ -53,10 +61,16 @@ export function NationalLocalPlanReport({ locations }: { locations: string[] }) 
     <>
       <div className="flex flex-col gap-3 rounded-[16px] border border-[#d7dee9] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="text-base font-black text-[#10203a]">National vs Local Plan Report</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-base font-black text-[#10203a]">National vs Local Plan Report</p>
+            {scheduledCount > 0 ? <span className="rounded-full bg-[#dcfce7] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-[#166534]">{scheduledCount} scheduled</span> : null}
+          </div>
           <p className="mt-1 text-sm font-semibold text-[#4b5563]">Daily national duties, local changes and VE/E/OT/L/VL/F performance</p>
         </div>
-        <button type="button" onClick={() => setOpen(true)} className="shrink-0 rounded-xl bg-[#10203a] px-4 py-2.5 text-xs font-black uppercase tracking-[0.07em] text-white hover:bg-[#1e3558]">Select dates and site download</button>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          <button type="button" onClick={() => setOpen(true)} className="rounded-xl bg-[#10203a] px-4 py-2.5 text-xs font-black uppercase tracking-[0.07em] text-white hover:bg-[#1e3558]">Select dates and site download</button>
+          <button type="button" onClick={onSchedule} className="rounded-xl border-2 border-[#0f3a6d] bg-white px-4 py-2.5 text-xs font-black uppercase tracking-[0.07em] text-[#0f3a6d] hover:bg-[#eff6ff]">Schedule email</button>
+        </div>
       </div>
 
       {open ? (

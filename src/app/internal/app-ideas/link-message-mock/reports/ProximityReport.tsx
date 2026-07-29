@@ -6,6 +6,8 @@ import { exportTabularData, type ExportFormat } from "../../exportData";
 
 type ProximityReportProps = {
   locations: string[];
+  onSchedule: () => void;
+  scheduledCount?: number;
 };
 
 type ProximityRow = {
@@ -45,7 +47,7 @@ const vehicleResources = [
   { vehicle: "MSH080", registration: "KS24SUU", trailer: "19310003", driver: "Chris Morgan", duty: "MSHp4202b" },
 ] as const;
 
-export function ProximityReport({ locations }: ProximityReportProps) {
+export function ProximityReport({ locations, onSchedule, scheduledCount = 0 }: ProximityReportProps) {
   const defaults = getDefaultRange();
   const [isOpen, setIsOpen] = useState(false);
   const [startDate, setStartDate] = useState(defaults.startDate);
@@ -137,21 +139,37 @@ export function ProximityReport({ locations }: ProximityReportProps) {
     <>
       <div className="flex flex-col gap-3 rounded-[16px] border border-[#d7dee9] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="text-base font-black text-[#10203a]">Vehicle Proximity Report</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-base font-black text-[#10203a]">Vehicle Proximity Report</p>
+            {scheduledCount > 0 ? (
+              <span className="rounded-full bg-[#dcfce7] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-[#166534]">
+                {scheduledCount} scheduled
+              </span>
+            ) : null}
+          </div>
           <p className="mt-1 text-sm font-semibold text-[#4b5563]">
             Vehicles and trailers recorded within a selected GPS radius and time period
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setErrorMessage("");
-            setIsOpen(true);
-          }}
-          className="shrink-0 rounded-xl bg-[#10203a] px-4 py-2.5 text-xs font-black uppercase tracking-[0.07em] text-white shadow-sm transition hover:bg-[#1e3558]"
-        >
-          Select GPS area and download
-        </button>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => {
+              setErrorMessage("");
+              setIsOpen(true);
+            }}
+            className="rounded-xl bg-[#10203a] px-4 py-2.5 text-xs font-black uppercase tracking-[0.07em] text-white shadow-sm transition hover:bg-[#1e3558]"
+          >
+            Select GPS area and download
+          </button>
+          <button
+            type="button"
+            onClick={onSchedule}
+            className="rounded-xl border-2 border-[#0f3a6d] bg-white px-4 py-2.5 text-xs font-black uppercase tracking-[0.07em] text-[#0f3a6d] transition hover:bg-[#eff6ff]"
+          >
+            Schedule email
+          </button>
+        </div>
       </div>
 
       {isOpen ? (

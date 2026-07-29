@@ -7,6 +7,12 @@ import { exportTabularData, type ExportFormat } from "../../exportData";
 import { downloadNetworkPerformancePdf } from "./networkPerformancePdf";
 import { NationalLocalPlanReport } from "./NationalLocalPlanReport";
 import { ProximityReport } from "./ProximityReport";
+import {
+  ScheduledReportCard,
+  ScheduledReportsManager,
+  type ScheduledReport,
+  type ScheduledReportSource,
+} from "./ScheduledReportsManager";
 
 type SidebarItem = {
   label: string;
@@ -84,6 +90,8 @@ type DynamicReportRange = {
   endDate: string;
   dates: string[];
 };
+
+const SCHEDULED_REPORTS_STORAGE_KEY = "driveros-mock-scheduled-reports";
 
 const drivers = [
   "Andrew Cannon",
@@ -313,6 +321,11 @@ export default function ReportsPage() {
   const [selectedLocations, setSelectedLocations] = useState<string[]>([...availableLocations]);
   const [selectedDueToConvey, setSelectedDueToConvey] = useState<string[]>([...dueToConveyOptions]);
   const [errorMessage, setErrorMessage] = useState("");
+  const [scheduledReports, setScheduledReports] = useState<ScheduledReport[]>([]);
+  const [scheduledReportsLoaded, setScheduledReportsLoaded] = useState(false);
+  const [schedulerOpen, setSchedulerOpen] = useState(false);
+  const [schedulerSource, setSchedulerSource] = useState<ScheduledReportSource>("network");
+  const [schedulerEditId, setSchedulerEditId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -324,6 +337,34 @@ export default function ReportsPage() {
 
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const savedSchedules = window.localStorage.getItem(SCHEDULED_REPORTS_STORAGE_KEY);
+        if (savedSchedules) {
+          const parsedSchedules = JSON.parse(savedSchedules) as ScheduledReport[];
+          if (Array.isArray(parsedSchedules)) {
+            setScheduledReports(parsedSchedules.slice(0, 10));
+          }
+        }
+      } catch {
+        setScheduledReports([]);
+      } finally {
+        setScheduledReportsLoaded(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!scheduledReportsLoaded) {
+      return;
+    }
+
+    window.localStorage.setItem(SCHEDULED_REPORTS_STORAGE_KEY, JSON.stringify(scheduledReports));
+  }, [scheduledReports, scheduledReportsLoaded]);
 
   const networkPerformanceRows = useMemo(
     () => (reportRange ? buildNetworkPerformanceRows(reportRange.dates) : []),
@@ -342,6 +383,15 @@ export default function ReportsPage() {
         selectedDueToConvey,
       ),
     [networkPerformanceRows, startDate, startTime, endDate, endTime, selectedLocations, selectedDueToConvey],
+  );
+
+  const scheduledCounts = useMemo(
+    () => ({
+      network: scheduledReports.filter((schedule) => schedule.source === "network").length,
+      "national-local": scheduledReports.filter((schedule) => schedule.source === "national-local").length,
+      proximity: scheduledReports.filter((schedule) => schedule.source === "proximity").length,
+    }),
+    [scheduledReports],
   );
 
   const toggleLocation = (location: string) => {
@@ -423,6 +473,33 @@ export default function ReportsPage() {
     exportNetworkPerformanceRows(selectedRows, format, startDate, startTime, endDate, endTime);
   };
 
+  const openScheduler = (source: ScheduledReportSource, editId: string | null = null) => {
+    setSchedulerSource(source);
+    setSchedulerEditId(editId);
+    setSchedulerOpen(true);
+  };
+
+  const closeScheduler = () => {
+    setSchedulerOpen(false);
+    setSchedulerEditId(null);
+  };
+
+  const saveScheduledReport = (schedule: ScheduledReport) => {
+    setSchedulerEditId(null);
+    setScheduledReports((current) => {
+      const existingIndex = current.findIndex((item) => item.id === schedule.id);
+      if (existingIndex >= 0) {
+        return current.map((item) => (item.id === schedule.id ? schedule : item));
+      }
+
+      return current.length < 10 ? [...current, schedule] : current;
+    });
+  };
+
+  const removeScheduledReport = (id: string) => {
+    setScheduledReports((current) => current.filter((schedule) => schedule.id !== id));
+  };
+
   return (
     <div className="min-h-screen bg-[#eef2f6] text-[#111827]">
       <OfficeHeader title="MOCK UP" subtitle="Reports" />
@@ -440,8 +517,9 @@ export default function ReportsPage() {
                 </p>
               </div>
 
-              <div>
+              <div className="flex flex-wrap gap-3">
                 <SummaryCard label="Reports available" value="3" />
+                <SummaryCard label="Scheduled reports" value={`${scheduledReports.length} / 10`} />
               </div>
             </div>
 
@@ -462,19 +540,69 @@ export default function ReportsPage() {
 
               <div className="mt-5 grid grid-cols-1 gap-3">
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <ReportActionCard onOpen={openReport} disabled={!reportRange} />
+                  <ReportActionCard
+                    onOpen={openReport}
+                    disabled={!reportRange}
+                    onSchedule={() => openScheduler("network")}
+                    scheduledCount={scheduledCounts.network}
+                  />
                   <ReportDetail label="Available formats" value="Excel, CSV and PDF" />
                 </div>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <NationalLocalPlanReport locations={[...availableLocations]} />
+                  <NationalLocalPlanReport
+                    locations={[...availableLocations]}
+                    onSchedule={() => openScheduler("national-local")}
+                    scheduledCount={scheduledCounts["national-local"]}
+                  />
                   <ReportDetail label="Available formats" value="Excel, CSV and PDF" />
                 </div>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <ProximityReport locations={[...availableLocations]} />
+                  <ProximityReport
+                    locations={[...availableLocations]}
+                    onSchedule={() => openScheduler("proximity")}
+                    scheduledCount={scheduledCounts.proximity}
+                  />
                   <ReportDetail label="Available formats" value="Excel, CSV and PDF" />
                 </div>
               </div>
             </div>
+
+            <section className="mt-5 rounded-[22px] border border-[#cfd8e3] bg-[#f8fafc] p-4 sm:p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e40000]">Automated delivery</p>
+                  <h2 className="mt-2 text-2xl font-black text-[#10203a]">Scheduled Email Reports</h2>
+                  <p className="mt-2 text-sm font-bold leading-6 text-[#4b5563]">
+                    Up to 10 reports can be configured for automatic hourly, daily or weekly email delivery.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openScheduler("network")}
+                  className="shrink-0 rounded-xl border border-[#0f3a6d] bg-white px-5 py-3 text-xs font-black uppercase tracking-[0.08em] text-[#0f3a6d] transition hover:bg-[#eff6ff]"
+                >
+                  Manage scheduled reports
+                </button>
+              </div>
+
+              {scheduledReports.length === 0 ? (
+                <div className="mt-4 rounded-[18px] border-2 border-dashed border-[#c7d2df] bg-white px-5 py-7 text-center">
+                  <p className="text-base font-black text-[#10203a]">No scheduled reports set up</p>
+                  <p className="mt-1 text-sm font-bold text-[#4b5563]">Use the Schedule Email button beside any report to create the first one.</p>
+                </div>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  {scheduledReports.map((schedule) => (
+                    <ScheduledReportCard
+                      key={schedule.id}
+                      schedule={schedule}
+                      onEdit={() => openScheduler(schedule.source, schedule.id)}
+                      onRemove={() => removeScheduledReport(schedule.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
 
             <div className="mt-5 rounded-[18px] border border-dashed border-[#c7d2df] bg-white px-5 py-6 text-center">
               <p className="text-sm font-black text-[#10203a]">Additional national reports can be added beneath the existing reports as the reporting suite develops.</p>
@@ -510,6 +638,16 @@ export default function ReportsPage() {
           onDownload={downloadReport}
         />
       ) : null}
+
+      <ScheduledReportsManager
+        open={schedulerOpen}
+        initialSource={schedulerSource}
+        initialEditId={schedulerEditId}
+        schedules={scheduledReports}
+        onClose={closeScheduler}
+        onSave={saveScheduledReport}
+        onRemove={removeScheduledReport}
+      />
     </div>
   );
 }
@@ -829,21 +967,47 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ReportActionCard({ onOpen, disabled }: { onOpen: () => void; disabled: boolean }) {
+function ReportActionCard({
+  onOpen,
+  disabled,
+  onSchedule,
+  scheduledCount,
+}: {
+  onOpen: () => void;
+  disabled: boolean;
+  onSchedule: () => void;
+  scheduledCount: number;
+}) {
   return (
     <div className="flex flex-col gap-3 rounded-[16px] border border-[#d7dee9] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <p className="text-base font-black text-[#10203a]">Network Performance Report</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-base font-black text-[#10203a]">Network Performance Report</p>
+          {scheduledCount > 0 ? (
+            <span className="rounded-full bg-[#dcfce7] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-[#166534]">
+              {scheduledCount} scheduled
+            </span>
+          ) : null}
+        </div>
         <p className="mt-1 text-sm font-semibold text-[#4b5563]">Completed debrief performance by selected national sites</p>
       </div>
-      <button
-        type="button"
-        onClick={onOpen}
-        disabled={disabled}
-        className="shrink-0 rounded-xl bg-[#10203a] px-4 py-2.5 text-xs font-black uppercase tracking-[0.07em] text-white shadow-sm transition hover:bg-[#1e3558] disabled:cursor-wait disabled:opacity-50"
-      >
-        Select dates and site download
-      </button>
+      <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+        <button
+          type="button"
+          onClick={onOpen}
+          disabled={disabled}
+          className="rounded-xl bg-[#10203a] px-4 py-2.5 text-xs font-black uppercase tracking-[0.07em] text-white shadow-sm transition hover:bg-[#1e3558] disabled:cursor-wait disabled:opacity-50"
+        >
+          Select dates and site download
+        </button>
+        <button
+          type="button"
+          onClick={onSchedule}
+          className="rounded-xl border-2 border-[#0f3a6d] bg-white px-4 py-2.5 text-xs font-black uppercase tracking-[0.07em] text-[#0f3a6d] transition hover:bg-[#eff6ff]"
+        >
+          Schedule email
+        </button>
+      </div>
     </div>
   );
 }
