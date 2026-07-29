@@ -22,19 +22,7 @@ type SidebarItem = {
 type BoardView = "Overview" | "Departures" | "Arrivals";
 type BoardMode = "Departures" | "Arrivals";
 
-type SiteOption =
-  | "Midlands Super Hub"
-  | "North West Super Hub"
-  | "Warrington MC"
-  | "Leeds MC"
-  | "Birmingham MC"
-  | "East Midlands Airport"
-  | "Scottish Parcel Hub"
-  | "Liverpool LD"
-  | "Chester MC"
-  | "Sheffield MC";
-
-const siteOptions: SiteOption[] = [
+const siteOptions = [
   "Midlands Super Hub",
   "North West Super Hub",
   "Warrington MC",
@@ -45,7 +33,51 @@ const siteOptions: SiteOption[] = [
   "Liverpool LD",
   "Chester MC",
   "Sheffield MC",
-];
+  "Aberdeen VOC",
+  "Atherstone VOC",
+  "Belfast VOC",
+  "Birmingham VOC",
+  "Bridgend VOC",
+  "Carlisle VOC",
+  "Chelmsford VOC",
+  "Chorley VOC",
+  "Coventry VOC",
+  "Croydon VOC",
+  "Edinburgh VOC",
+  "ELDC VOC",
+  "EMA VOC",
+  "Exeter VOC",
+  "Gatwick VOC",
+  "Glasgow VOC",
+  "Greenford VOC",
+  "Hatfield VOC",
+  "HWDC VOC",
+  "Inverness VOC",
+  "Manchester VOC",
+  "Midlands SH VOC",
+  "MK VOC",
+  "National Parcel Hub",
+  "North East VOC",
+  "North West VOC",
+  "Norwich VOC",
+  "Peterborough VOC",
+  "Plymouth VOC",
+  "Preston VOC",
+  "Princess Royal VOC",
+  "Scotland VOC",
+  "SOUTH EAST VOC",
+  "South West VOC",
+  "Southampton VOC",
+  "Stourton VOC",
+  "Swindon VOC",
+  "Warrington VOC",
+  "Woking VOC",
+  "Wolverhampton VOC",
+  "WRT VOC",
+  "Yorkshire VOC",
+] as const;
+
+type SiteOption = (typeof siteOptions)[number];
 
 const sidebarItems: SidebarItem[] = [
   { label: "Duty Execution", icon: "⚙", href: "/internal/app-ideas/link-message-mock" },

@@ -89,6 +89,53 @@ const sidebarItems: SidebarItem[] = [
   { label: "Configurations", icon: "⚙", href: "/internal/app-ideas/link-message-mock/arrivals-departures/configurations" },
 ];
 
+const siteOptions = [
+  "Aberdeen VOC",
+  "Atherstone VOC",
+  "Belfast VOC",
+  "Birmingham VOC",
+  "Bridgend VOC",
+  "Carlisle VOC",
+  "Chelmsford VOC",
+  "Chorley VOC",
+  "Coventry VOC",
+  "Croydon VOC",
+  "Edinburgh VOC",
+  "ELDC VOC",
+  "EMA VOC",
+  "Exeter VOC",
+  "Gatwick VOC",
+  "Glasgow VOC",
+  "Greenford VOC",
+  "Hatfield VOC",
+  "HWDC VOC",
+  "Inverness VOC",
+  "Manchester VOC",
+  "Midlands SH VOC",
+  "MK VOC",
+  "National Parcel Hub",
+  "North East VOC",
+  "North West VOC",
+  "Norwich VOC",
+  "Peterborough VOC",
+  "Plymouth VOC",
+  "Preston VOC",
+  "Princess Royal VOC",
+  "Scotland VOC",
+  "SOUTH EAST VOC",
+  "South West VOC",
+  "Southampton VOC",
+  "Stourton VOC",
+  "Swindon VOC",
+  "Warrington VOC",
+  "Woking VOC",
+  "Wolverhampton VOC",
+  "WRT VOC",
+  "Yorkshire VOC",
+] as const;
+
+type SiteOption = (typeof siteOptions)[number];
+
 const DEFAULT_TRACKING_RESOURCE = "PE68UHD";
 
 const trackingResourceOptions = [
@@ -428,6 +475,7 @@ export default function LiveTrackingPage() {
   const [selectedDateValue, setSelectedDateValue] = useState(() => toDateInputValue(startOfDay(new Date())));
   const [selectedResourceType, setSelectedResourceType] = useState<ResourceType>("vehicle");
   const [selectedResource, setSelectedResource] = useState(DEFAULT_TRACKING_RESOURCE);
+  const [selectedSite, setSelectedSite] = useState<SiteOption>("North West VOC");
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 60000);
@@ -506,7 +554,7 @@ export default function LiveTrackingPage() {
 
         <main className="min-w-0 flex-1 p-3 sm:p-4 xl:p-5">
           <section className="rounded-[18px] border border-[#d6dde8] bg-white p-3 shadow-sm">
-            <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(300px,0.65fr)_minmax(680px,1.35fr)] xl:items-start">
+            <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(330px,0.55fr)_minmax(850px,1.45fr)] xl:items-start">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#e40000]">Vehicle tracking mockup</p>
@@ -528,7 +576,7 @@ export default function LiveTrackingPage() {
                 </p>
               </div>
 
-              <div className="grid min-w-0 grid-cols-1 gap-2 md:grid-cols-[minmax(230px,0.72fr)_minmax(430px,1.28fr)]">
+              <div className="grid min-w-0 grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(230px,0.8fr)_minmax(190px,0.55fr)_minmax(430px,1.35fr)]">
                 <ResourceSelector
                   value={selectedResource}
                   resourceType={selectedResourceType}
@@ -536,6 +584,7 @@ export default function LiveTrackingPage() {
                   onResourceTypeChange={changeResourceType}
                   onChange={setSelectedResource}
                 />
+                <SiteSelector value={selectedSite} onChange={setSelectedSite} />
                 <DateSelector
                   value={selectedDateValue}
                   min={minimumDate}
@@ -676,6 +725,29 @@ function ResourceSelector({
         {options.map((option) => (
           <option key={option} value={option}>
             {option}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+
+function SiteSelector({ value, onChange }: { value: SiteOption; onChange: (value: SiteOption) => void }) {
+  return (
+    <div className="rounded-[14px] border border-[#cbd7e6] bg-[#f8fbfe] p-2 shadow-sm">
+      <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#6b7280]">Site</p>
+      <p className="mt-0.5 truncate text-xs font-black text-[#10203a]">Select a site</p>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value as SiteOption)}
+        className="mt-1.5 w-full min-w-0 rounded-md border border-[#cbd7e6] bg-white px-2.5 py-1.5 text-xs font-black text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
+        aria-label="Select tracking site"
+        title={value}
+      >
+        {siteOptions.map((site) => (
+          <option key={site} value={site}>
+            {site}
           </option>
         ))}
       </select>
