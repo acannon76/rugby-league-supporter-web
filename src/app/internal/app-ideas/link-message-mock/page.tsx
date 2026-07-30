@@ -1194,8 +1194,8 @@ export default function LinkMessageMockPage() {
                       ? "border-[#0072b2] bg-[#e8f4fb] text-[#005b8e]"
                       : "border-[#d9dee6] bg-[#f5f5f5] text-[#4b5563]"
                   }`}
-                  aria-label="Toggle colour-blind Gantt palette"
-                  aria-pressed={colourBlindMode}
+                  aria-label="Toggle colour"
+                                    aria-pressed={colourBlindMode}
                   title="Toggle colour-blind Gantt palette"
                 >
                   👁
