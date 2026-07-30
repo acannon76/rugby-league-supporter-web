@@ -38,6 +38,27 @@ type HoveredTravelSegment = {
   segmentIndex: number;
 };
 
+type DutyColumnKey =
+  | "startTime"
+  | "endTime"
+  | "driver"
+  | "vehicle"
+  | "trailer"
+  | "dutyNotes"
+  | "operationalNotes";
+
+type DutyColumnDefinition = {
+  key: DutyColumnKey;
+  label: string;
+  width: number;
+};
+
+type DutyContentFilter = {
+  startFrom: string;
+  startTo: string;
+  legs: string[];
+};
+
 const sideButtons: SideButton[] = [
   { label: "Settings", icon: "⚙" },
   { label: "Planning", icon: "⚙" },
@@ -80,6 +101,96 @@ const sideButtons: SideButton[] = [
     icon: "⚙",
     href: "/internal/app-ideas/link-message-mock/arrivals-departures/configurations",
   },
+];
+
+const siteOptions = [
+  "Aberdeen VOC",
+  "Atherstone VOC",
+  "Belfast VOC",
+  "Birmingham VOC",
+  "Bridgend VOC",
+  "Carlisle VOC",
+  "Chelmsford VOC",
+  "Chorley VOC",
+  "Coventry VOC",
+  "Croydon VOC",
+  "Edinburgh VOC",
+  "ELDC VOC",
+  "EMA VOC",
+  "Exeter VOC",
+  "Gatwick VOC",
+  "Glasgow VOC",
+  "Greenford VOC",
+  "Hatfield VOC",
+  "HWDC VOC",
+  "Inverness VOC",
+  "Manchester VOC",
+  "Midlands SH VOC",
+  "MK VOC",
+  "National Parcel Hub",
+  "North East VOC",
+  "North West VOC",
+  "Norwich VOC",
+  "Peterborough VOC",
+  "Plymouth VOC",
+  "Preston VOC",
+  "Princess Royal VOC",
+  "Scotland VOC",
+  "SOUTH EAST VOC",
+  "South West VOC",
+  "Southampton VOC",
+  "Stourton VOC",
+  "Swindon VOC",
+  "Warrington VOC",
+  "Woking VOC",
+  "Wolverhampton VOC",
+  "WRT VOC",
+  "Yorkshire VOC",
+] as const;
+
+const dutyColumnOptions: DutyColumnDefinition[] = [
+  { key: "startTime", label: "Start Time", width: 108 },
+  { key: "endTime", label: "End Time", width: 108 },
+  { key: "driver", label: "Driver", width: 150 },
+  { key: "vehicle", label: "Vehicle", width: 110 },
+  { key: "trailer", label: "Trailer", width: 110 },
+  { key: "dutyNotes", label: "Duty Notes", width: 150 },
+  { key: "operationalNotes", label: "Operational Notes", width: 175 },
+];
+
+const dutyLegFilterOptions = [
+  "Depot start",
+  "Travel",
+  "Load",
+  "Unload",
+  "Break",
+  "Coupling",
+  "Check",
+  "Fuel",
+  "Issue",
+  "Swap",
+  "Swap / loading",
+  "Swap / issue",
+  "Standby",
+  "Stop",
+  "End",
+] as const;
+
+const emptyDutyContentFilter: DutyContentFilter = {
+  startFrom: "",
+  startTo: "",
+  legs: [],
+};
+
+const mockDriverNames = [
+  "Andrew Cannon",
+  "J. Taylor",
+  "S. Patel",
+  "M. Hughes",
+  "R. Evans",
+  "K. Williams",
+  "D. Morgan",
+  "L. Brown",
 ];
 
 const dutyActions: DutyAction[] = [
@@ -339,7 +450,27 @@ function formatRangeDate(date: Date) {
   });
 }
 
-function getSegmentClasses(tone: GanttSegment["tone"]) {
+function getSegmentClasses(tone: GanttSegment["tone"], colourBlindMode = false) {
+  if (colourBlindMode) {
+    if (tone === "pink") {
+      return "border-[#286f9e] bg-[#66a9d8] text-[#10203a]";
+    }
+
+    if (tone === "stripe") {
+      return "border-[#c47a00] bg-[repeating-linear-gradient(135deg,#fff2c7_0,#fff2c7_4px,#d98b00_4px,#d98b00_6px)] text-[#5b3a00]";
+    }
+
+    if (tone === "white") {
+      return "border-[#7f8c99] bg-white text-[#10203a]";
+    }
+
+    if (tone === "pale") {
+      return "border-[#81964a] bg-[#dbe8a8] text-[#10203a]";
+    }
+
+    return "border-[#4b5563] bg-[#9ca3af] text-[#111827]";
+  }
+
   if (tone === "pink") {
     return "border-[#e8939e] bg-[#ee98a4]";
   }
@@ -401,6 +532,79 @@ function getTravelTimingStatus(row: DutyRow, segmentIndex: number) {
   return (dutyIndex + travelIndex * 2) % 3 === 1 ? "late" : "onTime";
 }
 
+function getDutyStartAndEnd(row: DutyRow) {
+  const firstSegmentStart = Math.min(...row.segments.map((segment) => segment.start));
+  const lastSegmentEnd = Math.max(...row.segments.map((segment) => segment.start + segment.width));
+
+  return {
+    startTime: formatTimelinePercentAsTime(firstSegmentStart),
+    endTime: formatTimelinePercentAsTime(lastSegmentEnd),
+  };
+}
+
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function getDutyColumnValue(row: DutyRow, column: DutyColumnKey, driverName: string) {
+  const dutyIndex = getDutyNumericIndex(row.duty);
+  const timing = getDutyStartAndEnd(row);
+
+  if (column === "startTime") {
+    return timing.startTime;
+  }
+
+  if (column === "endTime") {
+    return timing.endTime;
+  }
+
+  if (column === "driver") {
+    return dutyIndex % 8 === 0 ? driverName : mockDriverNames[dutyIndex % mockDriverNames.length];
+  }
+
+  if (column === "vehicle") {
+    return mockVehicleRegistrations[dutyIndex % mockVehicleRegistrations.length];
+  }
+
+  if (column === "trailer") {
+    return mockTrailerNumbers[dutyIndex % mockTrailerNumbers.length];
+  }
+
+  if (column === "dutyNotes") {
+    return isRoadHaulageDuty(row.duty) ? "Road haulage cover" : dutyIndex % 4 === 1 ? "Amended running" : "Standard duty";
+  }
+
+  const hasLateTravelLeg = row.segments.some(
+    (segment, segmentIndex) => segment.label === "Travel" && getTravelTimingStatus(row, segmentIndex) === "late",
+  );
+
+  return hasLateTravelLeg ? "Monitor late travel leg" : dutyIndex % 5 === 0 ? "Driver contact required" : "No active notes";
+}
+
+function dutyMatchesContentFilter(row: DutyRow, filter: DutyContentFilter) {
+  const startMinutes = timeToMinutes(getDutyStartAndEnd(row).startTime);
+
+  if (filter.startFrom && startMinutes < timeToMinutes(filter.startFrom)) {
+    return false;
+  }
+
+  if (filter.startTo && startMinutes > timeToMinutes(filter.startTo)) {
+    return false;
+  }
+
+  if (filter.legs.length > 0) {
+    const rowLegs = new Set(row.segments.map((segment) => segment.label));
+    const containsSelectedLeg = filter.legs.some((leg) => rowLegs.has(leg));
+
+    if (!containsSelectedLeg) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function buildTravelTooltip(row: DutyRow, segmentIndex: number) {
   const segment = row.segments[segmentIndex];
 
@@ -448,6 +652,13 @@ export default function LinkMessageMockPage() {
   const [hoveredTravelSegment, setHoveredTravelSegment] = useState<HoveredTravelSegment | null>(null);
   const [driverMessageDutyIds, setDriverMessageDutyIds] = useState<string[]>([]);
   const [showIssuesOnly, setShowIssuesOnly] = useState(false);
+  const [selectedSite, setSelectedSite] = useState<(typeof siteOptions)[number]>("North West VOC");
+  const [colourBlindMode, setColourBlindMode] = useState(false);
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
+  const [selectedDutyColumns, setSelectedDutyColumns] = useState<DutyColumnKey[]>([]);
+  const [showDutyContentFilter, setShowDutyContentFilter] = useState(false);
+  const [draftDutyContentFilter, setDraftDutyContentFilter] = useState<DutyContentFilter>(emptyDutyContentFilter);
+  const [appliedDutyContentFilter, setAppliedDutyContentFilter] = useState<DutyContentFilter>(emptyDutyContentFilter);
 
   useEffect(() => {
     function refreshDriverMessageIndicators() {
@@ -510,19 +721,43 @@ export default function LinkMessageMockPage() {
   const visibleDuties = useMemo(() => {
     const baseDuties = activeDutyTab === "roadHaulage" ? duties.filter((duty) => isRoadHaulageDuty(duty.duty)) : duties;
 
-    if (!showIssuesOnly) {
-      return baseDuties;
-    }
-
     return baseDuties.filter((duty) => {
-      const hasDriverMessage = driverMessageDutyIds.includes(duty.duty);
-      const hasLateTravelLeg = duty.segments.some(
-        (segment, segmentIndex) => segment.label === "Travel" && getTravelTimingStatus(duty, segmentIndex) === "late",
-      );
+      if (showIssuesOnly) {
+        const hasDriverMessage = driverMessageDutyIds.includes(duty.duty);
+        const hasLateTravelLeg = duty.segments.some(
+          (segment, segmentIndex) => segment.label === "Travel" && getTravelTimingStatus(duty, segmentIndex) === "late",
+        );
 
-      return hasDriverMessage || hasLateTravelLeg;
+        if (!hasDriverMessage && !hasLateTravelLeg) {
+          return false;
+        }
+      }
+
+      return dutyMatchesContentFilter(duty, appliedDutyContentFilter);
     });
-  }, [activeDutyTab, driverMessageDutyIds, showIssuesOnly]);
+  }, [activeDutyTab, appliedDutyContentFilter, driverMessageDutyIds, showIssuesOnly]);
+
+  const activeDutyColumnDefinitions = dutyColumnOptions.filter((column) => selectedDutyColumns.includes(column.key));
+  const selectedColumnWidth = activeDutyColumnDefinitions.reduce((total, column) => total + column.width, 0);
+  const ganttLeadingWidth = 240 + selectedColumnWidth;
+  const ganttGridTemplateColumns = `240px ${activeDutyColumnDefinitions.map((column) => `${column.width}px`).join(" ")} minmax(900px,1fr)`;
+  const ganttMinimumWidth = 1460 + selectedColumnWidth;
+  const hasActiveDutyContentFilter = Boolean(
+    appliedDutyContentFilter.startFrom || appliedDutyContentFilter.startTo || appliedDutyContentFilter.legs.length,
+  );
+
+  function toggleDutyColumn(column: DutyColumnKey) {
+    setSelectedDutyColumns((current) =>
+      current.includes(column) ? current.filter((item) => item !== column) : [...current, column],
+    );
+  }
+
+  function toggleDraftLeg(leg: string) {
+    setDraftDutyContentFilter((current) => ({
+      ...current,
+      legs: current.legs.includes(leg) ? current.legs.filter((item) => item !== leg) : [...current.legs, leg],
+    }));
+  }
 
   return (
     <main className="min-h-screen bg-[#f4f6f9] font-sans text-[#1d2633]">
@@ -671,13 +906,25 @@ export default function LinkMessageMockPage() {
                 >
                   ›
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDetail("Hub selector clicked.")}
-                  className="ml-0 min-w-[210px] rounded-lg border border-[#ccd5e2] bg-white px-4 py-2 text-left text-sm font-bold text-[#4b5563] shadow-sm transition hover:border-[#e40000] xl:ml-4"
-                >
-                  NORTH WEST HUB⌄
-                </button>
+                <label className="ml-0 min-w-[240px] xl:ml-4">
+                  <span className="sr-only">Select operating site</span>
+                  <select
+                    value={selectedSite}
+                    onChange={(event) => {
+                      const site = event.target.value as (typeof siteOptions)[number];
+                      setSelectedSite(site);
+                      setSelectedDetail(`${site} selected.`);
+                    }}
+                    className="w-full rounded-lg border border-[#ccd5e2] bg-white px-4 py-2 text-sm font-black uppercase text-[#4b5563] shadow-sm outline-none transition hover:border-[#e40000] focus:border-[#e40000]"
+                    aria-label="Select operating site"
+                  >
+                    {siteOptions.map((site) => (
+                      <option key={site} value={site}>
+                        {site}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             </div>
           </div>
@@ -736,11 +983,11 @@ export default function LinkMessageMockPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-[#4b5563]">
-                <LegendDot colour="bg-[#2c80e5]" label="New" />
-                <LegendDot colour="bg-[#f5a400]" label="In Progress" />
-                <LegendDot colour="bg-[#ef3030]" label="Cancelled" />
-                <LegendDot colour="bg-[#3ca34b]" label="Completed" />
-                <LegendDot colour="bg-[#8a2be2]" label="Allocated" />
+                <LegendDot colour={colourBlindMode ? "bg-[#0072b2]" : "bg-[#2c80e5]"} label="New" />
+                <LegendDot colour={colourBlindMode ? "bg-[#e69f00]" : "bg-[#f5a400]"} label="In Progress" />
+                <LegendDot colour={colourBlindMode ? "bg-[#4b5563]" : "bg-[#ef3030]"} label="Cancelled" />
+                <LegendDot colour={colourBlindMode ? "bg-[#009e73]" : "bg-[#3ca34b]"} label="Completed" />
+                <LegendDot colour={colourBlindMode ? "bg-[#cc79a7]" : "bg-[#8a2be2]"} label="Allocated" />
                 <LegendDot colour="bg-[#f59e0b]" label="Failed" warning />
                 <button
                   type="button"
@@ -763,10 +1010,6 @@ export default function LinkMessageMockPage() {
                   Amended Duties
                 </label>
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" className="h-4 w-4 rounded border-[#cbd5e1]" />
-                  Show Additional Details
-                </label>
-                <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
                     checked={showIssuesOnly}
@@ -782,20 +1025,180 @@ export default function LinkMessageMockPage() {
                   />
                   Focus on Issues
                 </label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowColumnSelector((current) => !current);
+                      setShowDutyContentFilter(false);
+                    }}
+                    className={`rounded-md border bg-white px-4 py-2 font-black transition hover:border-[#e40000] ${
+                      selectedDutyColumns.length ? "border-[#e40000] text-[#b00000]" : "border-[#d9dee6] text-[#4b5563]"
+                    }`}
+                    aria-expanded={showColumnSelector}
+                  >
+                    Select Column {selectedDutyColumns.length ? `(${selectedDutyColumns.length})` : ""}⌄
+                  </button>
+
+                  {showColumnSelector ? (
+                    <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[290px] rounded-xl border border-[#d9dee6] bg-white p-3 shadow-2xl">
+                      <div className="flex items-center justify-between border-b border-[#e5e7eb] pb-2">
+                        <p className="text-sm font-black text-[#111827]">Gantt columns</p>
+                        <button
+                          type="button"
+                          onClick={() => setShowColumnSelector(false)}
+                          className="text-xl font-black text-[#6b7280]"
+                          aria-label="Close column selector"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <div className="mt-2 space-y-1">
+                        {dutyColumnOptions.map((column) => (
+                          <label key={column.key} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-[#f8fafc]">
+                            <input
+                              type="checkbox"
+                              checked={selectedDutyColumns.includes(column.key)}
+                              onChange={() => toggleDutyColumn(column.key)}
+                              className="h-4 w-4 rounded border-[#cbd5e1] text-[#e40000] focus:ring-[#e40000]"
+                            />
+                            <span className="font-bold text-[#374151]">{column.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDutyColumns([])}
+                        className="mt-3 w-full rounded-lg border border-[#d9dee6] px-3 py-2 text-xs font-black uppercase text-[#6b7280] hover:border-[#e40000] hover:text-[#e40000]"
+                      >
+                        Clear columns
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDutyContentFilter((current) => !current);
+                      setShowColumnSelector(false);
+                    }}
+                    className={`rounded-md border bg-[#f5f5f5] px-4 py-2 font-black transition hover:border-[#e40000] ${
+                      hasActiveDutyContentFilter ? "border-[#e40000] text-[#b00000]" : "border-[#d9dee6]"
+                    }`}
+                    aria-expanded={showDutyContentFilter}
+                  >
+                    Duty Content Filter{hasActiveDutyContentFilter ? " • Active" : ""}
+                  </button>
+
+                  {showDutyContentFilter ? (
+                    <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[390px] rounded-xl border border-[#d9dee6] bg-white p-4 shadow-2xl">
+                      <div className="flex items-center justify-between border-b border-[#e5e7eb] pb-3">
+                        <div>
+                          <p className="text-sm font-black text-[#111827]">Duty Content Filter</p>
+                          <p className="text-xs font-bold text-[#6b7280]">Filter by duty start time and leg content.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowDutyContentFilter(false)}
+                          className="text-xl font-black text-[#6b7280]"
+                          aria-label="Close duty content filter"
+                        >
+                          ×
+                        </button>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        <label>
+                          <span className="text-xs font-black uppercase tracking-[0.1em] text-[#6b7280]">Start from</span>
+                          <input
+                            type="time"
+                            value={draftDutyContentFilter.startFrom}
+                            onChange={(event) =>
+                              setDraftDutyContentFilter((current) => ({ ...current, startFrom: event.target.value }))
+                            }
+                            className="mt-1.5 w-full rounded-lg border border-[#ccd5e2] px-3 py-2 font-black outline-none focus:border-[#e40000]"
+                          />
+                        </label>
+                        <label>
+                          <span className="text-xs font-black uppercase tracking-[0.1em] text-[#6b7280]">Start to</span>
+                          <input
+                            type="time"
+                            value={draftDutyContentFilter.startTo}
+                            onChange={(event) =>
+                              setDraftDutyContentFilter((current) => ({ ...current, startTo: event.target.value }))
+                            }
+                            className="mt-1.5 w-full rounded-lg border border-[#ccd5e2] px-3 py-2 font-black outline-none focus:border-[#e40000]"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="mt-4">
+                        <p className="text-xs font-black uppercase tracking-[0.1em] text-[#6b7280]">Show duties containing these legs</p>
+                        <div className="mt-2 grid max-h-[220px] grid-cols-2 gap-1 overflow-y-auto rounded-lg border border-[#e5e7eb] p-2">
+                          {dutyLegFilterOptions.map((leg) => (
+                            <label key={leg} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-[#f8fafc]">
+                              <input
+                                type="checkbox"
+                                checked={draftDutyContentFilter.legs.includes(leg)}
+                                onChange={() => toggleDraftLeg(leg)}
+                                className="h-4 w-4 rounded border-[#cbd5e1] text-[#e40000] focus:ring-[#e40000]"
+                              />
+                              <span className="text-xs font-bold text-[#374151]">{leg}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <p className="mt-1 text-[11px] font-bold text-[#6b7280]">Selecting several legs shows duties containing any selected leg.</p>
+                      </div>
+
+                      <div className="mt-4 flex gap-2 border-t border-[#e5e7eb] pt-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDraftDutyContentFilter(emptyDutyContentFilter);
+                            setAppliedDutyContentFilter(emptyDutyContentFilter);
+                            setSelectedDetail("Duty content filters cleared.");
+                          }}
+                          className="flex-1 rounded-lg border border-[#ccd5e2] px-4 py-2 font-black text-[#4b5563] hover:border-[#e40000]"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAppliedDutyContentFilter({
+                              ...draftDutyContentFilter,
+                              legs: [...draftDutyContentFilter.legs],
+                            });
+                            setShowDutyContentFilter(false);
+                            setSelectedDetail("Duty content filter applied.");
+                          }}
+                          className="flex-1 rounded-lg bg-[#e40000] px-4 py-2 font-black text-white hover:bg-[#b80000]"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
                 <button
                   type="button"
-                  onClick={() => setSelectedDetail("Duty Content Filter clicked.")}
-                  className="rounded-md border border-[#d9dee6] bg-[#f5f5f5] px-4 py-2 font-black transition hover:border-[#e40000]"
+                  onClick={() => {
+                    setColourBlindMode((current) => !current);
+                    setSelectedDetail(
+                      colourBlindMode ? "Standard Gantt palette enabled." : "Colour-blind Gantt palette enabled.",
+                    );
+                  }}
+                  className={`rounded-md border px-3 py-2 text-xl font-black transition hover:border-[#e40000] ${
+                    colourBlindMode
+                      ? "border-[#0072b2] bg-[#e8f4fb] text-[#005b8e]"
+                      : "border-[#d9dee6] bg-[#f5f5f5] text-[#4b5563]"
+                  }`}
+                  aria-label="Toggle colour-blind Gantt palette"
+                  aria-pressed={colourBlindMode}
+                  title="Toggle colour-blind Gantt palette"
                 >
-                  Duty Content Filter
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDetail("Slider filter button clicked.")}
-                  className="rounded-md border border-[#d9dee6] bg-[#f5f5f5] px-4 py-2 text-xl font-black transition hover:border-[#e40000]"
-                  aria-label="Advanced filters"
-                >
-                  ≡
+                  👁
                 </button>
               </div>
             </div>
@@ -803,8 +1206,11 @@ export default function LinkMessageMockPage() {
 
           <div className="mt-4 overflow-hidden rounded-md border border-[#d9dee6] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <div className="min-w-[1460px]">
-                <div className="grid grid-cols-[240px_1fr] border-b border-[#d9dee6] bg-white">
+              <div style={{ minWidth: `${ganttMinimumWidth}px` }}>
+                <div
+                  className="grid border-b border-[#d9dee6] bg-white"
+                  style={{ gridTemplateColumns: ganttGridTemplateColumns }}
+                >
                   <div className="border-r border-[#d9dee6] p-3">
                     <div className="flex items-center justify-between">
                       <p className="font-black">Duty Details</p>
@@ -835,6 +1241,18 @@ export default function LinkMessageMockPage() {
                     </div>
                   </div>
 
+                  {activeDutyColumnDefinitions.map((column) => (
+                    <div key={column.key} className="border-r border-[#d9dee6] bg-[#f8fafc] p-2">
+                      <p className="truncate text-sm font-black text-[#374151]" title={column.label}>{column.label}</p>
+                      <input
+                        aria-label={`Search ${column.label}`}
+                        placeholder="Search"
+                        className="mt-2 w-full rounded-md border border-[#cfd8e4] bg-white px-2 py-2 text-xs outline-none transition focus:border-[#e40000]"
+                        onFocus={() => setSelectedDetail(`${column.label} search clicked.`)}
+                      />
+                    </div>
+                  ))}
+
                   <div className="relative border-r border-[#d9dee6] bg-white">
                     <div className="grid h-[46px] grid-cols-[repeat(16,minmax(0,1fr))] border-b border-[#d9dee6]">
                       {timeLabels.map((label) => (
@@ -851,18 +1269,22 @@ export default function LinkMessageMockPage() {
                 </div>
 
                 <div className="relative">
-                  <div className="pointer-events-none absolute bottom-0 left-[240px] top-0 z-10 w-[calc(100%-240px)] bg-[repeating-linear-gradient(to_right,transparent_0,transparent_87px,#eef1f5_87px,#eef1f5_88px)]" />
+                  <div
+                    className="pointer-events-none absolute bottom-0 top-0 z-10 bg-[repeating-linear-gradient(to_right,transparent_0,transparent_87px,#eef1f5_87px,#eef1f5_88px)]"
+                    style={{ left: `${ganttLeadingWidth}px`, width: `calc(100% - ${ganttLeadingWidth}px)` }}
+                  />
                   <div
                     className="pointer-events-none absolute bottom-0 top-0 z-20 border-l-2 border-dashed border-[#e40000]"
-                    style={{ left: "calc(240px + ((100% - 240px) * 0.72))" }}
+                    style={{ left: `calc(${ganttLeadingWidth}px + ((100% - ${ganttLeadingWidth}px) * 0.72))` }}
                   />
 
                   {visibleDuties.map((duty, index) => (
                     <div
                       key={duty.duty}
-                      className={`grid min-h-[64px] grid-cols-[240px_1fr] border-b border-[#dfe5ed] ${
+                      className={`grid min-h-[64px] border-b border-[#dfe5ed] ${
                         index % 2 === 0 ? "bg-[#f4f7fb]" : "bg-white"
                       }`}
+                      style={{ gridTemplateColumns: ganttGridTemplateColumns }}
                     >
                       <div
                         className={`relative z-20 overflow-hidden border-r border-[#d9dee6] px-3 py-2 ${
@@ -926,6 +1348,20 @@ export default function LinkMessageMockPage() {
                         </div>
                       </div>
 
+                      {activeDutyColumnDefinitions.map((column) => (
+                        <div
+                          key={`${duty.duty}-${column.key}`}
+                          className="relative z-20 flex min-w-0 items-center border-r border-[#d9dee6] px-3 py-2"
+                        >
+                          <span
+                            className="line-clamp-2 text-xs font-bold leading-4 text-[#4b5563]"
+                            title={getDutyColumnValue(duty, column.key, driverName)}
+                          >
+                            {getDutyColumnValue(duty, column.key, driverName)}
+                          </span>
+                        </div>
+                      ))}
+
                       <div className="relative z-0 h-[64px]">
                         {duty.segments.map((segment, segmentIndex) => {
                           const travelTimingStatus =
@@ -958,6 +1394,7 @@ export default function LinkMessageMockPage() {
                                 }}
                                 className={`absolute top-[18px] flex h-[24px] items-center justify-center overflow-hidden border text-[12px] font-black text-[#202733] shadow-sm transition hover:z-30 hover:scale-y-125 ${getSegmentClasses(
                                   segment.tone,
+                                  colourBlindMode,
                                 )}`}
                                 style={{ left: `${segment.start}%`, width: `${segment.width}%` }}
                                 title={`${duty.duty} ${segment.label}`}
