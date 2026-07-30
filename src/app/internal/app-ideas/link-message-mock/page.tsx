@@ -1196,7 +1196,7 @@ export default function LinkMessageMockPage() {
                   }`}
                   aria-label="Toggle colour"
                                     aria-pressed={colourBlindMode}
-                  title="Toggle colour-blind Gantt palette"
+                  title="Toggle colour"
                 >
                   👁
                 </button>
