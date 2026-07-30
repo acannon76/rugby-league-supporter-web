@@ -1182,24 +1182,26 @@ export default function LinkMessageMockPage() {
                   ) : null}
                 </div>
                 <button
-                  type="button"
-                  onClick={() => {
-                    setColourBlindMode((current) => !current);
-                    setSelectedDetail(
-                      colourBlindMode ? "Standard Gantt palette enabled." : "Colour-blind Gantt palette enabled.",
-                    );
-                  }}
-                  className={`rounded-md border px-3 py-2 text-xl font-black transition hover:border-[#e40000] ${
-                    colourBlindMode
-                      ? "border-[#0072b2] bg-[#e8f4fb] text-[#005b8e]"
-                      : "border-[#d9dee6] bg-[#f5f5f5] text-[#4b5563]"
-                  }`}
-                  aria-label="Toggle colour"
-                                    aria-pressed={colourBlindMode}
-                  title="Toggle colour"
-                >
-                  👁
-                </button>
+  type="button"
+  onClick={() => {
+    setColourBlindMode((current) => !current);
+    setSelectedDetail(
+      colourBlindMode
+        ? "Standard Gantt palette enabled."
+        : "Colour Change Gantt palette enabled.",
+    );
+  }}
+  className={`rounded-md border px-3 py-2 text-xl font-black transition hover:border-[#e40000] ${
+    colourBlindMode
+      ? "border-[#0072b2] bg-[#e8f4fb] text-[#005b8e]"
+      : "border-[#d9dee6] bg-[#f5f5f5] text-[#4b5563]"
+  }`}
+  aria-label="Toggle Gantt colour palette"
+  aria-pressed={colourBlindMode}
+  title="Toggle Gantt colour palette"
+>
+  👁
+</button>
               </div>
             </div>
           </div>
