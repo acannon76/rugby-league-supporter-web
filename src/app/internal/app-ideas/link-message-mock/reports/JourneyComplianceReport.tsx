@@ -117,9 +117,11 @@ export function JourneyComplianceReport({
     };
   }, [rows]);
 
-  const filteredLocations = locations.filter((location) =>
-    location.toLowerCase().includes(locationSearch.trim().toLowerCase()),
-  );
+  const filteredLocations = [...locations]
+    .filter((location) =>
+      location.toLowerCase().includes(locationSearch.trim().toLowerCase()),
+    )
+    .sort((left, right) => left.localeCompare(right));
 
   const openReport = () => {
     setError("");
@@ -696,9 +698,7 @@ function buildComplianceRows(rawRows: RawJourneyRow[]): ComplianceRow[] {
         ? Number(((row.missingLegs / row.trackedJourneys) * 100).toFixed(1))
         : 0,
     }))
-    .sort((left, right) =>
-      right.nonCompliancePercent - left.nonCompliancePercent || left.site.localeCompare(right.site),
-    );
+    .sort((left, right) => left.site.localeCompare(right.site));
 }
 
 function getDifferentDestination(site: string, seed: number) {
