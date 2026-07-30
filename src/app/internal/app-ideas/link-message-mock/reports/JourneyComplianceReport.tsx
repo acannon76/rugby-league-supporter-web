@@ -74,6 +74,13 @@ const mockDestinations = [
   "Yorkshire VOC",
 ] as const;
 
+const excludedComplianceOperatingSites = new Set([
+  "Agency - ADM South",
+  "Agency Central (Coventry Hub and NDC)",
+  "Agency Drivers",
+  "New Installs Trailers - National Pool",
+]);
+
 export function JourneyComplianceReport({
   locations,
   onSchedule,
@@ -88,9 +95,14 @@ export function JourneyComplianceReport({
   const [locationSearch, setLocationSearch] = useState("");
   const [error, setError] = useState("");
 
+  const complianceLocations = useMemo(
+    () => selectedLocations.filter((location) => !excludedComplianceOperatingSites.has(location)),
+    [selectedLocations],
+  );
+
   const rawRows = useMemo(
-    () => buildRawJourneyRows(startDate, endDate, selectedLocations),
-    [endDate, selectedLocations, startDate],
+    () => buildRawJourneyRows(startDate, endDate, complianceLocations),
+    [complianceLocations, endDate, startDate],
   );
 
   const rows = useMemo(() => buildComplianceRows(rawRows), [rawRows]);
