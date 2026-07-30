@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-export type ScheduledReportSource = "network" | "national-local" | "proximity";
+export type ScheduledReportSource = "network" | "national-local" | "proximity" | "journey-compliance";
 export type ScheduledReportFormat = "excel" | "csv" | "pdf";
 export type DeliveryFrequency = "hourly" | "daily" | "weekly";
 export type ReportPeriod = "daily" | "weekly";
@@ -28,6 +28,7 @@ export const REPORT_SOURCE_LABELS: Record<ScheduledReportSource, string> = {
   network: "Network Performance Report",
   "national-local": "National vs Local Plan Report",
   proximity: "Vehicle Proximity Report",
+  "journey-compliance": "Site & User Journey Compliance Report",
 };
 
 const dayOptions = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];

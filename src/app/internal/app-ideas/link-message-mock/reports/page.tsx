@@ -7,6 +7,7 @@ import { exportTabularData, type ExportFormat } from "../../exportData";
 import { downloadNetworkPerformancePdf } from "./networkPerformancePdf";
 import { NationalLocalPlanReport } from "./NationalLocalPlanReport";
 import { ProximityReport } from "./ProximityReport";
+import { JourneyComplianceReport } from "./JourneyComplianceReport";
 import {
   ScheduledReportCard,
   ScheduledReportsManager,
@@ -390,6 +391,7 @@ export default function ReportsPage() {
       network: scheduledReports.filter((schedule) => schedule.source === "network").length,
       "national-local": scheduledReports.filter((schedule) => schedule.source === "national-local").length,
       proximity: scheduledReports.filter((schedule) => schedule.source === "proximity").length,
+      "journey-compliance": scheduledReports.filter((schedule) => schedule.source === "journey-compliance").length,
     }),
     [scheduledReports],
   );
@@ -518,7 +520,7 @@ export default function ReportsPage() {
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <SummaryCard label="Reports available" value="3" />
+                <SummaryCard label="Reports available" value="4" />
                 <SummaryCard label="Scheduled reports" value={`${scheduledReports.length} / 10`} />
               </div>
             </div>
@@ -561,6 +563,14 @@ export default function ReportsPage() {
                     locations={[...availableLocations]}
                     onSchedule={() => openScheduler("proximity")}
                     scheduledCount={scheduledCounts.proximity}
+                  />
+                  <ReportDetail label="Available formats" value="Excel, CSV and PDF" />
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <JourneyComplianceReport
+                    locations={[...availableLocations]}
+                    onSchedule={() => openScheduler("journey-compliance")}
+                    scheduledCount={scheduledCounts["journey-compliance"]}
                   />
                   <ReportDetail label="Available formats" value="Excel, CSV and PDF" />
                 </div>
