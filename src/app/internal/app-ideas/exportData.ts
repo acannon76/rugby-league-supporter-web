@@ -9,6 +9,51 @@ type ExportDataArgs = {
   title?: string;
 };
 
+export type ExcelWorkbookSheet = {
+  name: string;
+  headers: string[];
+  rows: ExportCell[][];
+};
+
+type ExportExcelWorkbookArgs = {
+  fileName: string;
+  sheets: ExcelWorkbookSheet[];
+};
+
+export async function exportExcelWorkbook({ fileName, sheets }: ExportExcelWorkbookArgs) {
+  if (typeof window === "undefined" || sheets.length === 0) {
+    return;
+  }
+
+  const XLSX = await import("xlsx");
+  const workbook = XLSX.utils.book_new();
+
+  sheets.forEach((sheet, index) => {
+    const data = [sheet.headers, ...sheet.rows].map((row) => row.map((cell) => cell ?? ""));
+    const worksheet = XLSX.utils.aoa_to_sheet(data);
+    worksheet["!cols"] = sheet.headers.map((header, columnIndex) => {
+      const maximumLength = Math.max(
+        header.length,
+        ...sheet.rows.map((row) => String(row[columnIndex] ?? "").length),
+      );
+      return { wch: Math.min(55, Math.max(12, maximumLength + 2)) };
+    });
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      sanitiseWorksheetName(sheet.name || `Sheet ${index + 1}`),
+    );
+  });
+
+  const safeBaseName = fileName.replace(/\.(xls|xlsx)$/i, "");
+  XLSX.writeFile(workbook, `${safeBaseName}.xlsx`, { bookType: "xlsx" });
+}
+
+function sanitiseWorksheetName(value: string) {
+  return value.replace(/[\/?*\[\]:]/g, " ").trim().slice(0, 31) || "Sheet";
+}
+
 export function exportTabularData({
   format,
   headers,
