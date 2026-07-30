@@ -97,9 +97,9 @@ const sideButtons: SideButton[] = [
     href: "/internal/app-ideas/link-message-mock/arrivals-departures",
   },
   {
-    label: "Configurations",
+    label: "System Configurations",
     icon: "⚙",
-    href: "/internal/app-ideas/link-message-mock/arrivals-departures/configurations",
+    href: "/internal/app-ideas/link-message-mock/configurations",
   },
 ];
 

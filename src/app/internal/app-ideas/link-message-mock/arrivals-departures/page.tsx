@@ -91,7 +91,7 @@ const sidebarItems: SidebarItem[] = [
   { label: "Live Tracking", icon: "GPS", href: "/internal/app-ideas/link-message-mock/live-tracking" },
   { label: "Reports", icon: "REP", href: "/internal/app-ideas/link-message-mock/reports" },
   { label: "A&D Dashboard", icon: "A&D", href: "/internal/app-ideas/link-message-mock/arrivals-departures", active: true },
-  { label: "Configurations", icon: "⚙", href: "/internal/app-ideas/link-message-mock/arrivals-departures/configurations" },
+  { label: "System Configurations", icon: "⚙", href: "/internal/app-ideas/link-message-mock/configurations" },
 ];
 
 const departureOffsets = [2, 8, 14, 20, 26, 32, 38, 44, 50, 56, 62, 68, 74, 80, 86, 92, 98, 104, 110, 116];

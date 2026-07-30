@@ -540,7 +540,7 @@ const sidebarItems = [
   { label: "Live Tracking", icon: "GPS", href: "/internal/app-ideas/link-message-mock/live-tracking" },
   { label: "Reports", icon: "REP", href: "/internal/app-ideas/link-message-mock/reports" },
   { label: "A&D Dashboard", icon: "A&D", href: "/internal/app-ideas/link-message-mock/arrivals-departures" },
-  { label: "Configurations", icon: "⚙", href: "/internal/app-ideas/link-message-mock/arrivals-departures/configurations" },
+  { label: "System Configurations", icon: "⚙", href: "/internal/app-ideas/link-message-mock/configurations" },
 ];
 
 export default function LinkCommsDashboardPage() {
