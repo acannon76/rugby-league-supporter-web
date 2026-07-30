@@ -176,6 +176,14 @@ const dutyLegFilterOptions = [
   "End",
 ] as const;
 
+const specialDutyBadges: Partial<Record<string, { code: string; tooltip: string }>> = {
+  NWH008: { code: "SD", tooltip: "Shunting Duty" },
+};
+
+const specialDutyIcons: Partial<Record<string, { tooltip: string }>> = {
+  NWH006: { tooltip: "Driver Training" },
+};
+
 const emptyDutyContentFilter: DutyContentFilter = {
   startFrom: "",
   startTo: "",
@@ -490,6 +498,17 @@ function getSegmentClasses(tone: GanttSegment["tone"], colourBlindMode = false) 
   return "border-[#c4c9cf] bg-[#d4d6da]";
 }
 
+
+function SteeringWheelIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="7.2" />
+      <path d="M4.8 11.8h14.4" />
+      <path d="M12 11.8v6.2" />
+      <path d="M8.1 8.3c1.1 1 2.4 1.6 3.9 1.6s2.8-.6 3.9-1.6" />
+    </svg>
+  );
+}
 
 function isRoadHaulageDuty(duty: string) {
   return roadHaulageDutyCodes.has(duty);
@@ -1311,6 +1330,24 @@ export default function LinkMessageMockPage() {
                         <div className="flex items-center gap-2">
                           <span className={`h-3 w-3 rounded-full ${driverMessageDutyIds.includes(duty.duty) ? "bg-[#e40000]" : "bg-[#2c80e5]"}`} />
                           <p className={`font-black ${driverMessageDutyIds.includes(duty.duty) ? "text-[#e40000]" : "text-[#374151]"}`}>{duty.duty}</p>
+                          {specialDutyIcons[duty.duty] ? (
+                            <span
+                              className="inline-flex h-5 w-5 items-center justify-center text-[#6b7280]"
+                              title={specialDutyIcons[duty.duty]?.tooltip}
+                              aria-label={specialDutyIcons[duty.duty]?.tooltip}
+                            >
+                              <SteeringWheelIcon />
+                            </span>
+                          ) : null}
+                          {specialDutyBadges[duty.duty] ? (
+                            <span
+                              className="inline-flex h-5 items-center rounded-sm bg-[#eadfe7] px-1.5 text-[10px] font-black uppercase leading-none text-[#6a5a65] shadow-sm"
+                              title={specialDutyBadges[duty.duty]?.tooltip}
+                              aria-label={specialDutyBadges[duty.duty]?.tooltip}
+                            >
+                              {specialDutyBadges[duty.duty]?.code}
+                            </span>
+                          ) : null}
                           {driverMessageDutyIds.includes(duty.duty) ? (
                             <span className="text-[10px] font-black uppercase tracking-[0.12em] text-[#e40000]">Driver Msg</span>
                           ) : null}
