@@ -323,7 +323,7 @@ export function JourneyComplianceReport({
                   <div className="mt-4 rounded-[16px] border border-[#bfdbfe] bg-[#eff6ff] px-4 py-3">
                     <p className="text-sm font-black text-[#0f3a6d]">Compliance rule</p>
                     <p className="mt-1 text-sm font-bold leading-6 text-[#1e3a5f]">
-                      Every tracked departure from an operational site should have a corresponding LINK leg. Motorway services, fuel stops, workshops and planned trailer swaps remain intermediate events. A planned trailer swap is matched to the existing LINK journey and must not create an additional missing leg.
+                      Every tracked departure from an operational site should have a corresponding LINK leg. Motorway services, fuel stops and planned trailer swaps remain intermediate events. A planned trailer swap is matched to the existing LINK journey and must not create an additional missing leg.
                     </p>
                   </div>
 
