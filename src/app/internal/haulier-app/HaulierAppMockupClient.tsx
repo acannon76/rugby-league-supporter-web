@@ -51,7 +51,8 @@ type DctRow = {
   status: DctStatus;
   startDate: string;
   dutyOrder: number;
-  vehicleId: string;
+  vehicleReg: string;
+  trailerId: string;
   userId: string;
   contractorCompanyName: string;
   operator: string;
@@ -70,7 +71,10 @@ type DctRow = {
   yorkBarCodes: string;
   issueCategory: string;
   issues: string;
+  loadAction: string;
 };
+
+const DEFAULT_VEHICLE_REG = "MX71ESN";
 
 const flexLegs: DutyLeg[] = [
   {
@@ -235,8 +239,10 @@ export default function HaulierAppMockupClient() {
   const [issueLocation, setIssueLocation] = useState("");
   const [issueManager, setIssueManager] = useState("");
 
-  const [vehicleInput, setVehicleInput] = useState("");
-  const [vehicleNumber, setVehicleNumber] = useState("");
+  const [vehicleInput, setVehicleInput] = useState(DEFAULT_VEHICLE_REG);
+  const [trailerInput, setTrailerInput] = useState("");
+  const [vehicleNumber, setVehicleNumber] = useState(DEFAULT_VEHICLE_REG);
+  const [trailerNumber, setTrailerNumber] = useState("");
   const [manualContainer, setManualContainer] = useState("");
   const [repatCount, setRepatCount] = useState("");
   const [containers, setContainers] = useState<string[]>([]);
@@ -277,8 +283,10 @@ export default function HaulierAppMockupClient() {
     setMockup(nextMockup);
     setSelectedLeg(1);
     setSelectedTask("empty");
-    setVehicleInput("");
-    setVehicleNumber("");
+    setVehicleInput(DEFAULT_VEHICLE_REG);
+    setTrailerInput("");
+    setVehicleNumber(DEFAULT_VEHICLE_REG);
+    setTrailerNumber("");
     setManualContainer("");
     setRepatCount("");
     setContainers([]);
@@ -305,8 +313,10 @@ export default function HaulierAppMockupClient() {
     setMockup("flex");
     setSelectedLeg(1);
     setSelectedTask("empty");
-    setVehicleInput("");
-    setVehicleNumber("");
+    setVehicleInput(DEFAULT_VEHICLE_REG);
+    setTrailerInput("");
+    setVehicleNumber(DEFAULT_VEHICLE_REG);
+    setTrailerNumber("");
     setManualContainer("");
     setRepatCount("");
     setContainers([]);
@@ -349,27 +359,30 @@ export default function HaulierAppMockupClient() {
       return;
     }
 
-    const existingVehicleForLeg =
-      dctRows.find((row) => row.legNumber === legNumber)?.vehicleId || "";
+    const existingRow = dctRows.find((row) => row.legNumber === legNumber);
 
     setSelectedLeg(legNumber);
-    setVehicleInput(existingVehicleForLeg || vehicleNumber);
+    setVehicleInput(existingRow?.vehicleReg || DEFAULT_VEHICLE_REG);
+    setTrailerInput(existingRow?.trailerId || "");
     setVehicleModalOpen(true);
   }
 
   function confirmVehicleNumber() {
-    if (!vehicleInput.trim()) {
+    if (!vehicleInput.trim() || !trailerInput.trim()) {
       return;
     }
 
-    const nextVehicle = vehicleInput.trim();
+    const nextVehicle = vehicleInput.trim().toUpperCase();
+    const nextTrailer = trailerInput.trim().toUpperCase();
     setVehicleNumber(nextVehicle);
+    setTrailerNumber(nextTrailer);
     setDctRows((current) =>
       current.map((row) =>
         row.legNumber === selectedLeg
           ? {
               ...row,
-              vehicleId: nextVehicle,
+              vehicleReg: nextVehicle,
+              trailerId: nextTrailer,
             }
           : row
       )
@@ -380,6 +393,13 @@ export default function HaulierAppMockupClient() {
 
   function selectTask(task: TaskType) {
     setSelectedTask(task);
+    setDctRows((current) =>
+      current.map((row) =>
+        row.legNumber === selectedLeg
+          ? { ...row, loadAction: getLoadActionLabel(task) }
+          : row
+      )
+    );
 
     if (task === "skip") {
       openIssueModal("skip", null);
@@ -613,6 +633,7 @@ export default function HaulierAppMockupClient() {
           departureAssets: "",
           arrivalAssets: "",
           yorkBarCodes: "",
+          loadAction: getLoadActionLabel("skip"),
           issueCategory: issueCategory || "Other",
           issues: issueText,
           departureActualTs: null,
@@ -671,6 +692,7 @@ export default function HaulierAppMockupClient() {
           <OriginScreen
             today={today}
             vehicleNumber={vehicleNumber}
+            trailerNumber={trailerNumber}
             leg={currentLeg}
             status={legStatus(selectedLeg)}
             issueReport={issueReports[selectedLeg]}
@@ -683,6 +705,7 @@ export default function HaulierAppMockupClient() {
         {screen === "load" && (
           <LoadScreen
             vehicleNumber={vehicleNumber}
+            trailerNumber={trailerNumber}
             containers={containers}
             manualContainer={manualContainer}
             onManualContainerChange={setManualContainer}
@@ -708,6 +731,7 @@ export default function HaulierAppMockupClient() {
         {screen === "repat" && (
           <RepatScreen
             vehicleNumber={vehicleNumber}
+            trailerNumber={trailerNumber}
             repatCount={repatCount}
             onRepatCountChange={setRepatCount}
             onBack={() => setScreen("origin")}
@@ -720,6 +744,7 @@ export default function HaulierAppMockupClient() {
           <DestinationScreen
             today={today}
             vehicleNumber={vehicleNumber}
+            trailerNumber={trailerNumber}
             leg={currentLeg}
             status={legStatus(selectedLeg)}
             selectedTask={selectedTask}
@@ -734,6 +759,7 @@ export default function HaulierAppMockupClient() {
           <UnloadScreen
             today={today}
             vehicleNumber={vehicleNumber}
+            trailerNumber={trailerNumber}
             leg={currentLeg}
             status={legStatus(selectedLeg)}
             issueReport={issueReports[selectedLeg]}
@@ -747,6 +773,7 @@ export default function HaulierAppMockupClient() {
           <CompleteScreen
             today={today}
             vehicleNumber={vehicleNumber}
+            trailerNumber={trailerNumber}
             leg={currentLeg}
             dutyId={getDutyIdForMockup(mockup)}
             status="Completed"
@@ -760,7 +787,6 @@ export default function HaulierAppMockupClient() {
             rows={dctRows}
             sourceMockup={dctSourceMockup}
             dutyId={dctDutyId}
-            vehicleNumber={vehicleNumber}
             onBack={() => setScreen("menu")}
             onReset={handleCompleteReset}
           />
@@ -769,9 +795,12 @@ export default function HaulierAppMockupClient() {
         {vehicleModalOpen && (
           <VehicleModal
             vehicleInput={vehicleInput}
-            onChange={setVehicleInput}
+            trailerInput={trailerInput}
+            onVehicleChange={setVehicleInput}
+            onTrailerChange={setTrailerInput}
             onCancel={() => {
-              setVehicleInput("");
+              setVehicleInput(DEFAULT_VEHICLE_REG);
+              setTrailerInput("");
               setVehicleModalOpen(false);
             }}
             onConfirm={confirmVehicleNumber}
@@ -851,8 +880,8 @@ function AppHeader({
   onBack?: () => void;
 }) {
   return (
-    <header className="flex h-[72px] items-center justify-between border-b border-[#e5e7eb] bg-white px-5">
-      <div className="w-[90px]">
+    <header className="flex min-h-[82px] items-center justify-between border-b border-[#e5e7eb] bg-white px-5 py-2">
+      <div className="w-[90px] shrink-0">
         {left && onBack && (
           <button
             type="button"
@@ -864,12 +893,28 @@ function AppHeader({
         )}
       </div>
 
-      <h1 className="text-xl font-black text-[#222]">{title}</h1>
+      <div className="min-w-0 flex-1 text-center">
+        <h1 className="text-xl font-black text-[#222]">{title}</h1>
+        <LastRefreshedText />
+      </div>
 
-      <div className="w-[90px] text-right text-3xl font-black text-[#333]">
+      <div className="w-[90px] shrink-0 text-right text-3xl font-black text-[#333]">
         ⋮
       </div>
     </header>
+  );
+}
+
+function LastRefreshedText() {
+  const [lastRefreshed] = useState(() => formatRefreshDateTime(new Date()));
+
+  return (
+    <p
+      suppressHydrationWarning
+      className="mt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#6b7280]"
+    >
+      Last refreshed: {lastRefreshed}
+    </p>
   );
 }
 
@@ -1230,16 +1275,21 @@ function StatusPill({ status }: { status: LegStatus }) {
 
 function VehicleModal({
   vehicleInput,
-  onChange,
+  trailerInput,
+  onVehicleChange,
+  onTrailerChange,
   onCancel,
   onConfirm,
 }: {
   vehicleInput: string;
-  onChange: (value: string) => void;
+  trailerInput: string;
+  onVehicleChange: (value: string) => void;
+  onTrailerChange: (value: string) => void;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  const canConfirm = vehicleInput.trim().length > 0;
+  const canConfirm =
+    vehicleInput.trim().length > 0 && trailerInput.trim().length > 0;
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 px-5 py-4">
@@ -1249,23 +1299,43 @@ function VehicleModal({
         </h2>
 
         <p className="mt-3 text-sm font-bold leading-6 text-[#444]">
-          Please provide your vehicle registration or trailer number to proceed.
+          The vehicle registration is pre-populated for each leg. Confirm or
+          change it if needed, then enter the trailer number to proceed.
         </p>
 
         <label
-          htmlFor="vehicle-number"
+          htmlFor="vehicle-registration"
           className="mt-5 block text-sm font-black text-[#222]"
         >
-          Vehicle Registration / Trailer Number
+          Vehicle Registration
         </label>
 
         <input
-          id="vehicle-number"
+          id="vehicle-registration"
           value={vehicleInput}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="Enter registration or trailer number"
-          className="mt-2 w-full border-2 border-[#888] px-4 py-3 text-base font-bold text-[#222] outline-none focus:border-[#d6001c]"
+          onChange={(event) => onVehicleChange(event.target.value.toUpperCase())}
+          placeholder="Enter vehicle registration"
+          className="mt-2 w-full border-2 border-[#888] px-4 py-3 text-base font-bold uppercase text-[#222] outline-none focus:border-[#d6001c]"
         />
+
+        <label
+          htmlFor="trailer-number"
+          className="mt-4 block text-sm font-black text-[#222]"
+        >
+          Trailer Number
+        </label>
+
+        <input
+          id="trailer-number"
+          value={trailerInput}
+          onChange={(event) => onTrailerChange(event.target.value.toUpperCase())}
+          placeholder="Enter trailer number"
+          className="mt-2 w-full border-2 border-[#888] px-4 py-3 text-base font-bold uppercase text-[#222] outline-none focus:border-[#d6001c]"
+        />
+
+        <p className="mt-2 text-xs font-bold text-[#666]">
+          A trailer number is required for every leg.
+        </p>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button
@@ -1295,6 +1365,7 @@ function VehicleModal({
 function OriginScreen({
   today,
   vehicleNumber,
+  trailerNumber,
   leg,
   status,
   issueReport,
@@ -1304,6 +1375,7 @@ function OriginScreen({
 }: {
   today: string;
   vehicleNumber: string;
+  trailerNumber: string;
   leg: DutyLeg;
   status: LegStatus;
   issueReport?: LegIssueReport;
@@ -1316,7 +1388,7 @@ function OriginScreen({
       <AppHeader title="Origin Tasks" left="Back" onBack={onBack} />
 
       <section className="bg-white px-5 py-5">
-        <VehicleNumberBanner vehicleNumber={vehicleNumber} />
+        <VehicleNumberBanner vehicleNumber={vehicleNumber} trailerNumber={trailerNumber} />
 
         <p className="mt-6 text-lg font-bold text-[#333]">{today}</p>
 
@@ -1354,6 +1426,7 @@ function OriginScreen({
 
 function LoadScreen({
   vehicleNumber,
+  trailerNumber,
   containers,
   manualContainer,
   onManualContainerChange,
@@ -1365,6 +1438,7 @@ function LoadScreen({
   onBackToMenu,
 }: {
   vehicleNumber: string;
+  trailerNumber: string;
   containers: string[];
   manualContainer: string;
   onManualContainerChange: (value: string) => void;
@@ -1380,7 +1454,7 @@ function LoadScreen({
       <AppHeader title="Load" left="Back" onBack={onBack} />
 
       <section className="bg-white px-5 py-5">
-        <VehicleNumberBanner vehicleNumber={vehicleNumber} />
+        <VehicleNumberBanner vehicleNumber={vehicleNumber} trailerNumber={trailerNumber} />
 
         <h2 className="mt-6 text-xl font-black text-[#222]">
           Scanned {containers.length} Container (s)
@@ -1522,6 +1596,7 @@ function ContainerList({
 
 function RepatScreen({
   vehicleNumber,
+  trailerNumber,
   repatCount,
   onRepatCountChange,
   onBack,
@@ -1529,6 +1604,7 @@ function RepatScreen({
   onBackToMenu,
 }: {
   vehicleNumber: string;
+  trailerNumber: string;
   repatCount: string;
   onRepatCountChange: (value: string) => void;
   onBack: () => void;
@@ -1540,7 +1616,7 @@ function RepatScreen({
       <AppHeader title="Repat / Pre-Loaded" left="Back" onBack={onBack} />
 
       <section className="bg-white px-5 py-5">
-        <VehicleNumberBanner vehicleNumber={vehicleNumber} />
+        <VehicleNumberBanner vehicleNumber={vehicleNumber} trailerNumber={trailerNumber} />
 
         <label className="mt-6 block text-xl font-black text-[#222]">
           Container count
@@ -1575,6 +1651,7 @@ function RepatScreen({
 function DestinationScreen({
   today,
   vehicleNumber,
+  trailerNumber,
   leg,
   status,
   selectedTask,
@@ -1585,6 +1662,7 @@ function DestinationScreen({
 }: {
   today: string;
   vehicleNumber: string;
+  trailerNumber: string;
   leg: DutyLeg;
   status: LegStatus;
   selectedTask: TaskType;
@@ -1598,7 +1676,7 @@ function DestinationScreen({
       <AppHeader title="Destination Tasks" left="Back" onBack={onBack} />
 
       <section className="bg-white px-5 py-5">
-        <VehicleNumberBanner vehicleNumber={vehicleNumber} />
+        <VehicleNumberBanner vehicleNumber={vehicleNumber} trailerNumber={trailerNumber} />
 
         <p className="mt-6 text-lg font-bold text-[#333]">{today}</p>
 
@@ -1648,6 +1726,7 @@ function DestinationScreen({
 function UnloadScreen({
   today,
   vehicleNumber,
+  trailerNumber,
   leg,
   status,
   issueReport,
@@ -1657,6 +1736,7 @@ function UnloadScreen({
 }: {
   today: string;
   vehicleNumber: string;
+  trailerNumber: string;
   leg: DutyLeg;
   status: LegStatus;
   issueReport?: LegIssueReport;
@@ -1669,7 +1749,7 @@ function UnloadScreen({
       <AppHeader title="Destination Tasks" left="Back" onBack={onBack} />
 
       <section className="bg-white px-5 py-5">
-        <VehicleNumberBanner vehicleNumber={vehicleNumber} />
+        <VehicleNumberBanner vehicleNumber={vehicleNumber} trailerNumber={trailerNumber} />
 
         <p className="mt-6 text-lg font-bold text-[#333]">{today}</p>
 
@@ -1713,6 +1793,7 @@ function UnloadScreen({
 function CompleteScreen({
   today,
   vehicleNumber,
+  trailerNumber,
   leg,
   dutyId,
   status,
@@ -1721,6 +1802,7 @@ function CompleteScreen({
 }: {
   today: string;
   vehicleNumber: string;
+  trailerNumber: string;
   leg: DutyLeg;
   dutyId: string;
   status: LegStatus;
@@ -1744,7 +1826,7 @@ function CompleteScreen({
           <LegCard leg={leg} status={status} issueReport={issueReport} />
         </div>
 
-        <VehicleNumberBanner vehicleNumber={vehicleNumber} />
+        <VehicleNumberBanner vehicleNumber={vehicleNumber} trailerNumber={trailerNumber} />
 
         {issueReport && hasAnyIssue(issueReport) && (
           <IssueRecordedBox legNumber={leg.number} issueReport={issueReport} />
@@ -2069,10 +2151,17 @@ function AlertShell({
   );
 }
 
-function VehicleNumberBanner({ vehicleNumber }: { vehicleNumber: string }) {
+function VehicleNumberBanner({
+  vehicleNumber,
+  trailerNumber,
+}: {
+  vehicleNumber: string;
+  trailerNumber: string;
+}) {
   return (
     <div className="rounded-lg bg-[#f0f0f0] px-4 py-3 text-sm font-black text-[#444]">
-      Vehicle registration number: {vehicleNumber}
+      <p>Vehicle registration number: {vehicleNumber}</p>
+      <p className="mt-1">Trailer number: {trailerNumber}</p>
     </div>
   );
 }
@@ -2097,14 +2186,12 @@ function DctWebScreen({
   rows,
   sourceMockup,
   dutyId,
-  vehicleNumber,
   onBack,
   onReset,
 }: {
   rows: DctRow[];
   sourceMockup: MockupType | null;
   dutyId: string;
-  vehicleNumber: string;
   onBack: () => void;
   onReset: () => void;
 }) {
@@ -2138,7 +2225,8 @@ function DctWebScreen({
     { key: "status", label: "Leg Status", headerClass: "bg-[#cfeefa]", widthClass: "w-[90px]", align: "left" },
     { key: "startDate", label: "Start Date", headerClass: "bg-[#cfeefa]", widthClass: "w-[95px]", align: "center" },
     { key: "dutyOrder", label: "Duty Order", headerClass: "bg-[#cfeefa]", widthClass: "w-[68px]", align: "center" },
-    { key: "vehicleId", label: "Vehicle Id", headerClass: "bg-[#cfeefa]", widthClass: "w-[88px]", align: "center" },
+    { key: "vehicleReg", label: "Vehicle Reg", headerClass: "bg-[#cfeefa]", widthClass: "w-[88px]", align: "center" },
+    { key: "trailerId", label: "Trailer ID", headerClass: "bg-[#cfeefa]", widthClass: "w-[88px]", align: "center" },
     { key: "userId", label: "UserId", headerClass: "bg-[#cfeefa]", widthClass: "w-[140px]", align: "center" },
     { key: "contractorCompanyName", label: "Contractor Company Name", headerClass: "bg-[#cfeefa]", widthClass: "w-[120px]", align: "center" },
     { key: "operator", label: "Operator", headerClass: "bg-[#cfeefa]", widthClass: "w-[62px]", align: "center" },
@@ -2159,6 +2247,7 @@ function DctWebScreen({
     { key: "gpsDeparture", label: "GPS Departure", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]", align: "center" },
     { key: "gpsArrival", label: "GPS Arrival", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]", align: "center" },
     { key: "yorkBarCodes", label: "York Bar Codes", headerClass: "bg-[#f3d9ec]", widthClass: "w-[118px]", align: "center" },
+    { key: "loadAction", label: "Load Action", headerClass: "bg-[#cfeefa]", widthClass: "w-[125px]", align: "center" },
   ];
 
   return (
@@ -2236,7 +2325,7 @@ function DctWebScreen({
         ) : (
           <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[2570px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+              <table className="min-w-[2785px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
                   <tr>
                     {columns.map((column) => (
@@ -2260,7 +2349,8 @@ function DctWebScreen({
                       </td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.startDate}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.dutyOrder}</td>
-                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.vehicleId || ""}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.vehicleReg || ""}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.trailerId || ""}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.userId}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.contractorCompanyName}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.operator}</td>
@@ -2289,6 +2379,7 @@ function DctWebScreen({
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsDeparture || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsArrival || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.yorkBarCodes || "-"}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.loadAction || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -2394,7 +2485,8 @@ function buildPlannedDctRows(mockupType: MockupType, dutyId: string) {
       status: "Planned" as DctStatus,
       startDate: formatDateOnly(baseDate.getTime()),
       dutyOrder: leg.number,
-      vehicleId: "",
+      vehicleReg: "",
+      trailerId: "",
       userId: getStoredDriverUserId(),
       contractorCompanyName: "Pie Haulage",
       operator: "NWH",
@@ -2413,6 +2505,7 @@ function buildPlannedDctRows(mockupType: MockupType, dutyId: string) {
       yorkBarCodes: "",
       issueCategory: "",
       issues: "",
+      loadAction: "",
     };
   });
 }
@@ -2465,9 +2558,25 @@ function updateDctForDeparture(
         departureAssets: assetCount,
         arrivalAssets: assetCount,
         yorkBarCodes,
+        loadAction: getLoadActionLabel(taskType),
       };
     })
   );
+}
+
+function getLoadActionLabel(taskType: TaskType) {
+  switch (taskType) {
+    case "empty":
+      return "Empty";
+    case "repat":
+      return "Repat / Pre-Loaded";
+    case "load":
+      return "Load";
+    case "flex":
+      return "Flex / As Directed";
+    case "skip":
+      return "Skip Leg";
+  }
 }
 
 function getActualTimesForRow(mockupType: MockupType, row: DctRow) {
@@ -2565,6 +2674,17 @@ function formatDateTime(timestamp: number) {
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
   const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+}
+
+function formatRefreshDateTime(date: Date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+
   return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 }
 
