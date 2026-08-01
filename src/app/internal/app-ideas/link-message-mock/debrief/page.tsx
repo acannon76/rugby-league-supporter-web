@@ -442,7 +442,7 @@ export default function DebriefPage() {
                     <DebriefHeader label="Driver" headerClass="bg-[#cfeefa]" widthClass="w-[135px]" />
                     <DebriefHeader label="Vehicle Reg" headerClass="bg-[#cfeefa]" widthClass="w-[98px]" />
                     <DebriefHeader label="Trailer Number" headerClass="bg-[#cfeefa]" widthClass="w-[105px]" />
-                    <DebriefHeader label="Traffic" headerClass="bg-[#fde7c7]" widthClass="w-[78px]" />
+                    <DebriefHeader label="Due To Convey" headerClass="bg-[#fde7c7]" widthClass="w-[100px]" />
                     <DebriefHeader label="Departure Location" headerClass="bg-[#f2e8c9]" widthClass="w-[120px]" />
                     <DebriefHeader label="Planned Start" headerClass="bg-[#f2e8c9]" widthClass="w-[125px]" />
                     <DebriefHeader label="Actual Start" headerClass="bg-[#f2e8c9]" widthClass="w-[125px]" />
@@ -1847,7 +1847,7 @@ function downloadDebriefRows(rows: DebriefRow[], format: ExportFormat) {
     "Driver",
     "Vehicle Reg",
     "Trailer Number",
-    "Traffic",
+    "Due To Convey",
     "Departure Location",
     "Planned Start",
     "Actual Start",
