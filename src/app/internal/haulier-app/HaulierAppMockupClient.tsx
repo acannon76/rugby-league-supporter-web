@@ -54,9 +54,11 @@ type DctRow = {
   vehicleReg: string;
   trailerId: string;
   userId: string;
-  contractorCompanyName: string;
+  division: string;
   operator: string;
   dutyId: string;
+  trailerType: string;
+  planzCode: string;
   departureLocation: string;
   plannedDepartureTs: number;
   departureActualTs: number | null;
@@ -71,10 +73,23 @@ type DctRow = {
   yorkBarCodes: string;
   issueCategory: string;
   issues: string;
+  liveTracking: string;
   loadAction: string;
 };
 
 const DEFAULT_VEHICLE_REG = "MX71ESN";
+
+const mockup2PlanningDetails: Record<
+  number,
+  { trailerType: string; planzCode: string; dueToConvey: string }
+> = {
+  1: { trailerType: "49 Artic", planzCode: "NWH.M.3", dueToConvey: "1C 24 Mail" },
+  2: { trailerType: "49 Artic T/L", planzCode: "M.NWH.7", dueToConvey: "1C 24 Mail" },
+  3: { trailerType: "75 Artic DD", planzCode: "NWH.CH.4", dueToConvey: "1C 24 Mail" },
+  4: { trailerType: "95 Artic DD", planzCode: "CH.NWH.3", dueToConvey: "1C 24 Mail" },
+  5: { trailerType: "110 Artic DD", planzCode: "NWH.EH.4a", dueToConvey: "1C 24 Mail" },
+  6: { trailerType: "95 Artic DD", planzCode: "G.MSH.3b", dueToConvey: "1C 24 Mail" },
+};
 
 const flexLegs: DutyLeg[] = [
   {
@@ -614,6 +629,7 @@ export default function HaulierAppMockupClient() {
           arrivalActualTs: actualTimes.arrivalActualTs,
           issueCategory: issueText ? issueCategory : "",
           issues: issueText,
+          liveTracking: "Yes",
         };
       })
     );
@@ -629,10 +645,10 @@ export default function HaulierAppMockupClient() {
         return {
           ...row,
           status: "Skip",
-          dueToConvey: "",
           departureAssets: "",
           arrivalAssets: "",
           yorkBarCodes: "",
+          liveTracking: "No",
           loadAction: getLoadActionLabel("skip"),
           issueCategory: issueCategory || "Other",
           issues: issueText,
@@ -2218,6 +2234,7 @@ function DctWebScreen({
   const columns: {
     key: string;
     label: string;
+    subLabel?: string;
     headerClass: string;
     widthClass: string;
     align?: "left" | "center";
@@ -2225,28 +2242,40 @@ function DctWebScreen({
     { key: "status", label: "Leg Status", headerClass: "bg-[#cfeefa]", widthClass: "w-[90px]", align: "left" },
     { key: "startDate", label: "Start Date", headerClass: "bg-[#cfeefa]", widthClass: "w-[95px]", align: "center" },
     { key: "dutyOrder", label: "Duty Order", headerClass: "bg-[#cfeefa]", widthClass: "w-[68px]", align: "center" },
-    { key: "vehicleReg", label: "Vehicle Reg", headerClass: "bg-[#cfeefa]", widthClass: "w-[88px]", align: "center" },
-    { key: "trailerId", label: "Trailer ID", headerClass: "bg-[#cfeefa]", widthClass: "w-[88px]", align: "center" },
+    { key: "vehicleReg", label: "Vehicle", headerClass: "bg-[#cfeefa]", widthClass: "w-[88px]", align: "center" },
+    { key: "trailerId", label: "Trailer Number", headerClass: "bg-[#cfeefa]", widthClass: "w-[96px]", align: "center" },
     { key: "userId", label: "UserId", headerClass: "bg-[#cfeefa]", widthClass: "w-[140px]", align: "center" },
-    { key: "contractorCompanyName", label: "Contractor Company Name", headerClass: "bg-[#cfeefa]", widthClass: "w-[120px]", align: "center" },
+    {
+      key: "division",
+      label: "Division",
+      subLabel: "Letters/Network/Contractor",
+      headerClass: "bg-[#cfeefa]",
+      widthClass: "w-[150px]",
+      align: "center",
+    },
     { key: "operator", label: "Operator", headerClass: "bg-[#cfeefa]", widthClass: "w-[62px]", align: "center" },
     { key: "dutyId", label: "DutyId", headerClass: "bg-[#cfeefa]", widthClass: "w-[82px]", align: "center" },
+    { key: "trailerType", label: "Trailer Type", headerClass: "bg-[#fde8c5]", widthClass: "w-[105px]", align: "center" },
+    { key: "planzCode", label: "Planz Code", headerClass: "bg-[#fde8c5]", widthClass: "w-[92px]", align: "center" },
+    { key: "dueToConvey", label: "Due To Convey", headerClass: "bg-[#fde8c5]", widthClass: "w-[108px]", align: "center" },
     { key: "departureLocation", label: "Departure location", headerClass: "bg-[#f2e8c9]", widthClass: "w-[112px]", align: "center" },
-    { key: "plannedDeparture", label: "Planned_Departure_Time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]", align: "center" },
-    { key: "departureActual", label: "DEPARTURE actual time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]", align: "center" },
+    { key: "plannedDeparture", label: "Planned Departure Time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]", align: "center" },
+    { key: "departureActual", label: "Departure actual time", headerClass: "bg-[#f2e8c9]", widthClass: "w-[132px]", align: "center" },
     { key: "departureDiff", label: "Departure Diff hh:mm", headerClass: "bg-[#f2e8c9]", widthClass: "w-[92px]", align: "center" },
-    { key: "dueToConvey", label: "Due To Convey", headerClass: "bg-[#f7efd8]", widthClass: "w-[108px]", align: "center" },
-    { key: "departureAssets", label: "DEPARTURE assets", headerClass: "bg-[#f2e8c9]", widthClass: "w-[68px]", align: "center" },
+    { key: "dtt", label: "DTT", headerClass: "bg-[#f2e8c9]", widthClass: "w-[58px]", align: "center" },
+    { key: "departureAssets", label: "Dep Assets", headerClass: "bg-[#f2e8c9]", widthClass: "w-[72px]", align: "center" },
     { key: "arrivalLocation", label: "Arrival Location", headerClass: "bg-[#d9f1d5]", widthClass: "w-[112px]", align: "center" },
-    { key: "plannedArrival", label: "Planned_Arrival_Time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]", align: "center" },
-    { key: "arrivalActual", label: "ARRIVAL actual time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]", align: "center" },
+    { key: "plannedArrival", label: "Planned Arrival Time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]", align: "center" },
+    { key: "arrivalActual", label: "Arrival actual time", headerClass: "bg-[#d9f1d5]", widthClass: "w-[132px]", align: "center" },
     { key: "arrivalDiff", label: "Arrival Diff hh:mm", headerClass: "bg-[#d9f1d5]", widthClass: "w-[92px]", align: "center" },
-    { key: "arrivalAssets", label: "ARRIVAL assets", headerClass: "bg-[#d9f1d5]", widthClass: "w-[68px]", align: "center" },
+    { key: "att", label: "ATT", headerClass: "bg-[#d9f1d5]", widthClass: "w-[58px]", align: "center" },
+    { key: "arrivalAssets", label: "Arr Assets", headerClass: "bg-[#d9f1d5]", widthClass: "w-[72px]", align: "center" },
     { key: "issueCategory", label: "Issue Category", headerClass: "bg-[#fde7c7]", widthClass: "w-[120px]", align: "center" },
     { key: "issues", label: "Issues", headerClass: "bg-[#fde7c7]", widthClass: "w-[180px]", align: "left" },
+    { key: "liveTracking", label: "Live Tracking", headerClass: "bg-[#dfe8fb]", widthClass: "w-[92px]", align: "center" },
     { key: "gpsDeparture", label: "GPS Departure", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]", align: "center" },
     { key: "gpsArrival", label: "GPS Arrival", headerClass: "bg-[#ead5ea]", widthClass: "w-[140px]", align: "center" },
-    { key: "yorkBarCodes", label: "York Bar Codes", headerClass: "bg-[#f3d9ec]", widthClass: "w-[118px]", align: "center" },
+    { key: "yorkBarCodes", label: "York Barcode", headerClass: "bg-[#f3d9ec]", widthClass: "w-[118px]", align: "center" },
     { key: "loadAction", label: "Load Action", headerClass: "bg-[#cfeefa]", widthClass: "w-[125px]", align: "center" },
   ];
 
@@ -2325,7 +2354,7 @@ function DctWebScreen({
         ) : (
           <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[2785px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+              <table className="min-w-[3345px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
                   <tr>
                     {columns.map((column) => (
@@ -2334,7 +2363,12 @@ function DctWebScreen({
                         className={`${column.headerClass} ${column.widthClass} border border-black px-1 py-2 align-bottom text-left font-normal text-black`}
                       >
                         <div className="whitespace-normal break-words">
-                          {column.label}
+                          <span>{column.label}</span>
+                          {column.subLabel && (
+                            <span className="mt-0.5 block font-semibold text-[#d6001c]">
+                              {column.subLabel}
+                            </span>
+                          )}
                         </div>
                       </th>
                     ))}
@@ -2352,9 +2386,12 @@ function DctWebScreen({
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.vehicleReg || ""}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.trailerId || ""}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.userId}</td>
-                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.contractorCompanyName}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.division}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.operator}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.dutyId}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.trailerType}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.planzCode}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.dueToConvey || "-"}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.departureLocation}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{formatDateTime(row.plannedDepartureTs)}</td>
                       <td className={`${getTimingCellClass(row.plannedDepartureTs, row.departureActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
@@ -2363,7 +2400,9 @@ function DctWebScreen({
                       <td className={`${getTimingCellClass(row.plannedDepartureTs, row.departureActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
                         {formatTimeDifference(row.plannedDepartureTs, row.departureActualTs)}
                       </td>
-                      <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.dueToConvey || "-"}</td>
+                      <td className={`${getTimingCellClass(row.plannedDepartureTs, row.departureActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
+                        {getTimingBand(row.plannedDepartureTs, row.departureActualTs)}
+                      </td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.departureAssets || "-"}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal uppercase break-words">{row.arrivalLocation}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{formatDateTime(row.plannedArrivalTs)}</td>
@@ -2373,9 +2412,13 @@ function DctWebScreen({
                       <td className={`${getTimingCellClass(row.plannedArrivalTs, row.arrivalActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
                         {formatTimeDifference(row.plannedArrivalTs, row.arrivalActualTs)}
                       </td>
+                      <td className={`${getTimingCellClass(row.plannedArrivalTs, row.arrivalActualTs)} border border-black px-1 py-2 text-center font-bold whitespace-nowrap`}>
+                        {getTimingBand(row.plannedArrivalTs, row.arrivalActualTs)}
+                      </td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.arrivalAssets || "-"}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.issueCategory || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.issues || "-"}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.liveTracking || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsDeparture || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.gpsArrival || "-"}</td>
                       <td className="border border-black px-1 py-2 font-normal break-words">{row.yorkBarCodes || "-"}</td>
@@ -2466,6 +2509,15 @@ function buildPlannedDctRows(mockupType: MockupType, dutyId: string) {
   let previousDepartureTs: number | null = null;
 
   return sourceLegs.map((leg) => {
+    const planningDetails =
+      mockupType === "mockup2"
+        ? mockup2PlanningDetails[leg.number]
+        : {
+            trailerType: "49 Artic",
+            planzCode: "NWH.FLEX.1",
+            dueToConvey: "1C 24 Mail",
+          };
+
     let departureTs = combineDateAndTime(baseDate, leg.etd, 0);
 
     while (previousDepartureTs !== null && departureTs <= previousDepartureTs) {
@@ -2488,13 +2540,15 @@ function buildPlannedDctRows(mockupType: MockupType, dutyId: string) {
       vehicleReg: "",
       trailerId: "",
       userId: getStoredDriverUserId(),
-      contractorCompanyName: "Pie Haulage",
+      division: "Pie Haulage",
       operator: "NWH",
       dutyId,
+      trailerType: planningDetails.trailerType,
+      planzCode: planningDetails.planzCode,
       departureLocation: leg.from,
       plannedDepartureTs: departureTs,
       departureActualTs: null,
-      dueToConvey: "",
+      dueToConvey: planningDetails.dueToConvey,
       departureAssets: "",
       arrivalLocation: leg.to,
       plannedArrivalTs: arrivalTs,
@@ -2505,6 +2559,7 @@ function buildPlannedDctRows(mockupType: MockupType, dutyId: string) {
       yorkBarCodes: "",
       issueCategory: "",
       issues: "",
+      liveTracking: "No",
       loadAction: "",
     };
   });
@@ -2528,17 +2583,6 @@ function updateDctForDeparture(
       ? context.repatCount.trim()
       : "";
 
-  const dueToConvey =
-    taskType === "load"
-      ? "SCANNED"
-      : taskType === "repat"
-      ? "REPAT / PRELOAD"
-      : taskType === "flex"
-      ? "AS DIRECTED"
-      : taskType === "empty"
-      ? "EMPTY VEHICLE"
-      : "";
-
   const yorkBarCodes =
     taskType === "load" ? context.containers.join(", ") : "";
 
@@ -2554,10 +2598,10 @@ function updateDctForDeparture(
         ...row,
         status: "In Progress" as DctStatus,
         departureActualTs: actualTimes.departureActualTs,
-        dueToConvey,
         departureAssets: assetCount,
         arrivalAssets: assetCount,
         yorkBarCodes,
+        liveTracking: "Yes",
         loadAction: getLoadActionLabel(taskType),
       };
     })
@@ -2608,6 +2652,36 @@ function getTimingCellClass(
   }
 
   return "bg-[#bbf7d0] text-[#166534]";
+}
+
+function getTimingBand(plannedTs: number, actualTs: number | null) {
+  if (!actualTs) {
+    return "-";
+  }
+
+  const differenceMinutes = Math.round((actualTs - plannedTs) / 60000);
+
+  if (differenceMinutes >= -8 && differenceMinutes <= 8) {
+    return "OT";
+  }
+
+  if (differenceMinutes <= -9 && differenceMinutes >= -30) {
+    return "E";
+  }
+
+  if (differenceMinutes <= -31) {
+    return "VE";
+  }
+
+  if (differenceMinutes >= 9 && differenceMinutes <= 30) {
+    return "L";
+  }
+
+  if (differenceMinutes >= 31 && differenceMinutes < 120) {
+    return "VL";
+  }
+
+  return "F";
 }
 
 function rowHasLateTiming(row: DctRow) {
