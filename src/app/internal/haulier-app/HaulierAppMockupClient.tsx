@@ -2240,7 +2240,7 @@ function DctWebScreen({
     align?: "left" | "center";
   }[] = [
     { key: "status", label: "Leg Status", headerClass: "bg-[#cfeefa]", widthClass: "w-[90px]", align: "left" },
-    { key: "startDate", label: "Start Date", headerClass: "bg-[#cfeefa]", widthClass: "w-[95px]", align: "center" },
+    { key: "startDate", label: "Duty Date", headerClass: "bg-[#cfeefa]", widthClass: "w-[95px]", align: "center" },
     { key: "dutyOrder", label: "Duty Order", headerClass: "bg-[#cfeefa]", widthClass: "w-[68px]", align: "center" },
     { key: "vehicleReg", label: "Vehicle", headerClass: "bg-[#cfeefa]", widthClass: "w-[88px]", align: "center" },
     { key: "trailerId", label: "Trailer Number", headerClass: "bg-[#cfeefa]", widthClass: "w-[96px]", align: "center" },

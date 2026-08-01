@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import ExportDataMenu from "../ExportDataMenu";
 import { exportTabularData, type ExportFormat } from "../exportData";
+import { getOperationalWeekNumberFromDisplayDate } from "../../operationalWeek";
 import {
   DctRow,
   type DctStatus,
@@ -133,15 +134,16 @@ function DctWebScreen({
     widthClass: string;
   }[] = [
     { key: "status", label: "Leg Status", headerClass: "bg-[#cfeefa]", widthClass: "w-[90px]" },
-    { key: "startDate", label: "Start Date", headerClass: "bg-[#cfeefa]", widthClass: "w-[95px]" },
+    { key: "startDate", label: "Duty Date", headerClass: "bg-[#cfeefa]", widthClass: "w-[95px]" },
+    { key: "weekNumber", label: "Week Number", headerClass: "bg-[#cfeefa]", widthClass: "w-[78px]" },
     { key: "dutyOrder", label: "Duty Order", headerClass: "bg-[#cfeefa]", widthClass: "w-[68px]" },
-    { key: "vehicle", label: "Vehicle", headerClass: "bg-[#cfeefa]", widthClass: "w-[92px]" },
+    { key: "vehicle", label: "Vehicle Reg", headerClass: "bg-[#cfeefa]", widthClass: "w-[92px]" },
     { key: "trailerNumber", label: "Trailer Number", headerClass: "bg-[#cfeefa]", widthClass: "w-[100px]" },
     { key: "userId", label: "UserId", headerClass: "bg-[#cfeefa]", widthClass: "w-[140px]" },
     { key: "contractorCompanyName", label: "Division", subLabel: "Letters/Network/Contractor", headerClass: "bg-[#cfeefa]", widthClass: "w-[130px]" },
     { key: "operator", label: "Operator", headerClass: "bg-[#cfeefa]", widthClass: "w-[62px]" },
-    { key: "dutyId", label: "DutyId", headerClass: "bg-[#cfeefa]", widthClass: "w-[82px]" },
-    { key: "trailerType", label: "Trailer Type", headerClass: "bg-[#fde7c7]", widthClass: "w-[105px]" },
+    { key: "dutyId", label: "Duty ID", headerClass: "bg-[#cfeefa]", widthClass: "w-[82px]" },
+    { key: "trailerType", label: "Vehicle Type", headerClass: "bg-[#fde7c7]", widthClass: "w-[105px]" },
     { key: "planzCode", label: "Planz Code", headerClass: "bg-[#fde7c7]", widthClass: "w-[105px]" },
     { key: "dueToConvey", label: "Due To Convey", headerClass: "bg-[#fde7c7]", widthClass: "w-[115px]" },
     { key: "departureLocation", label: "Departure location", headerClass: "bg-[#f2e8c9]", widthClass: "w-[112px]" },
@@ -320,7 +322,7 @@ function DctWebScreen({
         ) : (
           <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[3150px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+              <table className="min-w-[3230px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
                   <tr>
                     {columns.map((column) => (
@@ -346,6 +348,7 @@ function DctWebScreen({
                     <tr key={row.legNumber} className={index % 2 === 0 ? "bg-white" : "bg-[#fcfcfc]"}>
                       <td className={`${getDctStatusCellClass(row.status)} border border-black px-1 py-2 font-normal text-black`}>{row.status}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.startDate}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal">{getOperationalWeekNumberFromDisplayDate(row.startDate)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.dutyOrder}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{getVehicleNumberForRow(row)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.trailerNumber || ""}</td>
@@ -637,15 +640,16 @@ function FilterSelect({
 function downloadRows(rows: DctRow[], format: ExportFormat) {
   const headers = [
     "Leg Status",
-    "Start Date",
+    "Duty Date",
+    "Week Number",
     "Duty Order",
-    "Vehicle",
+    "Vehicle Reg",
     "Trailer Number",
     "UserId",
     "Division Letters/Network/Contractor",
     "Operator",
-    "DutyId",
-    "Trailer Type",
+    "Duty ID",
+    "Vehicle Type",
     "Planz Code",
     "Due To Convey",
     "Departure location",
@@ -671,6 +675,7 @@ function downloadRows(rows: DctRow[], format: ExportFormat) {
   const exportRows = rows.map((row) => [
     row.status,
     row.startDate,
+    getOperationalWeekNumberFromDisplayDate(row.startDate),
     row.dutyOrder,
     getVehicleNumberForRow(row),
     row.trailerNumber || "",

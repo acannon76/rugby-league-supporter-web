@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import ExportDataMenu from "../../ExportDataMenu";
 import { exportTabularData, type ExportFormat } from "../../exportData";
+import { getOperationalWeekNumberFromInputDate } from "../../../operationalWeek";
 import {
   DRIVER_NAME,
   DctRow,
@@ -436,10 +437,10 @@ export default function DebriefPage() {
                     <DebriefHeader label="Duty Date" headerClass="bg-[#cfeefa]" widthClass="w-[88px]" />
                     <DebriefHeader label="Week Number" headerClass="bg-[#cfeefa]" widthClass="w-[78px]" />
                     <DebriefHeader label="Duty Order" headerClass="bg-[#cfeefa]" widthClass="w-[78px]" />
-                    <DebriefHeader label="Duty Number" headerClass="bg-[#cfeefa]" widthClass="w-[95px]" />
+                    <DebriefHeader label="Duty ID" headerClass="bg-[#cfeefa]" widthClass="w-[95px]" />
                     <DebriefHeader label="Division" headerClass="bg-[#cfeefa]" widthClass="w-[95px]" />
                     <DebriefHeader label="Driver" headerClass="bg-[#cfeefa]" widthClass="w-[135px]" />
-                    <DebriefHeader label="Vehicle" headerClass="bg-[#cfeefa]" widthClass="w-[92px]" />
+                    <DebriefHeader label="Vehicle Reg" headerClass="bg-[#cfeefa]" widthClass="w-[98px]" />
                     <DebriefHeader label="Trailer Number" headerClass="bg-[#cfeefa]" widthClass="w-[105px]" />
                     <DebriefHeader label="Traffic" headerClass="bg-[#fde7c7]" widthClass="w-[78px]" />
                     <DebriefHeader label="Departure Location" headerClass="bg-[#f2e8c9]" widthClass="w-[120px]" />
@@ -649,11 +650,11 @@ function DebriefModal({
               </div>
 
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <ReadOnlyBox label="Duty number" value={row.dutyNumber} />
+                <ReadOnlyBox label="Duty ID" value={row.dutyNumber} />
                 <ReadOnlyBox label="Duty order" value={String(row.dutyOrder)} />
                 <ReadOnlyBox label="Division" value={formatDivisionCell(row)} />
                 <ReadOnlyBox label="Driver" value={row.driverName} />
-                <ReadOnlyBox label="Vehicle" value={row.vehicle} />
+                <ReadOnlyBox label="Vehicle Reg" value={row.vehicle} />
                 <ReadOnlyBox label="Trailer" value={row.trailerNumber} />
                 <ReadOnlyBox label="Start location" value={row.startLocation} />
                 <ReadOnlyBox label="Final destination" value={row.finalDestination} />
@@ -1335,7 +1336,7 @@ function buildInitialDebriefRows(): DebriefRow[] {
       dutyNumber,
       division,
       dutyDate,
-      weekNumber: 14 + Math.floor(index / 10),
+      weekNumber: getWeekNumberFromInputDate(dutyDate),
       dutyOrder,
       driverName: drivers[index % drivers.length],
       userId: `${drivers[index % drivers.length].toLowerCase().replaceAll(" ", ".")}@mock.driver`,
@@ -1711,16 +1712,7 @@ function toInputDateFromDisplay(displayDate: string) {
 }
 
 function getWeekNumberFromInputDate(dateInput: string) {
-  const date = parseInputDate(dateInput);
-  const seasonStart = new Date(date.getFullYear(), 3, 1, 0, 0, 0, 0);
-  const diffMs = date.getTime() - seasonStart.getTime();
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffDays < 0) {
-    return 1;
-  }
-
-  return Math.floor(diffDays / 7) + 1;
+  return getOperationalWeekNumberFromInputDate(dateInput);
 }
 
 function buildTimestamp(dateInput: string, minutesFromStart: number) {
@@ -1850,10 +1842,10 @@ function downloadDebriefRows(rows: DebriefRow[], format: ExportFormat) {
     "Duty Date",
     "Week Number",
     "Duty Order",
-    "Duty Number",
+    "Duty ID",
     "Division",
     "Driver",
-    "Vehicle",
+    "Vehicle Reg",
     "Trailer Number",
     "Traffic",
     "Departure Location",
