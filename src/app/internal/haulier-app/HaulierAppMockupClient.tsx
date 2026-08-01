@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import DriverName from "../DriverName";
 import { getStoredDriverUserId } from "../driverPdaSession";
+import { getOperationalWeekNumberFromDisplayDate } from "../operationalWeek";
 
 type LegStatus = "To do" | "In Progress" | "Completed";
 type MockupType = "flex" | "mockup2";
@@ -78,6 +79,8 @@ type DctRow = {
 };
 
 const DEFAULT_VEHICLE_REG = "MX71ESN";
+const DEFAULT_DCT_MOCKUP: MockupType = "mockup2";
+const DEFAULT_DCT_DUTY_ID = "NWH254";
 
 const mockup2PlanningDetails: Record<
   number,
@@ -172,7 +175,7 @@ const mockupOptions: MockupOption[] = [
   },
   {
     title: "Complete Reset",
-    text: "Clear the journey mock-up and remove all DCT mockup data.",
+    text: "Clear entered journey data and restore the planned DCT rows.",
     icon: "4",
     active: true,
     kind: "reset",
@@ -270,9 +273,13 @@ export default function HaulierAppMockupClient() {
     Record<number, LegIssueReport>
   >({});
 
-  const [dctRows, setDctRows] = useState<DctRow[]>([]);
-  const [dctSourceMockup, setDctSourceMockup] = useState<MockupType | null>(null);
-  const [dctDutyId, setDctDutyId] = useState("");
+  const [dctRows, setDctRows] = useState<DctRow[]>(() =>
+    buildPlannedDctRows(DEFAULT_DCT_MOCKUP, DEFAULT_DCT_DUTY_ID)
+  );
+  const [dctSourceMockup, setDctSourceMockup] = useState<MockupType | null>(
+    DEFAULT_DCT_MOCKUP
+  );
+  const [dctDutyId, setDctDutyId] = useState(DEFAULT_DCT_DUTY_ID);
 
   const today = useMemo(() => getTodayDateText(), []);
   const legs = mockup === "mockup2" ? mockup2Legs : flexLegs;
@@ -343,9 +350,9 @@ export default function HaulierAppMockupClient() {
     setIssueLocation("");
     setIssueManager("");
     setPendingIssueAction(null);
-    setDctRows([]);
-    setDctSourceMockup(null);
-    setDctDutyId("");
+    setDctRows(buildPlannedDctRows(DEFAULT_DCT_MOCKUP, DEFAULT_DCT_DUTY_ID));
+    setDctSourceMockup(DEFAULT_DCT_MOCKUP);
+    setDctDutyId(DEFAULT_DCT_DUTY_ID);
     closeAllModals();
   }
 
@@ -2241,8 +2248,9 @@ function DctWebScreen({
   }[] = [
     { key: "status", label: "Leg Status", headerClass: "bg-[#cfeefa]", widthClass: "w-[90px]", align: "left" },
     { key: "startDate", label: "Duty Date", headerClass: "bg-[#cfeefa]", widthClass: "w-[95px]", align: "center" },
+    { key: "weekNumber", label: "Week Number", headerClass: "bg-[#cfeefa]", widthClass: "w-[78px]", align: "center" },
     { key: "dutyOrder", label: "Duty Order", headerClass: "bg-[#cfeefa]", widthClass: "w-[68px]", align: "center" },
-    { key: "vehicleReg", label: "Vehicle", headerClass: "bg-[#cfeefa]", widthClass: "w-[88px]", align: "center" },
+    { key: "vehicleReg", label: "Vehicle Reg", headerClass: "bg-[#cfeefa]", widthClass: "w-[92px]", align: "center" },
     { key: "trailerId", label: "Trailer Number", headerClass: "bg-[#cfeefa]", widthClass: "w-[96px]", align: "center" },
     { key: "userId", label: "UserId", headerClass: "bg-[#cfeefa]", widthClass: "w-[140px]", align: "center" },
     {
@@ -2254,8 +2262,8 @@ function DctWebScreen({
       align: "center",
     },
     { key: "operator", label: "Operator", headerClass: "bg-[#cfeefa]", widthClass: "w-[62px]", align: "center" },
-    { key: "dutyId", label: "DutyId", headerClass: "bg-[#cfeefa]", widthClass: "w-[82px]", align: "center" },
-    { key: "trailerType", label: "Trailer Type", headerClass: "bg-[#fde8c5]", widthClass: "w-[105px]", align: "center" },
+    { key: "dutyId", label: "Duty ID", headerClass: "bg-[#cfeefa]", widthClass: "w-[82px]", align: "center" },
+    { key: "trailerType", label: "Vehicle Type", headerClass: "bg-[#fde8c5]", widthClass: "w-[105px]", align: "center" },
     { key: "planzCode", label: "Planz Code", headerClass: "bg-[#fde8c5]", widthClass: "w-[92px]", align: "center" },
     { key: "dueToConvey", label: "Due To Convey", headerClass: "bg-[#fde8c5]", widthClass: "w-[108px]", align: "center" },
     { key: "departureLocation", label: "Departure location", headerClass: "bg-[#f2e8c9]", widthClass: "w-[112px]", align: "center" },
@@ -2344,17 +2352,16 @@ function DctWebScreen({
         {rows.length === 0 ? (
           <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white p-8 shadow-sm">
             <p className="text-lg font-black text-[#172033]">
-              No DCT mockup data is available yet.
+              Planned DCT data is being prepared.
             </p>
             <p className="mt-3 text-sm font-bold leading-6 text-[#4b5563]">
-              Run Flex Mock Up or Mockup 2 first, then return here to view the
-              DCT-style output.
+              Return to the mock-up options and reopen the DCT-style output.
             </p>
           </section>
         ) : (
           <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[3345px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+              <table className="min-w-[3505px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
                   <tr>
                     {columns.map((column) => (
@@ -2382,6 +2389,7 @@ function DctWebScreen({
                         {row.status}
                       </td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.startDate}</td>
+                      <td className="border border-black px-1 py-2 text-center font-normal">{getOperationalWeekNumberFromDisplayDate(row.startDate)}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal">{row.dutyOrder}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.vehicleReg || ""}</td>
                       <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.trailerId || ""}</td>
