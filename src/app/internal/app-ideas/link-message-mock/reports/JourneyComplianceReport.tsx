@@ -482,7 +482,7 @@ function ExplanationScreen({ onContinue, onClose }: { onContinue: () => void; on
         <RuleCard title="Operational sites can start or end a LINK journey">
           The journey opens when the vehicle leaves the planned operational origin and closes when it reaches the planned operational destination.
         </RuleCard>
-        <RuleCard title="Motorway services, fuel and workshops are intermediate stops">
+        <RuleCard title="Motorway services and fuel are intermediate stops">
           These stops are recorded within the same journey and do not create a separate missing LINK leg.
         </RuleCard>
         <RuleCard title="A planned trailer swap at motorway services remains compliant">
