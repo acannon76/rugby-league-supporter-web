@@ -25,90 +25,35 @@ const sidebarItems: SidebarItem[] = [
   { label: "System Configurations", icon: "⚙", href: "/internal/app-ideas/link-message-mock/configurations" },
 ];
 
-const reportOptions = [
-  {
-    number: "Option 1",
-    title: "Current report catalogue",
-    description:
-      "The existing National Reports page, including report downloads, scheduling and the four current report types.",
-    href: "/internal/app-ideas/link-message-mock/reports/option-1",
-    status: "Current design",
-    available: true,
-  },
-  {
-    number: "Option 2",
-    title: "Alternative report design",
-    description:
-      "A separate workspace for the second proposed way of selecting, creating and downloading reports.",
-    href: "/internal/app-ideas/link-message-mock/reports/option-2",
-    status: "Design workspace",
-    available: true,
-  },
-  {
-    number: "Option 3",
-    title: "Alternative report design",
-    description:
-      "A separate workspace for the third proposed way of presenting and creating reports for manager review.",
-    href: "/internal/app-ideas/link-message-mock/reports/option-3",
-    status: "Design workspace",
-    available: true,
-  },
-] as const;
-
-export default function ReportsOptionsPage() {
+export function ReportOptionPlaceholder({ optionNumber }: { optionNumber: 2 | 3 }) {
   return (
     <div className="min-h-screen bg-[#eef2f6] text-[#111827]">
-      <OfficeHeader title="MOCK UP" subtitle="Reports" />
+      <OfficeHeader title="MOCK UP" subtitle={`Reports Option ${optionNumber}`} />
       <div className="flex min-w-0">
         <OfficeSidebar />
 
         <main className="min-w-0 flex-1 p-4 sm:p-6">
           <section className="rounded-[24px] border border-[#d6dde8] bg-white p-5 shadow-sm sm:p-6">
-            <div className="max-w-5xl">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e40000]">Report design selection</p>
-              <h1 className="mt-2 text-3xl font-black text-[#10203a]">Reports</h1>
-              <p className="mt-3 text-sm font-bold leading-6 text-[#4b5563]">
-                Select one of the report design options below. Each option is kept separate so managers can review and compare different ways of creating and presenting reports.
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e40000]">Alternative report design</p>
+            <h1 className="mt-2 text-3xl font-black text-[#10203a]">Reports Option {optionNumber}</h1>
+            <p className="mt-3 max-w-4xl text-sm font-bold leading-6 text-[#4b5563]">
+              This is a separate workspace for the {optionNumber === 2 ? "second" : "third"} proposed report design. It can be developed without changing Reports Option 1.
+            </p>
+
+            <div className="mt-7 rounded-[22px] border-2 border-dashed border-[#c7d2df] bg-[#f8fafc] px-6 py-16 text-center">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[22px] bg-[#10203a] text-2xl font-black text-white">
+                REP
+              </div>
+              <h2 className="mt-5 text-2xl font-black text-[#10203a]">Option {optionNumber} design area</h2>
+              <p className="mx-auto mt-3 max-w-2xl text-sm font-bold leading-6 text-[#4b5563]">
+                The new report layout and creation method can be added here when the design requirements are agreed.
               </p>
-            </div>
-
-            <div className="mt-7 grid grid-cols-1 gap-5 xl:grid-cols-3">
-              {reportOptions.map((option) => (
-                <article
-                  key={option.number}
-                  className="flex min-h-[310px] flex-col rounded-[22px] border border-[#cfd8e3] bg-[#f8fafc] p-5 shadow-sm"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="rounded-full bg-[#10203a] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-white">
-                      {option.number}
-                    </span>
-                    <span className="rounded-full border border-[#cfd8e3] bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-[#526175]">
-                      {option.status}
-                    </span>
-                  </div>
-
-                  <div className="mt-6 flex h-16 w-16 items-center justify-center rounded-[18px] bg-[#e40000] text-2xl font-black text-white shadow-sm">
-                    REP
-                  </div>
-
-                  <h2 className="mt-5 text-xl font-black text-[#10203a]">{option.title}</h2>
-                  <p className="mt-3 flex-1 text-sm font-bold leading-6 text-[#4b5563]">{option.description}</p>
-
-                  <Link
-                    href={option.href}
-                    className="mt-6 flex min-h-12 items-center justify-center rounded-xl bg-[#10203a] px-5 py-3 text-center text-xs font-black uppercase tracking-[0.08em] text-white no-underline transition hover:bg-[#1e3558]"
-                  >
-                    Open {option.number}
-                  </Link>
-                </article>
-              ))}
-            </div>
-
-            <div className="mt-6 rounded-[18px] border border-dashed border-[#c7d2df] bg-[#f8fafc] px-5 py-5">
-              <p className="text-sm font-black text-[#10203a]">Option 1 contains the current reports page.</p>
-              <p className="mt-1 text-sm font-bold leading-6 text-[#4b5563]">
-                Options 2 and 3 are separate design areas ready for alternative report layouts without changing the existing version.
-              </p>
+              <Link
+                href="/internal/app-ideas/link-message-mock/reports"
+                className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-[#10203a] px-6 py-3 text-xs font-black uppercase tracking-[0.08em] text-white no-underline transition hover:bg-[#1e3558]"
+              >
+                Back to report options
+              </Link>
             </div>
           </section>
         </main>
