@@ -27,7 +27,7 @@ const sidebarItems: SidebarItem[] = [
 
 const reportOptions = [
   {
-    number: "Option 1",
+    number: "Report 1",
     title: "Data Reports",
     description:
       "The existing National Reports page, including report downloads, scheduling and the four current report types.",
@@ -36,8 +36,8 @@ const reportOptions = [
     available: true,
   },
   {
-    number: "Option 2",
-    title: "Alternative report design",
+    number: "Report 2",
+    title: "Site & User Journey Compliance Dashboard",
     description:
       "A separate workspace for the second proposed way of selecting, creating and downloading reports.",
     href: "/internal/app-ideas/link-message-mock/reports/option-2",
@@ -45,7 +45,7 @@ const reportOptions = [
     available: true,
   },
   {
-    number: "Option 3",
+    number: "Report 3",
     title: "Alternative report design",
     description:
       "A separate workspace for the third proposed way of presenting and creating reports for manager review.",
@@ -66,7 +66,7 @@ export default function ReportsOptionsPage() {
           <section className="rounded-[24px] border border-[#d6dde8] bg-white p-5 shadow-sm sm:p-6">
             <div className="max-w-5xl">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e40000]">Report design selection</p>
-              <h1 className="mt-2 text-3xl font-black text-[#10203a]">Site & User Journey Compliance Dashboard</h1>
+              <h1 className="mt-2 text-3xl font-black text-[#10203a]">Reports</h1>
               <p className="mt-3 text-sm font-bold leading-6 text-[#4b5563]">
                 Select one of the report design options below. Each option is kept separate so managers can review and compare different ways of creating and presenting reports.
               </p>
