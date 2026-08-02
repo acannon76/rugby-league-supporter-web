@@ -1,5 +1,5 @@
-import { ReportOptionPlaceholder } from "../ReportOptionPlaceholder";
+import { JourneyComplianceDashboard } from "./JourneyComplianceDashboard";
 
 export default function ReportsOptionTwoPage() {
-  return <ReportOptionPlaceholder optionNumber={2} />;
+  return <JourneyComplianceDashboard />;
 }
