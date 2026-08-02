@@ -1,5 +1,5 @@
-import { ReportOptionPlaceholder } from "../ReportOptionPlaceholder";
+import { NetworkPerformanceDashboard } from "./NetworkPerformanceDashboard";
 
 export default function ReportsOptionThreePage() {
-  return <ReportOptionPlaceholder optionNumber={3} />;
+  return <NetworkPerformanceDashboard />;
 }

@@ -61,14 +61,14 @@ const reportOptions: readonly ReportDirectoryItem[] = [
   },
   {
     number: "Report 3",
-    title: "Additional Reporting Dashboard",
+    title: "Network Performance Dashboard",
     description:
-      "A reserved reporting workspace for the next dashboard, allowing a further report design to be developed independently.",
+      "Analyse completed national debrief performance with responsive filters, DTT and ATT trends, site comparisons and selection-based downloads.",
     href: "/internal/app-ideas/link-message-mock/reports/option-3",
-    status: "Design workspace",
+    status: "Available",
     accent: "blue",
     icon: "dashboard",
-    capabilities: ["Future dashboard", "Separate workspace", "Manager review"],
+    capabilities: ["Interactive dashboard", "Enhanced PDF", "Email scheduling"],
   },
 ] as const;
 
