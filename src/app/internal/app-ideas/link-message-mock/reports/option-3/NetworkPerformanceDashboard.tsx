@@ -66,6 +66,25 @@ type IssueSummary = {
   percentage: number;
 };
 
+type DutyPerformanceSummary = {
+  key: string;
+  duty: string;
+  reportingSite: string;
+  totalLegs: number;
+  dttOnTime: number;
+  attOnTime: number;
+  lateArrivals: number;
+  partComplete: number;
+  exceptionRows: number;
+  dttOnTimePercent: number;
+  attOnTimePercent: number;
+  exceptionPercent: number;
+  activeDays: number;
+  vehicles: number;
+  topIssue: string;
+  lastSeen: string;
+};
+
 type TimingCounts = Record<TimingCode, number>;
 
 type DateRange = {
@@ -331,6 +350,7 @@ export function NetworkPerformanceDashboard() {
 
   const timingCounts = useMemo(() => countTimingCodes(dashboardRows, "att"), [dashboardRows]);
   const siteSummary = useMemo(() => buildSiteSummary(dashboardRows), [dashboardRows]);
+  const dutySummary = useMemo(() => buildDutyPerformanceSummary(dashboardRows), [dashboardRows]);
   const dailySummary = useMemo(() => buildDailySummary(dashboardRows), [dashboardRows]);
   const issueSummary = useMemo(() => buildIssueSummary(dashboardRows), [dashboardRows]);
   const totals = useMemo(() => calculateTotals(dashboardRows), [dashboardRows]);
@@ -479,6 +499,8 @@ export function NetworkPerformanceDashboard() {
               <SitePerformanceChart rows={siteSummary} />
             </div>
 
+            <ProblemDutyDashboard duties={dutySummary} />
+
             <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1.55fr_0.75fr]">
               <SitePerformanceTable rows={siteSummary} />
               <IssueBreakdown rows={issueSummary} total={totals.completed} />
@@ -599,6 +621,7 @@ export function NetworkPerformanceDashboard() {
           rows={dashboardRows}
           siteSummary={siteSummary}
           dailySummary={dailySummary}
+          dutySummary={dutySummary}
           startDate={startDate}
           startTime={startTime}
           endDate={endDate}
@@ -626,6 +649,7 @@ function DownloadSelectionModal({
   rows,
   siteSummary,
   dailySummary,
+  dutySummary,
   startDate,
   startTime,
   endDate,
@@ -638,6 +662,7 @@ function DownloadSelectionModal({
   rows: NetworkPerformanceRow[];
   siteSummary: SiteSummary[];
   dailySummary: DailySummary[];
+  dutySummary: DutyPerformanceSummary[];
   startDate: string;
   startTime: string;
   endDate: string;
@@ -736,6 +761,43 @@ function DownloadSelectionModal({
               ]),
             },
             {
+              name: "Problem Duties",
+              headers: [
+                "Duty",
+                "Reporting Site",
+                "Debrief Legs",
+                "DTT On Time",
+                "DTT On Time %",
+                "ATT On Time",
+                "ATT On Time %",
+                "Late Arrivals",
+                "Part Complete",
+                "Exception Rows",
+                "Exception %",
+                "Active Days",
+                "Vehicles Used",
+                "Main Issue",
+                "Last Recorded",
+              ],
+              rows: dutySummary.map((duty) => [
+                duty.duty,
+                duty.reportingSite,
+                duty.totalLegs,
+                duty.dttOnTime,
+                duty.dttOnTimePercent,
+                duty.attOnTime,
+                duty.attOnTimePercent,
+                duty.lateArrivals,
+                duty.partComplete,
+                duty.exceptionRows,
+                duty.exceptionPercent,
+                duty.activeDays,
+                duty.vehicles,
+                duty.topIssue,
+                formatDateOnly(duty.lastSeen),
+              ]),
+            },
+            {
               name: "Raw Debrief Data",
               headers: rawHeaders,
               rows: rawRows,
@@ -793,8 +855,8 @@ function DownloadSelectionModal({
           <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
             <DownloadFormatCard
               title="Excel workbook"
-              badge="4 sheets"
-              description="Dashboard summary, site performance, daily trend and complete raw debrief data in a structured XLSX workbook."
+              badge="5 sheets"
+              description="Dashboard summary, site performance, daily trend, problem-duty analysis and complete raw debrief data in a structured XLSX workbook."
               detail="Best for analysis and further reporting"
               icon="XLSX"
               onClick={() => download("excel")}
@@ -1017,6 +1079,240 @@ function SitePerformanceChart({ rows }: { rows: SiteSummary[] }) {
       )}
     </DashboardPanel>
   );
+}
+
+
+function ProblemDutyDashboard({ duties }: { duties: DutyPerformanceSummary[] }) {
+  const [selectedDutyKey, setSelectedDutyKey] = useState("");
+  const rankedDuties = duties.filter((duty) => duty.totalLegs >= 2).slice(0, 12);
+  const selectedDuty = rankedDuties.find((duty) => duty.key === selectedDutyKey) ?? rankedDuties[0];
+  const maximumExceptionRate = Math.max(1, ...rankedDuties.map((duty) => duty.exceptionPercent));
+  const dutiesRequiringReview = duties.filter((duty) => duty.attOnTimePercent < 80).length;
+  const partCompleteLegs = duties.reduce((total, duty) => total + duty.partComplete, 0);
+
+  return (
+    <section className="mt-4 overflow-hidden rounded-[20px] border border-[#d7dee9] bg-white shadow-sm">
+      <div className="flex flex-col gap-3 bg-[#10203a] px-4 py-4 text-white sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e40000] text-xl font-black">!</span>
+          <div>
+            <p className="text-lg font-black">Problem Duty Dashboard</p>
+            <p className="mt-0.5 text-xs font-bold text-white/70">
+              Identifies recurring duties with poor ATT performance, timing exceptions and part-complete debriefs in the selected filters.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <ProblemDutyHeaderMetric label="Duties reviewed" value={formatNumber(duties.length)} />
+          <ProblemDutyHeaderMetric label="Require review" value={formatNumber(dutiesRequiringReview)} alert />
+          <ProblemDutyHeaderMetric label="Part complete" value={formatNumber(partCompleteLegs)} warning />
+        </div>
+      </div>
+
+      {rankedDuties.length === 0 ? (
+        <div className="px-5 py-16 text-center">
+          <p className="text-base font-black text-[#10203a]">No duty performance data is available.</p>
+          <p className="mt-2 text-sm font-bold text-[#64748b]">Change the filters to include more completed debrief rows.</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 xl:grid-cols-[1.45fr_0.85fr]">
+            <div className="border-b border-[#e2e8f0] p-4 sm:p-5 xl:border-b-0 xl:border-r">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-base font-black text-[#10203a]">Worst-performing duties</p>
+                  <p className="mt-1 text-xs font-bold text-[#64748b]">Ranked by ATT on-time performance, exception rate and part-complete outcomes.</p>
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-[0.1em] text-[#64748b]">Select a duty for detail</p>
+              </div>
+
+              <div className="mt-4 space-y-2.5">
+                {rankedDuties.slice(0, 8).map((duty, index) => {
+                  const isSelected = selectedDuty?.key === duty.key;
+                  const status = getProblemDutyRiskStatus(duty.attOnTimePercent);
+                  return (
+                    <button
+                      type="button"
+                      key={duty.key}
+                      onClick={() => setSelectedDutyKey(duty.key)}
+                      className={`w-full rounded-xl border p-3 text-left transition ${isSelected ? "border-[#0f3a6d] bg-[#eff6ff] shadow-sm" : "border-[#e2e8f0] bg-[#f8fafc] hover:border-[#94a3b8] hover:bg-white"}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-black ${index < 3 ? "bg-[#fee2e2] text-[#b91c1c]" : "bg-white text-[#475569]"}`}>
+                          {index + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-black text-[#10203a]">{duty.duty}</p>
+                              <p className="truncate text-[10px] font-bold text-[#64748b]" title={duty.reportingSite}>{duty.reportingSite}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-base font-black ${duty.attOnTimePercent < 80 ? "text-[#b91c1c]" : "text-[#166534]"}`}>{duty.attOnTimePercent}%</p>
+                              <p className="text-[9px] font-black uppercase tracking-[0.08em] text-[#64748b]">ATT on time</p>
+                            </div>
+                          </div>
+                          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[#e2e8f0]">
+                            <div className="h-full rounded-full bg-[#dc2626]" style={{ width: `${Math.max(3, (duty.exceptionPercent / maximumExceptionRate) * 100)}%` }} />
+                          </div>
+                          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-bold text-[#64748b]">
+                            <span><strong className="text-[#b91c1c]">{duty.exceptionRows}</strong> exception rows</span>
+                            <span>{duty.totalLegs} legs</span>
+                            <span>{duty.partComplete} part complete</span>
+                            <span>{status.label}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="bg-[#f8fafc] p-4 sm:p-5">
+              {selectedDuty ? <WorstNetworkDutyInsight duty={selectedDuty} /> : null}
+            </div>
+          </div>
+
+          <div className="border-t border-[#d7dee9]">
+            <div className="border-b border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 sm:px-5">
+              <p className="text-sm font-black text-[#10203a]">Problem duty comparison</p>
+              <p className="mt-1 text-xs font-bold text-[#64748b]">Use this table to prioritise duties for planner, site, route and driver investigation.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-[1180px] w-full border-collapse text-xs">
+                <thead>
+                  <tr className="bg-[#31485f] text-left font-black uppercase tracking-[0.06em] text-white">
+                    <th className="px-3 py-3">Rank</th>
+                    <th className="px-3 py-3">Duty</th>
+                    <th className="px-3 py-3">Reporting site</th>
+                    <th className="px-3 py-3 text-right">Legs</th>
+                    <th className="px-3 py-3 text-right">DTT OT</th>
+                    <th className="px-3 py-3 text-right">ATT OT</th>
+                    <th className="px-3 py-3 text-right">Late arrivals</th>
+                    <th className="px-3 py-3 text-right">Part complete</th>
+                    <th className="px-3 py-3 text-right">Exception rate</th>
+                    <th className="px-3 py-3">Main issue</th>
+                    <th className="px-3 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rankedDuties.map((duty, index) => {
+                    const status = getProblemDutyRiskStatus(duty.attOnTimePercent);
+                    return (
+                      <tr key={duty.key} className={index % 2 === 0 ? "bg-white" : "bg-[#f8fafc]"}>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 font-black text-[#64748b]">{index + 1}</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 font-black text-[#10203a]">{duty.duty}</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 font-bold text-[#334155]">{duty.reportingSite}</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 text-right font-bold">{duty.totalLegs}</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 text-right font-bold text-[#2563eb]">{duty.dttOnTimePercent}%</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 text-right font-black text-[#166534]">{duty.attOnTimePercent}%</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 text-right font-black text-[#b45309]">{duty.lateArrivals}</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 text-right font-black text-[#b91c1c]">{duty.partComplete}</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 text-right font-black text-[#b91c1c]">{duty.exceptionPercent}%</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 font-bold text-[#475569]">{duty.topIssue}</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5"><ProblemDutyRiskPill label={status.label} tone={status.tone} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function ProblemDutyHeaderMetric({ label, value, alert = false, warning = false }: { label: string; value: string; alert?: boolean; warning?: boolean }) {
+  const className = alert
+    ? "border-red-300/35 bg-red-500/20 text-white"
+    : warning
+      ? "border-amber-300/35 bg-amber-400/20 text-white"
+      : "border-white/20 bg-white/10 text-white";
+  return (
+    <div className={`min-w-[104px] rounded-xl border px-3 py-2 ${className}`}>
+      <p className="text-[9px] font-black uppercase tracking-[0.09em] text-white/70">{label}</p>
+      <p className="mt-0.5 text-xl font-black">{value}</p>
+    </div>
+  );
+}
+
+function WorstNetworkDutyInsight({ duty }: { duty: DutyPerformanceSummary }) {
+  const status = getProblemDutyRiskStatus(duty.attOnTimePercent);
+  return (
+    <div className="flex h-full flex-col">
+      <div className="rounded-[18px] border border-[#fecaca] bg-gradient-to-br from-[#fff1f2] to-white p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#b91c1c]">Worst duty selected</p>
+            <p className="mt-1 text-3xl font-black text-[#10203a]">{duty.duty}</p>
+            <p className="mt-1 text-xs font-bold text-[#64748b]">{duty.reportingSite}</p>
+          </div>
+          <ProblemDutyRiskPill label={status.label} tone={status.tone} />
+        </div>
+
+        <div className="mt-5 flex items-end justify-between gap-4">
+          <div>
+            <p className={`text-5xl font-black leading-none ${duty.attOnTimePercent < 80 ? "text-[#b91c1c]" : "text-[#166534]"}`}>{duty.attOnTimePercent}%</p>
+            <p className="mt-1 text-[10px] font-black uppercase tracking-[0.1em] text-[#64748b]">ATT on-time performance</p>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-black text-[#10203a]">{duty.exceptionRows}</p>
+            <p className="text-[10px] font-bold text-[#64748b]">exception rows</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <ProblemDutyInsightMetric label="DTT on time" value={`${duty.dttOnTimePercent}%`} />
+        <ProblemDutyInsightMetric label="Late arrivals" value={formatNumber(duty.lateArrivals)} warning />
+        <ProblemDutyInsightMetric label="Part complete" value={formatNumber(duty.partComplete)} danger />
+        <ProblemDutyInsightMetric label="Vehicles used" value={formatNumber(duty.vehicles)} />
+      </div>
+
+      <div className="mt-3 rounded-xl border border-[#d7dee9] bg-white p-3">
+        <p className="text-[10px] font-black uppercase tracking-[0.1em] text-[#64748b]">Main issue</p>
+        <p className="mt-1 text-sm font-black leading-5 text-[#10203a]">{duty.topIssue}</p>
+      </div>
+
+      <div className="mt-3 rounded-xl border border-[#bfdbfe] bg-[#eff6ff] p-3 text-xs font-bold leading-5 text-[#1e3a5f]">
+        Review the recurring route, planned timing, vehicle allocation and driver notes. This duty operated across <strong>{duty.activeDays} days</strong> and was last recorded on <strong>{formatDateOnly(duty.lastSeen)}</strong>.
+      </div>
+    </div>
+  );
+}
+
+function ProblemDutyInsightMetric({ label, value, warning = false, danger = false }: { label: string; value: string; warning?: boolean; danger?: boolean }) {
+  const classes = danger
+    ? "border-[#fecaca] bg-[#fff1f2] text-[#b91c1c]"
+    : warning
+      ? "border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]"
+      : "border-[#d7dee9] bg-white text-[#10203a]";
+  return (
+    <div className={`rounded-xl border p-3 ${classes}`}>
+      <p className="text-[9px] font-black uppercase tracking-[0.1em] opacity-70">{label}</p>
+      <p className="mt-1 text-2xl font-black">{value}</p>
+    </div>
+  );
+}
+
+function ProblemDutyRiskPill({ label, tone }: { label: string; tone: "critical" | "review" | "monitor" | "stable" }) {
+  const classes = {
+    critical: "bg-[#fee2e2] text-[#b91c1c]",
+    review: "bg-[#ffedd5] text-[#c2410c]",
+    monitor: "bg-[#fef3c7] text-[#a16207]",
+    stable: "bg-[#dcfce7] text-[#166534]",
+  }[tone];
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.06em] ${classes}`}>{label}</span>;
+}
+
+function getProblemDutyRiskStatus(attOnTimePercent: number): { label: string; tone: "critical" | "review" | "monitor" | "stable" } {
+  if (attOnTimePercent < 50) return { label: "Critical", tone: "critical" };
+  if (attOnTimePercent < 70) return { label: "Review", tone: "review" };
+  if (attOnTimePercent < 85) return { label: "Monitor", tone: "monitor" };
+  return { label: "Stable", tone: "stable" };
 }
 
 function SitePerformanceTable({ rows }: { rows: SiteSummary[] }) {
@@ -1376,6 +1672,55 @@ function buildSiteSummary(rows: NetworkPerformanceRow[]) {
       dttOnTimePercent: Number(percentage(site.dttOt, site.completed).toFixed(1)),
     }))
     .sort((a, b) => a.site.localeCompare(b.site));
+}
+
+
+function buildDutyPerformanceSummary(rows: NetworkPerformanceRow[]): DutyPerformanceSummary[] {
+  const grouped = new Map<string, NetworkPerformanceRow[]>();
+  rows.forEach((row) => {
+    const key = `${row.reportingSite}::${row.dutyNumber}`;
+    grouped.set(key, [...(grouped.get(key) ?? []), row]);
+  });
+
+  return [...grouped.entries()]
+    .map(([key, dutyRows]) => {
+      const dttOnTime = dutyRows.filter((row) => row.dtt === "OT").length;
+      const attOnTime = dutyRows.filter((row) => row.att === "OT").length;
+      const lateArrivals = dutyRows.filter((row) => ["L", "VL", "F"].includes(row.att)).length;
+      const partComplete = dutyRows.filter((row) => row.outcome === "Part Complete").length;
+      const exceptionRows = dutyRows.filter((row) => row.dtt !== "OT" || row.att !== "OT" || row.outcome !== "Complete").length;
+      const issueCounts = new Map<string, number>();
+      dutyRows
+        .filter((row) => row.issueCategory !== "No Issue")
+        .forEach((row) => issueCounts.set(row.issueCategory, (issueCounts.get(row.issueCategory) ?? 0) + 1));
+      const topIssue = [...issueCounts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? "No recorded issue";
+
+      return {
+        key,
+        duty: dutyRows[0].dutyNumber,
+        reportingSite: dutyRows[0].reportingSite,
+        totalLegs: dutyRows.length,
+        dttOnTime,
+        attOnTime,
+        lateArrivals,
+        partComplete,
+        exceptionRows,
+        dttOnTimePercent: Number(percentage(dttOnTime, dutyRows.length).toFixed(1)),
+        attOnTimePercent: Number(percentage(attOnTime, dutyRows.length).toFixed(1)),
+        exceptionPercent: Number(percentage(exceptionRows, dutyRows.length).toFixed(1)),
+        activeDays: new Set(dutyRows.map((row) => row.dutyDate)).size,
+        vehicles: new Set(dutyRows.map((row) => row.vehicle)).size,
+        topIssue,
+        lastSeen: [...dutyRows.map((row) => row.dutyDate)].sort().at(-1) ?? "",
+      };
+    })
+    .sort((left, right) =>
+      left.attOnTimePercent - right.attOnTimePercent
+      || right.exceptionPercent - left.exceptionPercent
+      || right.partComplete - left.partComplete
+      || right.lateArrivals - left.lateArrivals
+      || left.duty.localeCompare(right.duty),
+    );
 }
 
 function buildDailySummary(rows: NetworkPerformanceRow[]) {

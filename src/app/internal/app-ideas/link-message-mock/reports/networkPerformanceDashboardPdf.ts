@@ -66,6 +66,16 @@ type DailySummary = {
   attPercent: number;
 };
 
+type DutyPerformanceSummary = {
+  duty: string;
+  site: string;
+  total: number;
+  attOnTime: number;
+  attOnTimePercent: number;
+  exceptionRows: number;
+  partComplete: number;
+};
+
 const PAGE_WIDTH = 842;
 const PAGE_HEIGHT = 595;
 const MARGIN = 24;
@@ -451,13 +461,15 @@ function drawManagementSummary(
   const riskSites = siteSummary.filter((site) => site.onTimePercent < 80).length;
   const highestRisk = siteSummary.slice().sort((a, b) => a.onTimePercent - b.onTimePercent)[0];
   const topIssue = buildIssueSummary(rows)[0];
+  const worstDuty = buildDutyPerformanceSummary(rows)[0];
 
   const lines = [
     `The selected data contains ${formatNumber(rows.length)} completed debrief legs across ${siteSummary.length} reporting sites.`,
     `Arrival on-time performance is ${onTimeRate.toFixed(1)}%, with ${formatNumber(late)} late, very late or failed arrivals.`,
     `${riskSites} sites are below the 80% ATT on-time review threshold${highestRisk ? `; the lowest is ${highestRisk.site} at ${highestRisk.onTimePercent.toFixed(1)}%.` : "."}`,
     topIssue ? `The most frequent exception is ${topIssue.label}, recorded against ${formatNumber(topIssue.count)} selected legs.` : "No exception category is recorded in the current selection.",
-    `This PDF reflects the active filters: ${filters.site}, ${filters.timingStatus}, ${filters.traffic}. It includes a dedicated driver-notes section and every selected row.`,
+    worstDuty ? `The worst recurring duty is ${worstDuty.duty} at ${worstDuty.site}, with ${worstDuty.attOnTimePercent.toFixed(1)}% ATT on-time performance and ${formatNumber(worstDuty.exceptionRows)} exception rows.` : "No recurring duty performance can be calculated for the current selection.",
+    `This PDF reflects the active filters: ${filters.site}, ${filters.timingStatus}, ${filters.traffic}. It includes problem-duty analysis, driver notes and every selected row.`,
   ];
 
   const boxWidth = (width - 12) / 2;
@@ -620,6 +632,36 @@ function buildSiteSummary(rows: NetworkPerformanceDashboardPdfRow[]) {
   return Array.from(map.values())
     .map((site) => ({ ...site, onTimePercent: percentage(site.ot, site.total) }))
     .sort((a, b) => a.site.localeCompare(b.site));
+}
+
+
+function buildDutyPerformanceSummary(rows: NetworkPerformanceDashboardPdfRow[]): DutyPerformanceSummary[] {
+  const grouped = new Map<string, NetworkPerformanceDashboardPdfRow[]>();
+  rows.forEach((row) => {
+    const key = `${row.reportingSite}::${row.dutyNumber}`;
+    grouped.set(key, [...(grouped.get(key) ?? []), row]);
+  });
+
+  return [...grouped.values()]
+    .map((dutyRows) => {
+      const attOnTime = dutyRows.filter((row) => row.att === "OT").length;
+      const exceptionRows = dutyRows.filter((row) => row.dtt !== "OT" || row.att !== "OT" || row.outcome !== "Complete").length;
+      return {
+        duty: dutyRows[0].dutyNumber,
+        site: dutyRows[0].reportingSite,
+        total: dutyRows.length,
+        attOnTime,
+        attOnTimePercent: percentage(attOnTime, dutyRows.length),
+        exceptionRows,
+        partComplete: dutyRows.filter((row) => row.outcome === "Part Complete").length,
+      };
+    })
+    .sort((left, right) =>
+      left.attOnTimePercent - right.attOnTimePercent
+      || right.exceptionRows - left.exceptionRows
+      || right.partComplete - left.partComplete
+      || left.duty.localeCompare(right.duty),
+    );
 }
 
 function buildDailySummary(rows: NetworkPerformanceDashboardPdfRow[]) {
