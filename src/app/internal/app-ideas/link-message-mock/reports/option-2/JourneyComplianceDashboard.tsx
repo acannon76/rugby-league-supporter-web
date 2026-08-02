@@ -51,6 +51,21 @@ type SiteSummary = {
   nonCompliancePercent: number;
 };
 
+type DutySummary = {
+  key: string;
+  duty: string;
+  operatingSite: string;
+  total: number;
+  compliant: number;
+  nonCompliant: number;
+  compliancePercent: number;
+  nonCompliancePercent: number;
+  activeDays: number;
+  vehicles: number;
+  topReason: string;
+  lastSeen: string;
+};
+
 type TrendBucket = {
   label: string;
   fullLabel: string;
@@ -221,6 +236,7 @@ export function JourneyComplianceDashboard() {
 
   const totals = useMemo(() => calculateTotals(dashboardRows), [dashboardRows]);
   const siteSummary = useMemo(() => buildSiteSummary(dashboardRows), [dashboardRows]);
+  const dutySummary = useMemo(() => buildDutySummary(dashboardRows), [dashboardRows]);
   const trend = useMemo(() => buildTrendBuckets(dashboardRows), [dashboardRows]);
   const reasonBreakdown = useMemo(() => buildReasonBreakdown(dashboardRows), [dashboardRows]);
 
@@ -364,6 +380,11 @@ export function JourneyComplianceDashboard() {
               <DailyTrendChart buckets={trend} />
               <SiteRiskChart sites={siteSummary} />
             </div>
+
+            <ProblemDutyDashboard
+              duties={dutySummary}
+              unassignedJourneys={dashboardRows.filter((row) => row.linkDuty === "Not entered").length}
+            />
 
             <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1.55fr_0.85fr]">
               <SitePerformanceTable rows={siteSummary} />
@@ -835,6 +856,228 @@ function SiteRiskChart({ sites }: { sites: SiteSummary[] }) {
   );
 }
 
+function ProblemDutyDashboard({ duties, unassignedJourneys }: { duties: DutySummary[]; unassignedJourneys: number }) {
+  const [selectedDutyKey, setSelectedDutyKey] = useState("");
+  const rankedDuties = duties.filter((duty) => duty.total >= 2).slice(0, 10);
+  const selectedDuty = rankedDuties.find((duty) => duty.key === selectedDutyKey) ?? rankedDuties[0];
+  const maximumRate = Math.max(1, ...rankedDuties.map((duty) => duty.nonCompliancePercent));
+  const dutiesRequiringReview = duties.filter((duty) => duty.nonCompliancePercent >= 10).length;
+
+  return (
+    <section className="mt-4 overflow-hidden rounded-[20px] border border-[#d7dee9] bg-white shadow-sm">
+      <div className="flex flex-col gap-3 bg-[#10203a] px-4 py-4 text-white sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e40000] text-lg font-black">!</span>
+            <div>
+              <p className="text-lg font-black">Problem duty dashboard</p>
+              <p className="mt-0.5 text-xs font-bold text-white/70">Identifies recurring duties with the highest non-compliance rate in the selected filters.</p>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <DutyHeaderMetric label="Duties reviewed" value={formatNumber(duties.length)} />
+          <DutyHeaderMetric label="Require review" value={formatNumber(dutiesRequiringReview)} alert />
+          <DutyHeaderMetric label="No LINK duty" value={formatNumber(unassignedJourneys)} warning />
+        </div>
+      </div>
+
+      {rankedDuties.length === 0 ? (
+        <div className="px-5 py-16 text-center">
+          <p className="text-base font-black text-[#10203a]">No duty performance data is available.</p>
+          <p className="mt-2 text-sm font-bold text-[#64748b]">Change the filters or include compliant and non-compliant journeys to compare duties.</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-0 xl:grid-cols-[1.45fr_0.85fr]">
+            <div className="border-b border-[#e2e8f0] p-4 sm:p-5 xl:border-b-0 xl:border-r">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-base font-black text-[#10203a]">Worst-performing duties</p>
+                  <p className="mt-1 text-xs font-bold text-[#64748b]">Ranked by non-compliance percentage, then number of failed journeys.</p>
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-[0.1em] text-[#64748b]">Select a duty for more detail</p>
+              </div>
+
+              <div className="mt-4 space-y-2.5">
+                {rankedDuties.slice(0, 8).map((duty, index) => {
+                  const isSelected = selectedDuty?.key === duty.key;
+                  const status = getDutyRiskStatus(duty.nonCompliancePercent);
+                  return (
+                    <button
+                      type="button"
+                      key={duty.key}
+                      onClick={() => setSelectedDutyKey(duty.key)}
+                      className={`w-full rounded-xl border p-3 text-left transition ${isSelected ? "border-[#0f3a6d] bg-[#eff6ff] shadow-sm" : "border-[#e2e8f0] bg-[#f8fafc] hover:border-[#94a3b8] hover:bg-white"}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-black ${index < 3 ? "bg-[#fee2e2] text-[#b91c1c]" : "bg-white text-[#475569]"}`}>
+                          {index + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-black text-[#10203a]">{duty.duty}</p>
+                              <p className="truncate text-[10px] font-bold text-[#64748b]" title={duty.operatingSite}>{duty.operatingSite}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-base font-black text-[#b91c1c]">{duty.nonCompliancePercent}%</p>
+                              <p className="text-[9px] font-black uppercase tracking-[0.08em] text-[#64748b]">{status.label}</p>
+                            </div>
+                          </div>
+                          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[#e2e8f0]">
+                            <div className="h-full rounded-full bg-[#dc2626]" style={{ width: `${Math.max(3, (duty.nonCompliancePercent / maximumRate) * 100)}%` }} />
+                          </div>
+                          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-bold text-[#64748b]">
+                            <span><strong className="text-[#b91c1c]">{duty.nonCompliant}</strong> failed</span>
+                            <span>{duty.total} journeys</span>
+                            <span>{duty.activeDays} active days</span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="bg-[#f8fafc] p-4 sm:p-5">
+              {selectedDuty ? <WorstDutyInsight duty={selectedDuty} /> : null}
+            </div>
+          </div>
+
+          <div className="border-t border-[#d7dee9]">
+            <div className="border-b border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 sm:px-5">
+              <p className="text-sm font-black text-[#10203a]">Problem duty comparison</p>
+              <p className="mt-1 text-xs font-bold text-[#64748b]">Use this table to prioritise duties for planner, site and driver investigation.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-[980px] w-full border-collapse text-xs">
+                <thead>
+                  <tr className="bg-[#31485f] text-left font-black uppercase tracking-[0.06em] text-white">
+                    <th className="px-3 py-3">Rank</th>
+                    <th className="px-3 py-3">LINK duty</th>
+                    <th className="px-3 py-3">Operating site / VOC</th>
+                    <th className="px-3 py-3 text-right">Journeys</th>
+                    <th className="px-3 py-3 text-right">Compliant</th>
+                    <th className="px-3 py-3 text-right">Non-compliant</th>
+                    <th className="px-3 py-3 text-right">Failure rate</th>
+                    <th className="px-3 py-3">Main failure reason</th>
+                    <th className="px-3 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rankedDuties.map((duty, index) => {
+                    const status = getDutyRiskStatus(duty.nonCompliancePercent);
+                    return (
+                      <tr key={duty.key} className={index % 2 === 0 ? "bg-white" : "bg-[#f8fafc]"}>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 font-black text-[#64748b]">{index + 1}</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 font-black text-[#10203a]">{duty.duty}</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 font-bold text-[#334155]">{duty.operatingSite}</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 text-right font-bold text-[#334155]">{duty.total}</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 text-right font-bold text-[#166534]">{duty.compliant}</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 text-right font-black text-[#b91c1c]">{duty.nonCompliant}</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 text-right font-black text-[#b91c1c]">{duty.nonCompliancePercent}%</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5 font-bold text-[#475569]">{duty.topReason}</td>
+                        <td className="border-b border-[#e2e8f0] px-3 py-2.5"><DutyRiskPill label={status.label} tone={status.tone} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function DutyHeaderMetric({ label, value, alert = false, warning = false }: { label: string; value: string; alert?: boolean; warning?: boolean }) {
+  const className = alert
+    ? "border-red-300/35 bg-red-500/20 text-white"
+    : warning
+      ? "border-amber-300/35 bg-amber-400/20 text-white"
+      : "border-white/20 bg-white/10 text-white";
+  return (
+    <div className={`min-w-[104px] rounded-xl border px-3 py-2 ${className}`}>
+      <p className="text-[9px] font-black uppercase tracking-[0.09em] text-white/70">{label}</p>
+      <p className="mt-0.5 text-xl font-black">{value}</p>
+    </div>
+  );
+}
+
+function WorstDutyInsight({ duty }: { duty: DutySummary }) {
+  const status = getDutyRiskStatus(duty.nonCompliancePercent);
+  return (
+    <div className="flex h-full flex-col">
+      <div className="rounded-[18px] border border-[#fecaca] bg-gradient-to-br from-[#fff1f2] to-white p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#b91c1c]">Worst duty selected</p>
+            <p className="mt-1 text-3xl font-black text-[#10203a]">{duty.duty}</p>
+            <p className="mt-1 text-xs font-bold text-[#64748b]">{duty.operatingSite}</p>
+          </div>
+          <DutyRiskPill label={status.label} tone={status.tone} />
+        </div>
+
+        <div className="mt-5 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-5xl font-black leading-none text-[#b91c1c]">{duty.nonCompliancePercent}%</p>
+            <p className="mt-1 text-[10px] font-black uppercase tracking-[0.1em] text-[#64748b]">Non-compliance rate</p>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-black text-[#10203a]">{duty.nonCompliant}</p>
+            <p className="text-[10px] font-bold text-[#64748b]">failed journeys</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <DutyInsightMetric label="Tracked" value={duty.total} />
+        <DutyInsightMetric label="Compliant" value={duty.compliant} success />
+        <DutyInsightMetric label="Active days" value={duty.activeDays} />
+        <DutyInsightMetric label="Vehicles used" value={duty.vehicles} />
+      </div>
+
+      <div className="mt-3 rounded-xl border border-[#d7dee9] bg-white p-3">
+        <p className="text-[10px] font-black uppercase tracking-[0.1em] text-[#64748b]">Main failure reason</p>
+        <p className="mt-1 text-sm font-black leading-5 text-[#10203a]">{duty.topReason}</p>
+      </div>
+
+      <div className="mt-3 rounded-xl border border-[#bfdbfe] bg-[#eff6ff] p-3 text-xs font-bold leading-5 text-[#1e3a5f]">
+        Review the LINK duty setup, recurring route, vehicle allocation and site process. Last recorded on <strong>{formatDisplayDate(duty.lastSeen)}</strong>.
+      </div>
+    </div>
+  );
+}
+
+function DutyInsightMetric({ label, value, success = false }: { label: string; value: number; success?: boolean }) {
+  return (
+    <div className={`rounded-xl border p-3 ${success ? "border-[#bbf7d0] bg-[#f0fdf4]" : "border-[#d7dee9] bg-white"}`}>
+      <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${success ? "text-[#166534]" : "text-[#64748b]"}`}>{label}</p>
+      <p className={`mt-1 text-2xl font-black ${success ? "text-[#166534]" : "text-[#10203a]"}`}>{formatNumber(value)}</p>
+    </div>
+  );
+}
+
+function DutyRiskPill({ label, tone }: { label: string; tone: "critical" | "review" | "monitor" | "stable" }) {
+  const classes = {
+    critical: "bg-[#fee2e2] text-[#b91c1c]",
+    review: "bg-[#ffedd5] text-[#c2410c]",
+    monitor: "bg-[#fef3c7] text-[#a16207]",
+    stable: "bg-[#dcfce7] text-[#166534]",
+  }[tone];
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.06em] ${classes}`}>{label}</span>;
+}
+
+function getDutyRiskStatus(rate: number): { label: string; tone: "critical" | "review" | "monitor" | "stable" } {
+  if (rate >= 20) return { label: "Critical", tone: "critical" };
+  if (rate >= 12) return { label: "Review", tone: "review" };
+  if (rate >= 7) return { label: "Monitor", tone: "monitor" };
+  return { label: "Stable", tone: "stable" };
+}
+
 function SitePerformanceTable({ rows }: { rows: SiteSummary[] }) {
   return (
     <article className="overflow-hidden rounded-[18px] border border-[#d7dee9] bg-white shadow-sm">
@@ -946,6 +1189,7 @@ function DownloadModal({
     [allRows, endDate, selectedSites, startDate],
   );
   const exportSummary = useMemo(() => buildSiteSummary(exportRows), [exportRows]);
+  const exportDutySummary = useMemo(() => buildDutySummary(exportRows), [exportRows]);
 
   const download = async (format: ExportFormat) => {
     if (startDate > endDate) {
@@ -996,6 +1240,35 @@ function DownloadModal({
         fileName: `site-user-journey-compliance-${startDate}-to-${endDate}`,
         sheets: [
           { name: "VOC Summary", headers: summaryHeaders, rows: summaryRows },
+          {
+            name: "Problem Duties",
+            headers: [
+              "LINK Duty",
+              "Operating Site / VOC",
+              "Tracked Journeys",
+              "Compliant",
+              "Non-Compliant",
+              "Compliance %",
+              "Non-Compliance %",
+              "Active Days",
+              "Vehicles Used",
+              "Main Failure Reason",
+              "Last Recorded",
+            ],
+            rows: exportDutySummary.map((duty) => [
+              duty.duty,
+              duty.operatingSite,
+              duty.total,
+              duty.compliant,
+              duty.nonCompliant,
+              `${duty.compliancePercent}%`,
+              `${duty.nonCompliancePercent}%`,
+              duty.activeDays,
+              duty.vehicles,
+              duty.topReason,
+              duty.lastSeen,
+            ]),
+          },
           {
             name: "Raw Journey Data",
             headers: [
@@ -1213,7 +1486,7 @@ function buildMockJourneyRows(): JourneyRow[] {
           journeyStart: formatDateTime(start),
           journeyEnd: formatDateTime(finish),
           intermediateEvent: hasIntermediate ? intermediateLocations[(siteIndex + journeyIndex) % intermediateLocations.length] : "",
-          linkDuty: isNonCompliant && reason === "Vehicle movement not entered in LINK" ? "Not entered" : `${site.slice(0, 3)}${String(500 + ((dayIndex * 9 + siteIndex * 5 + journeyIndex) % 480)).padStart(3, "0")}`,
+          linkDuty: isNonCompliant && reason === "Vehicle movement not entered in LINK" ? "Not entered" : `${site.slice(0, 3)}${String(500 + siteIndex * 10 + journeyIndex).padStart(3, "0")}`,
           linkLegAdded: !isNonCompliant,
           complianceStatus: isNonCompliant ? "Non-compliant" : "Compliant",
           complianceReason: reason,
@@ -1258,6 +1531,48 @@ function buildSiteSummary(rows: JourneyRow[]): SiteSummary[] {
       };
     })
     .sort((left, right) => left.site.localeCompare(right.site));
+}
+
+function buildDutySummary(rows: JourneyRow[]): DutySummary[] {
+  const grouped = new Map<string, JourneyRow[]>();
+
+  rows
+    .filter((row) => row.linkDuty !== "Not entered")
+    .forEach((row) => {
+      const key = `${row.operatingSite}::${row.linkDuty}`;
+      grouped.set(key, [...(grouped.get(key) ?? []), row]);
+    });
+
+  return [...grouped.entries()]
+    .map(([key, dutyRows]) => {
+      const totals = calculateTotals(dutyRows);
+      const failureReasons = new Map<string, number>();
+      dutyRows
+        .filter((row) => row.complianceStatus === "Non-compliant")
+        .forEach((row) => failureReasons.set(row.complianceReason, (failureReasons.get(row.complianceReason) ?? 0) + 1));
+      const topReason = [...failureReasons.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? "No recorded failures";
+
+      return {
+        key,
+        duty: dutyRows[0].linkDuty,
+        operatingSite: dutyRows[0].operatingSite,
+        total: totals.total,
+        compliant: totals.compliant,
+        nonCompliant: totals.nonCompliant,
+        compliancePercent: totals.compliancePercent,
+        nonCompliancePercent: totals.nonCompliancePercent,
+        activeDays: new Set(dutyRows.map((row) => row.date)).size,
+        vehicles: new Set(dutyRows.map((row) => row.vehicle)).size,
+        topReason,
+        lastSeen: [...dutyRows.map((row) => row.date)].sort().at(-1) ?? "",
+      };
+    })
+    .sort((left, right) =>
+      right.nonCompliancePercent - left.nonCompliancePercent
+      || right.nonCompliant - left.nonCompliant
+      || right.total - left.total
+      || left.duty.localeCompare(right.duty),
+    );
 }
 
 function buildTrendBuckets(rows: JourneyRow[]): TrendBucket[] {
