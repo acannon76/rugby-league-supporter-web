@@ -115,14 +115,116 @@ function createNetworkPerformanceDashboardPdf(rows: NetworkPerformanceDashboardP
   const dailySummary = buildDailySummary(rows);
   const pageStreams: string[] = [];
   const sitePageCount = Math.max(1, Math.ceil(siteSummary.length / 24));
+  const driverNotesPageCount = Math.max(1, Math.ceil(rows.length / 15));
   const detailPageCount = Math.max(1, Math.ceil(rows.length / 27));
-  const totalPages = 1 + sitePageCount + detailPageCount;
+  const totalPages = 1 + sitePageCount + driverNotesPageCount + detailPageCount;
 
   pageStreams.push(renderExecutiveSummaryPage(rows, siteSummary, dailySummary, filters, totalPages));
   pageStreams.push(...renderSiteSummaryPages(siteSummary, rows.length, filters, totalPages));
-  pageStreams.push(...renderDetailPages(rows, filters, totalPages, 2 + sitePageCount));
+  pageStreams.push(...renderDriverNotesPages(rows, filters, totalPages, 2 + sitePageCount));
+  pageStreams.push(...renderDetailPages(rows, filters, totalPages, 2 + sitePageCount + driverNotesPageCount));
 
   return assemblePdf(pageStreams);
+}
+
+function renderDriverNotesPages(
+  rows: NetworkPerformanceDashboardPdfRow[],
+  filters: DashboardPdfFilters,
+  totalPages: number,
+  pageOffset: number,
+) {
+  const rowsPerPage = 15;
+  const chunks = chunk(rows, rowsPerPage);
+  const pages: string[] = [];
+
+  chunks.forEach((pageRows, pageIndex) => {
+    const commands: string[] = [];
+    const pageNumber = pageOffset + pageIndex;
+    drawPageHeader(commands, "Network Performance Dashboard", "Driver notes and operational context", pageNumber, totalPages);
+    drawText(
+      commands,
+      MARGIN,
+      503,
+      `${formatDate(filters.startDate)} ${filters.startTime} to ${formatDate(filters.endDate)} ${filters.endTime}   |   ${fitText(filters.site, 220, 6.8)}   |   ${formatNumber(rows.length)} rows`,
+      6.8,
+      "F1",
+      MUTED,
+    );
+
+    const top = 476;
+    const headerHeight = 27;
+    const rowHeight = 28;
+    const columns = [
+      { title: "DATE", width: 55 },
+      { title: "SITE", width: 125 },
+      { title: "DUTY", width: 50 },
+      { title: "DRIVER", width: 75 },
+      { title: "VEHICLE", width: 55 },
+      { title: "ISSUE", width: 75 },
+      { title: "DRIVER NOTES", width: 294 },
+      { title: "OUTCOME", width: 65 },
+    ];
+
+    drawRect(commands, MARGIN, top - headerHeight, CONTENT_WIDTH, headerHeight, NAVY);
+    let x = MARGIN;
+    columns.forEach((column) => {
+      const lines = column.title.split(" ");
+      if (lines.length > 1) {
+        drawTextCentered(commands, x, top - 11, column.width, lines[0], 4.9, "F2", WHITE);
+        drawTextCentered(commands, x, top - 19, column.width, lines.slice(1).join(" "), 4.9, "F2", WHITE);
+      } else {
+        drawTextCentered(commands, x, top - 17, column.width, column.title, 4.9, "F2", WHITE);
+      }
+      x += column.width;
+      drawLine(commands, x, top - headerHeight, x, top, [73, 93, 122], 0.35);
+    });
+
+    pageRows.forEach((row, index) => {
+      const yTop = top - headerHeight - index * rowHeight;
+      const yBottom = yTop - rowHeight;
+      drawRect(commands, MARGIN, yBottom, CONTENT_WIDTH, rowHeight, index % 2 === 0 ? WHITE : PALE, BORDER, 0.3);
+      const values = [
+        formatDate(row.dutyDate),
+        row.reportingSite,
+        row.dutyNumber,
+        row.driver,
+        row.vehicle,
+        row.issueCategory,
+        row.driverNotes,
+        row.outcome,
+      ];
+      let cellX = MARGIN;
+      columns.forEach((column, columnIndex) => {
+        if (columnIndex === 6) {
+          const wrapped = wrapText(values[columnIndex], 88).slice(0, 2);
+          wrapped.forEach((line, lineIndex) => {
+            drawText(commands, cellX + 4, yBottom + 17 - lineIndex * 9, fitText(line, column.width - 8, 5.2), 5.2, "F1", TEXT);
+          });
+        } else if ([1, 3, 5].includes(columnIndex)) {
+          const fontSize = columnIndex === 1 ? 5.2 : 5.4;
+          drawText(commands, cellX + 4, yBottom + 10, fitText(values[columnIndex], column.width - 8, fontSize), fontSize, columnIndex === 1 ? "F2" : "F1", TEXT);
+        } else {
+          drawTextCentered(
+            commands,
+            cellX,
+            yBottom + 10,
+            column.width,
+            fitText(values[columnIndex], column.width - 6, 5.4),
+            5.4,
+            columnIndex === 7 ? "F2" : "F1",
+            columnIndex === 7 && row.outcome !== "Complete" ? DARK_RED : TEXT,
+          );
+        }
+        cellX += column.width;
+      });
+    });
+
+    drawText(commands, MARGIN, 28, `Driver notes ${pageIndex * rowsPerPage + 1}-${pageIndex * rowsPerPage + pageRows.length} of ${rows.length}`, 6.4, "F1", MUTED);
+    drawFooter(commands, pageNumber, totalPages, "Driver notes and operational context");
+    pages.push(commands.join("\n"));
+  });
+
+  return pages;
 }
 
 function renderExecutiveSummaryPage(
@@ -264,19 +366,20 @@ function renderDetailPages(
     const headerHeight = 27;
     const rowHeight = 15;
     const columns = [
-      { title: "SITE", width: 152 },
-      { title: "DATE", width: 51 },
-      { title: "DUTY", width: 49 },
-      { title: "LEG", width: 26 },
-      { title: "VEHICLE", width: 52 },
-      { title: "TRAILER", width: 53 },
-      { title: "DUE TO CONVEY", width: 98 },
-      { title: "START", width: 42 },
-      { title: "DTT", width: 29 },
-      { title: "FINISH", width: 42 },
-      { title: "ATT", width: 29 },
-      { title: "OUTCOME", width: 66 },
-      { title: "ISSUE", width: 105 },
+      { title: "SITE", width: 110 },
+      { title: "DATE", width: 48 },
+      { title: "DUTY", width: 46 },
+      { title: "LEG", width: 24 },
+      { title: "VEHICLE", width: 48 },
+      { title: "TRAILER", width: 48 },
+      { title: "DUE TO CONVEY", width: 80 },
+      { title: "START", width: 40 },
+      { title: "DTT", width: 28 },
+      { title: "FINISH", width: 40 },
+      { title: "ATT", width: 28 },
+      { title: "ISSUE", width: 72 },
+      { title: "DRIVER NOTES", width: 120 },
+      { title: "OUTCOME", width: 62 },
     ];
 
     drawRect(commands, MARGIN, top - headerHeight, CONTENT_WIDTH, headerHeight, NAVY);
@@ -309,15 +412,16 @@ function renderDetailPages(
         row.dtt,
         formatTime(row.actualFinishTs),
         row.att,
-        row.outcome,
         row.issueCategory,
+        row.driverNotes,
+        row.outcome,
       ];
       let cellX = MARGIN;
       columns.forEach((column, columnIndex) => {
-        const fontSize = columnIndex === 0 || columnIndex === 6 || columnIndex === 12 ? 5.2 : 5.5;
+        const fontSize = columnIndex === 0 || columnIndex === 6 || columnIndex === 11 || columnIndex === 12 ? 4.8 : 5.3;
         const text = fitText(values[columnIndex], column.width - 5, fontSize);
         const colour = columnIndex === 8 ? timingColours[row.dtt] ?? TEXT : columnIndex === 10 ? timingColours[row.att] ?? TEXT : TEXT;
-        if ([0, 6, 12].includes(columnIndex)) drawText(commands, cellX + 3, yBottom + 4.7, text, fontSize, columnIndex === 0 ? "F2" : "F1", colour);
+        if ([0, 6, 11, 12].includes(columnIndex)) drawText(commands, cellX + 3, yBottom + 4.7, text, fontSize, columnIndex === 0 ? "F2" : "F1", colour);
         else drawTextCentered(commands, cellX, yBottom + 4.6, column.width, text, fontSize, [8, 10].includes(columnIndex) ? "F2" : "F1", colour);
         cellX += column.width;
       });
@@ -353,7 +457,7 @@ function drawManagementSummary(
     `Arrival on-time performance is ${onTimeRate.toFixed(1)}%, with ${formatNumber(late)} late, very late or failed arrivals.`,
     `${riskSites} sites are below the 80% ATT on-time review threshold${highestRisk ? `; the lowest is ${highestRisk.site} at ${highestRisk.onTimePercent.toFixed(1)}%.` : "."}`,
     topIssue ? `The most frequent exception is ${topIssue.label}, recorded against ${formatNumber(topIssue.count)} selected legs.` : "No exception category is recorded in the current selection.",
-    `This PDF reflects the active filters: ${filters.site}, ${filters.timingStatus}, ${filters.traffic}. The detailed pages contain every selected row.`,
+    `This PDF reflects the active filters: ${filters.site}, ${filters.timingStatus}, ${filters.traffic}. It includes a dedicated driver-notes section and every selected row.`,
   ];
 
   const boxWidth = (width - 12) / 2;

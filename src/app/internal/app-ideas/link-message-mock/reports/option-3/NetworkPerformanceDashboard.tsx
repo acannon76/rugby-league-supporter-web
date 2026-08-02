@@ -325,6 +325,7 @@ export function NetworkPerformanceDashboard() {
       row.departureLocation,
       row.finalDestination,
       row.issueCategory,
+      row.driverNotes,
     ].some((value) => value.toLowerCase().includes(search)));
   }, [dashboardRows, tableSearch]);
 
@@ -495,7 +496,7 @@ export function NetworkPerformanceDashboard() {
                   <input
                     value={tableSearch}
                     onChange={(event) => setTableSearch(event.target.value)}
-                    placeholder="Search site, duty, vehicle or issue"
+                    placeholder="Search site, duty, vehicle, issue or driver notes"
                     className="min-h-10 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm font-bold text-[#10203a] outline-none focus:border-[#0f3a6d] sm:w-[320px]"
                   />
                   <button
@@ -509,7 +510,7 @@ export function NetworkPerformanceDashboard() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="min-w-[1500px] w-full border-collapse text-xs">
+                <table className="min-w-[1880px] w-full border-collapse text-xs">
                   <thead>
                     <tr className="bg-[#10203a] text-left font-black uppercase tracking-[0.06em] text-white">
                       <th className="px-3 py-3">Date</th>
@@ -526,14 +527,15 @@ export function NetworkPerformanceDashboard() {
                       <th className="px-3 py-3">Planned finish</th>
                       <th className="px-3 py-3">Actual finish</th>
                       <th className="px-3 py-3">ATT</th>
-                      <th className="px-3 py-3">Outcome</th>
                       <th className="px-3 py-3">Issue</th>
+                      <th className="min-w-[300px] px-3 py-3">Driver Notes</th>
+                      <th className="px-3 py-3">Outcome</th>
                     </tr>
                   </thead>
                   <tbody>
                     {tableRows.length === 0 ? (
                       <tr>
-                        <td colSpan={16} className="px-4 py-12 text-center text-sm font-bold text-[#64748b]">
+                        <td colSpan={17} className="px-4 py-12 text-center text-sm font-bold text-[#64748b]">
                           No completed debrief rows match the selected filters.
                         </td>
                       </tr>
@@ -554,12 +556,15 @@ export function NetworkPerformanceDashboard() {
                           <td className="border-b border-[#e2e8f0] px-3 py-2.5 font-bold">{formatDateTime(row.plannedFinishTs)}</td>
                           <td className="border-b border-[#e2e8f0] px-3 py-2.5 font-bold">{formatDateTime(row.actualFinishTs)}</td>
                           <td className="border-b border-[#e2e8f0] px-3 py-2.5"><TimingPill code={row.att as TimingCode} /></td>
+                          <td className="border-b border-[#e2e8f0] px-3 py-2.5 font-bold text-[#475569]">{row.issueCategory}</td>
+                          <td className="min-w-[300px] border-b border-[#e2e8f0] px-3 py-2.5 font-bold leading-5 text-[#334155]">
+                            {row.driverNotes}
+                          </td>
                           <td className="border-b border-[#e2e8f0] px-3 py-2.5">
                             <span className={`rounded-full px-2 py-1 text-[10px] font-black ${row.outcome === "Complete" ? "bg-[#dcfce7] text-[#166534]" : "bg-[#fee2e2] text-[#b91c1c]"}`}>
                               {row.outcome}
                             </span>
                           </td>
-                          <td className="border-b border-[#e2e8f0] px-3 py-2.5 font-bold text-[#475569]">{row.issueCategory}</td>
                         </tr>
                       ))
                     )}
@@ -582,7 +587,7 @@ export function NetworkPerformanceDashboard() {
                 Every chart, KPI, site summary and downloaded file uses the active date, time, site, ATT and Due to Convey filters shown above.
               </InsightNote>
               <InsightNote title="Enhanced management PDF" icon="PDF">
-                The PDF contains an executive summary, timing mix, daily trend, site performance pages and every selected debrief row for audit and investigation.
+                The PDF contains an executive summary, timing mix, daily trend, site performance, a dedicated driver-notes section and every selected debrief row for audit and investigation.
               </InsightNote>
             </div>
           </section>
@@ -809,7 +814,7 @@ function DownloadSelectionModal({
             <DownloadFormatCard
               title="Management PDF"
               badge="Enhanced"
-              description="A presentation-quality PDF with executive KPIs, timing mix, trend analysis, site summaries and every selected row."
+              description="A presentation-quality PDF with executive KPIs, timing mix, trend analysis, site summaries, driver notes and every selected row."
               detail="Best for sharing and governance"
               icon="PDF"
               featured
@@ -822,7 +827,7 @@ function DownloadSelectionModal({
           <div className="mt-5 rounded-[16px] border border-[#bfdbfe] bg-[#eff6ff] px-4 py-3">
             <p className="text-sm font-black text-[#0f3a6d]">PDF content follows the current dashboard selection</p>
             <p className="mt-1 text-sm font-bold leading-6 text-[#1e3a5f]">
-              The PDF begins with an executive summary, then provides the full alphabetical site performance table and complete selected debrief detail across additional pages.
+              The PDF begins with an executive summary, then provides the full alphabetical site performance table, a dedicated driver-notes section and complete selected debrief detail across additional pages.
             </p>
           </div>
         </div>
