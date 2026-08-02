@@ -1,13 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   exportExcelWorkbook,
   exportTabularData,
   type ExportFormat,
 } from "../../../exportData";
+
+import {
+  ScheduledReportsManager,
+  type ScheduledReport,
+} from "../ScheduledReportsManager";
 
 type SidebarItem = {
   label: string;
@@ -141,6 +146,7 @@ const nonComplianceReasons = [
 ] as const;
 
 const defaultRange = getDefaultRange();
+const SCHEDULED_REPORTS_STORAGE_KEY = "driveros-mock-scheduled-reports";
 
 export function JourneyComplianceDashboard() {
   const allRows = useMemo(() => buildMockJourneyRows(), []);
@@ -152,6 +158,35 @@ export function JourneyComplianceDashboard() {
   const [selectedStatus, setSelectedStatus] = useState("All journeys");
   const [tableSearch, setTableSearch] = useState("");
   const [downloadOpen, setDownloadOpen] = useState(false);
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [scheduledReports, setScheduledReports] = useState<ScheduledReport[]>([]);
+  const [scheduledReportsLoaded, setScheduledReportsLoaded] = useState(false);
+  const [schedulerOpen, setSchedulerOpen] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const savedSchedules = window.localStorage.getItem(SCHEDULED_REPORTS_STORAGE_KEY);
+        if (savedSchedules) {
+          const parsedSchedules = JSON.parse(savedSchedules) as ScheduledReport[];
+          if (Array.isArray(parsedSchedules)) {
+            setScheduledReports(parsedSchedules.slice(0, 10));
+          }
+        }
+      } catch {
+        setScheduledReports([]);
+      } finally {
+        setScheduledReportsLoaded(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!scheduledReportsLoaded) return;
+    window.localStorage.setItem(SCHEDULED_REPORTS_STORAGE_KEY, JSON.stringify(scheduledReports));
+  }, [scheduledReports, scheduledReportsLoaded]);
 
   const filteredRows = useMemo(() => {
     const search = tableSearch.trim().toLowerCase();
@@ -215,6 +250,20 @@ export function JourneyComplianceDashboard() {
     setTableSearch("");
   };
 
+  const saveScheduledReport = (schedule: ScheduledReport) => {
+    setScheduledReports((current) => {
+      const existingIndex = current.findIndex((item) => item.id === schedule.id);
+      if (existingIndex >= 0) {
+        return current.map((item) => (item.id === schedule.id ? schedule : item));
+      }
+      return current.length < 10 ? [...current, schedule] : current;
+    });
+  };
+
+  const removeScheduledReport = (id: string) => {
+    setScheduledReports((current) => current.filter((schedule) => schedule.id !== id));
+  };
+
   return (
     <div className="min-h-screen bg-[#eef2f6] text-[#111827]">
       <OfficeHeader />
@@ -240,10 +289,24 @@ export function JourneyComplianceDashboard() {
                 </Link>
                 <button
                   type="button"
+                  onClick={() => setInstructionsOpen(true)}
+                  className="min-h-11 rounded-xl border border-[#0f3a6d] bg-white px-5 py-2.5 text-xs font-black uppercase tracking-[0.07em] text-[#0f3a6d] transition hover:bg-[#eff6ff]"
+                >
+                  Instructions
+                </button>
+                <button
+                  type="button"
                   onClick={() => setDownloadOpen(true)}
                   className="min-h-11 rounded-xl bg-[#10203a] px-5 py-2.5 text-xs font-black uppercase tracking-[0.07em] text-white shadow-sm transition hover:bg-[#1e3558]"
                 >
                   Select dates and site download
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSchedulerOpen(true)}
+                  className="min-h-11 rounded-xl border-2 border-[#0f3a6d] bg-white px-5 py-2.5 text-xs font-black uppercase tracking-[0.07em] text-[#0f3a6d] transition hover:bg-[#eff6ff]"
+                >
+                  Schedule email
                 </button>
               </div>
             </div>
@@ -410,6 +473,121 @@ export function JourneyComplianceDashboard() {
           onClose={() => setDownloadOpen(false)}
         />
       ) : null}
+
+      {instructionsOpen ? <InstructionsModal onClose={() => setInstructionsOpen(false)} /> : null}
+
+      <ScheduledReportsManager
+        open={schedulerOpen}
+        initialSource="journey-compliance"
+        schedules={scheduledReports}
+        onClose={() => setSchedulerOpen(false)}
+        onSave={saveScheduledReport}
+        onRemove={removeScheduledReport}
+      />
+    </div>
+  );
+}
+
+function InstructionsModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#07101f]/65 p-4" role="dialog" aria-modal="true" aria-labelledby="journey-instructions-title">
+      <div className="max-h-[94vh] w-full max-w-6xl overflow-hidden rounded-[24px] border border-[#cfd8e3] bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 bg-[#10203a] px-5 py-4 text-white sm:px-6">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/70">Journey compliance</p>
+            <h2 id="journey-instructions-title" className="mt-1 text-2xl font-black">Site &amp; User Journey Compliance Report</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/50 text-xl font-black text-white transition hover:bg-white/10"
+            aria-label="Close instructions"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="max-h-[calc(94vh-82px)] overflow-y-auto p-5 sm:p-6">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e40000]">How the compliance report works</p>
+          <h3 className="mt-2 text-2xl font-black text-[#10203a]">Geofence and LINK journey rules</h3>
+          <p className="mt-3 text-sm font-bold leading-6 text-[#4b5563]">
+            The report compares actual tracked vehicle journeys against the legs entered in LINK, while preventing legitimate intermediate stops from being counted as separate journeys.
+          </p>
+
+          <div className="mt-5 space-y-3">
+            <InstructionRule title="Do not treat every geofence as a journey destination">
+              A geofence visit only starts or ends a compliance journey when it is classified as an operational site.
+            </InstructionRule>
+            <InstructionRule title="Operational sites can start or end a LINK journey">
+              The journey opens when the vehicle leaves the planned operational origin and closes when it reaches the planned operational destination.
+            </InstructionRule>
+            <InstructionRule title="Motorway services and fuel are intermediate stops">
+              These stops are recorded within the same journey and do not create a separate missing LINK leg.
+            </InstructionRule>
+            <InstructionRule title="A planned trailer swap at motorway services remains compliant">
+              When LINK contains a planned trailer-swap activity at the service-area geofence, the swap is attached to the existing origin-to-destination journey. It is recorded as an intermediate event and does not create an additional journey or non-compliance failure.
+            </InstructionRule>
+            <InstructionRule title="Compliance is compared one line per VOC">
+              The summary shows tracked journeys, LINK legs added, planned intermediate events, missing legs, compliance percentage and non-compliance percentage for each operating site.
+            </InstructionRule>
+          </div>
+
+          <section className="mt-6 overflow-hidden rounded-[18px] border border-[#d7dee9] bg-white">
+            <div className="border-b border-[#d7dee9] bg-[#e9eef9] px-4 py-3">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#10203a]">Example: planned trailer swap</p>
+              <p className="mt-1 text-xs font-bold text-[#4b5563]">The motorway-services visit is part of the same compliant LINK journey.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-[900px] w-full border-collapse text-xs">
+                <thead>
+                  <tr className="bg-[#f8fafc] text-left font-black uppercase tracking-[0.08em] text-[#4b5563]">
+                    <th className="border-b border-[#e2e8f0] px-3 py-3">Operating site</th>
+                    <th className="border-b border-[#e2e8f0] px-3 py-3">Vehicle</th>
+                    <th className="border-b border-[#e2e8f0] px-3 py-3">Planned journey</th>
+                    <th className="border-b border-[#e2e8f0] px-3 py-3">Intermediate event</th>
+                    <th className="border-b border-[#e2e8f0] px-3 py-3">Result</th>
+                    <th className="border-b border-[#e2e8f0] px-3 py-3">Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border-b border-[#e5ebf3] px-3 py-3 font-black text-[#10203a]">North West VOC</td>
+                    <td className="border-b border-[#e5ebf3] px-3 py-3 font-bold">PE68UHD</td>
+                    <td className="border-b border-[#e5ebf3] px-3 py-3 font-bold">North West VOC → PRDC</td>
+                    <td className="border-b border-[#e5ebf3] px-3 py-3 font-bold">Charnock Richard Services – planned trailer swap</td>
+                    <td className="border-b border-[#e5ebf3] px-3 py-3 font-black text-[#166534]">Compliant</td>
+                    <td className="border-b border-[#e5ebf3] px-3 py-3 font-bold text-[#4b5563]">Swap is recorded in LINK and treated as an intermediate event</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <div className="mt-6 flex justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl bg-[#10203a] px-5 py-3 text-xs font-black uppercase tracking-[0.08em] text-white transition hover:bg-[#1e3558]"
+            >
+              Close instructions
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InstructionRule({ title, children }: { title: string; children: string }) {
+  return (
+    <div className="rounded-[16px] border border-[#d7dee9] bg-[#f8fafc] px-4 py-4">
+      <div className="flex items-start gap-3">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#dcfce7] text-base font-black text-[#166534]">✓</span>
+        <div>
+          <p className="text-sm font-black text-[#10203a]">{title}</p>
+          <p className="mt-1 text-sm font-bold leading-6 text-[#4b5563]">{children}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -427,7 +605,7 @@ function OfficeHeader() {
         </Link>
         <div className="px-5">
           <p className="text-2xl font-black uppercase tracking-wide">MOCK UP</p>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/80">Reports Option 2</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/80">Report 2</p>
         </div>
       </div>
 
