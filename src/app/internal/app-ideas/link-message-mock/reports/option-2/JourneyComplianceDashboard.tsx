@@ -149,7 +149,6 @@ export function JourneyComplianceDashboard() {
   const [startDate, setStartDate] = useState(defaultRange.startDate);
   const [endDate, setEndDate] = useState(defaultRange.endDate);
   const [selectedSite, setSelectedSite] = useState("All sites");
-  const [selectedUser, setSelectedUser] = useState("All users");
   const [selectedStatus, setSelectedStatus] = useState("All journeys");
   const [tableSearch, setTableSearch] = useState("");
   const [downloadOpen, setDownloadOpen] = useState(false);
@@ -160,7 +159,6 @@ export function JourneyComplianceDashboard() {
     return allRows.filter((row) => {
       if (row.date < startDate || row.date > endDate) return false;
       if (selectedSite !== "All sites" && row.operatingSite !== selectedSite) return false;
-      if (selectedUser !== "All users" && row.linkUser !== selectedUser) return false;
       if (selectedStatus !== "All journeys" && row.complianceStatus !== selectedStatus) return false;
       if (!search) return true;
 
@@ -174,17 +172,16 @@ export function JourneyComplianceDashboard() {
         row.complianceReason,
       ].some((value) => value.toLowerCase().includes(search));
     });
-  }, [allRows, endDate, selectedSite, selectedStatus, selectedUser, startDate, tableSearch]);
+  }, [allRows, endDate, selectedSite, selectedStatus, startDate, tableSearch]);
 
   const dashboardRows = useMemo(
     () => allRows.filter((row) => {
       if (row.date < startDate || row.date > endDate) return false;
       if (selectedSite !== "All sites" && row.operatingSite !== selectedSite) return false;
-      if (selectedUser !== "All users" && row.linkUser !== selectedUser) return false;
       if (selectedStatus !== "All journeys" && row.complianceStatus !== selectedStatus) return false;
       return true;
     }),
-    [allRows, endDate, selectedSite, selectedStatus, selectedUser, startDate],
+    [allRows, endDate, selectedSite, selectedStatus, startDate],
   );
 
   const totals = useMemo(() => calculateTotals(dashboardRows), [dashboardRows]);
@@ -214,7 +211,6 @@ export function JourneyComplianceDashboard() {
     setStartDate(range.startDate);
     setEndDate(range.endDate);
     setSelectedSite("All sites");
-    setSelectedUser("All users");
     setSelectedStatus("All journeys");
     setTableSearch("");
   };
@@ -232,7 +228,7 @@ export function JourneyComplianceDashboard() {
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e40000]">Alternative report design</p>
                 <h1 className="mt-2 text-3xl font-black text-[#10203a]">Site &amp; User Journey Compliance Dashboard</h1>
                 <p className="mt-2 max-w-4xl text-sm font-bold leading-6 text-[#4b5563]">
-                  Compare tracked vehicle movements against LINK journey legs, identify missing journeys and investigate compliance by date, operating site and LINK user.
+                  Compare tracked vehicle movements against LINK journey legs, identify missing journeys and investigate compliance by date and operating site.
                 </p>
               </div>
               <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
@@ -256,7 +252,7 @@ export function JourneyComplianceDashboard() {
               <div className="border-b border-white/15 px-4 py-2.5">
                 <p className="text-xs font-black uppercase tracking-[0.15em] text-white">Dashboard filters</p>
               </div>
-              <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
+              <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
                 <FilterSelect label="Reporting period" value={period} onChange={changePeriod}>
                   <option value="7">Last 7 days</option>
                   <option value="14">Last 14 days</option>
@@ -268,10 +264,6 @@ export function JourneyComplianceDashboard() {
                 <FilterSelect label="Operating site / VOC" value={selectedSite} onChange={setSelectedSite}>
                   <option>All sites</option>
                   {operatingSites.map((site) => <option key={site}>{site}</option>)}
-                </FilterSelect>
-                <FilterSelect label="LINK user" value={selectedUser} onChange={setSelectedUser}>
-                  <option>All users</option>
-                  {linkUsers.map((user) => <option key={user}>{user}</option>)}
                 </FilterSelect>
                 <FilterSelect label="Compliance status" value={selectedStatus} onChange={setSelectedStatus}>
                   <option>All journeys</option>
