@@ -31,6 +31,8 @@ type DutyLeg = {
   eta: string;
   from: string;
   to: string;
+  plannedDepartureTs?: number;
+  plannedArrivalTs?: number;
 };
 
 type MockupOption = {
@@ -82,6 +84,15 @@ const DEFAULT_VEHICLE_REG = "MX71ESN";
 const DEFAULT_DCT_MOCKUP: MockupType = "mockup2";
 const DEFAULT_DCT_DUTY_ID = "NWH254";
 
+const mockup2RelativeTimingMinutes = [
+  { departure: 0, arrival: 50 },
+  { departure: 80, arrival: 120 },
+  { departure: 180, arrival: 230 },
+  { departure: 290, arrival: 340 },
+  { departure: 450, arrival: 500 },
+  { departure: 540, arrival: 585 },
+] as const;
+
 const mockup2PlanningDetails: Record<
   number,
   { trailerType: string; planzCode: string; dueToConvey: string }
@@ -104,7 +115,7 @@ const flexLegs: DutyLeg[] = [
   },
 ];
 
-const mockup2Legs: DutyLeg[] = [
+const defaultMockup2Legs: DutyLeg[] = [
   {
     number: 1,
     etd: "20:00",
@@ -273,8 +284,23 @@ export default function HaulierAppMockupClient() {
     Record<number, LegIssueReport>
   >({});
 
+  const [simulationReferenceTs, setSimulationReferenceTs] = useState<
+    number | null
+  >(null);
+  const mockup2Legs = useMemo(
+    () =>
+      simulationReferenceTs === null
+        ? defaultMockup2Legs
+        : buildMockup2Legs(simulationReferenceTs),
+    [simulationReferenceTs]
+  );
+
   const [dctRows, setDctRows] = useState<DctRow[]>(() =>
-    buildPlannedDctRows(DEFAULT_DCT_MOCKUP, DEFAULT_DCT_DUTY_ID)
+    buildPlannedDctRows(
+      DEFAULT_DCT_MOCKUP,
+      DEFAULT_DCT_DUTY_ID,
+      defaultMockup2Legs
+    )
   );
   const [dctSourceMockup, setDctSourceMockup] = useState<MockupType | null>(
     DEFAULT_DCT_MOCKUP
@@ -283,8 +309,30 @@ export default function HaulierAppMockupClient() {
 
   const today = useMemo(() => getTodayDateText(), []);
   const legs = mockup === "mockup2" ? mockup2Legs : flexLegs;
+  const dutyDate =
+    mockup === "mockup2" && mockup2Legs[0]?.plannedDepartureTs
+      ? formatDateOnly(mockup2Legs[0].plannedDepartureTs)
+      : today;
   const currentLeg = legs.find((leg) => leg.number === selectedLeg) || legs[0];
   const isDctScreen = screen === "dct";
+
+  useEffect(() => {
+    const initialiseTimer = window.setTimeout(() => {
+      const referenceTs = Date.now();
+      const nextLegs = buildMockup2Legs(referenceTs);
+
+      setSimulationReferenceTs(referenceTs);
+      setDctRows(
+        buildPlannedDctRows(
+          DEFAULT_DCT_MOCKUP,
+          DEFAULT_DCT_DUTY_ID,
+          nextLegs
+        )
+      );
+    }, 0);
+
+    return () => window.clearTimeout(initialiseTimer);
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined" && screen === "dct") {
@@ -293,8 +341,15 @@ export default function HaulierAppMockupClient() {
   }, [screen]);
 
   function startMockup(nextMockup: MockupType) {
-    const nextLegs = nextMockup === "mockup2" ? mockup2Legs : flexLegs;
+    const nextReferenceTs = Date.now();
+    const nextMockup2Legs = buildMockup2Legs(nextReferenceTs);
+    const nextLegs =
+      nextMockup === "mockup2" ? nextMockup2Legs : flexLegs;
     const nextStatuses: Record<number, LegStatus> = {};
+
+    if (nextMockup === "mockup2") {
+      setSimulationReferenceTs(nextReferenceTs);
+    }
 
     nextLegs.forEach((leg) => {
       nextStatuses[leg.number] = "To do";
@@ -317,7 +372,7 @@ export default function HaulierAppMockupClient() {
     setIssueCategory("");
     setDctSourceMockup(nextMockup);
     setDctDutyId(nextDutyId);
-    setDctRows(buildPlannedDctRows(nextMockup, nextDutyId));
+    setDctRows(buildPlannedDctRows(nextMockup, nextDutyId, nextLegs));
     closeAllModals();
     setScreen("duty");
   }
@@ -350,7 +405,16 @@ export default function HaulierAppMockupClient() {
     setIssueLocation("");
     setIssueManager("");
     setPendingIssueAction(null);
-    setDctRows(buildPlannedDctRows(DEFAULT_DCT_MOCKUP, DEFAULT_DCT_DUTY_ID));
+    const nextReferenceTs = Date.now();
+    const nextMockup2Legs = buildMockup2Legs(nextReferenceTs);
+    setSimulationReferenceTs(nextReferenceTs);
+    setDctRows(
+      buildPlannedDctRows(
+        DEFAULT_DCT_MOCKUP,
+        DEFAULT_DCT_DUTY_ID,
+        nextMockup2Legs
+      )
+    );
     setDctSourceMockup(DEFAULT_DCT_MOCKUP);
     setDctDutyId(DEFAULT_DCT_DUTY_ID);
     closeAllModals();
@@ -698,10 +762,11 @@ export default function HaulierAppMockupClient() {
 
         {screen === "duty" && (
           <DutyScreen
-            today={today}
+            today={dutyDate}
             title={currentTitle}
             dutyId={getDutyIdForMockup(mockup)}
             legs={legs}
+            dctRows={dctRows}
             legStatus={legStatus}
             issueReports={issueReports}
             canOpenLeg={canOpenLeg}
@@ -713,7 +778,7 @@ export default function HaulierAppMockupClient() {
 
         {screen === "origin" && (
           <OriginScreen
-            today={today}
+            today={dutyDate}
             vehicleNumber={vehicleNumber}
             trailerNumber={trailerNumber}
             leg={currentLeg}
@@ -765,7 +830,7 @@ export default function HaulierAppMockupClient() {
 
         {screen === "destination" && (
           <DestinationScreen
-            today={today}
+            today={dutyDate}
             vehicleNumber={vehicleNumber}
             trailerNumber={trailerNumber}
             leg={currentLeg}
@@ -780,7 +845,7 @@ export default function HaulierAppMockupClient() {
 
         {screen === "unload" && (
           <UnloadScreen
-            today={today}
+            today={dutyDate}
             vehicleNumber={vehicleNumber}
             trailerNumber={trailerNumber}
             leg={currentLeg}
@@ -794,7 +859,7 @@ export default function HaulierAppMockupClient() {
 
         {screen === "complete" && (
           <CompleteScreen
-            today={today}
+            today={dutyDate}
             vehicleNumber={vehicleNumber}
             trailerNumber={trailerNumber}
             leg={currentLeg}
@@ -1095,6 +1160,7 @@ function DutyScreen({
   title,
   dutyId,
   legs,
+  dctRows,
   legStatus,
   issueReports,
   canOpenLeg,
@@ -1106,6 +1172,7 @@ function DutyScreen({
   title: string;
   dutyId: string;
   legs: DutyLeg[];
+  dctRows: DctRow[];
   legStatus: (legNumber: number) => LegStatus;
   issueReports: Record<number, LegIssueReport>;
   canOpenLeg: (legNumber: number) => boolean;
@@ -1113,6 +1180,8 @@ function DutyScreen({
   onBack: () => void;
   onBackToMenu: () => void;
 }) {
+  const currentTimeTs = useLiveCurrentTime();
+
   return (
     <>
       <AppHeader title="Haulier Mock Up" left="Back" onBack={onBack} />
@@ -1136,6 +1205,11 @@ function DutyScreen({
               key={leg.number}
               leg={leg}
               status={legStatus(leg.number)}
+              actualDepartureTs={
+                dctRows.find((row) => row.legNumber === leg.number)
+                  ?.departureActualTs ?? null
+              }
+              currentTimeTs={currentTimeTs}
               issueReport={issueReports[leg.number]}
               canOpen={canOpenLeg(leg.number)}
               onClick={() => onOpenLeg(leg.number)}
@@ -1168,12 +1242,16 @@ function OverviewCard({ dutyId = "NWH254" }: { dutyId?: string }) {
 function LegCard({
   leg,
   status,
+  actualDepartureTs = null,
+  currentTimeTs = null,
   issueReport,
   canOpen,
   onClick,
 }: {
   leg: DutyLeg;
   status: LegStatus;
+  actualDepartureTs?: number | null;
+  currentTimeTs?: number | null;
   issueReport?: LegIssueReport;
   canOpen?: boolean;
   onClick?: () => void;
@@ -1214,7 +1292,15 @@ function LegCard({
       </div>
 
       <div className="grid grid-cols-2 gap-4 text-lg font-bold text-[#666]">
-        <p>ETD: {leg.etd}</p>
+        <div>
+          <p>ETD: {leg.etd}</p>
+          <DepartureTimingStatus
+            leg={leg}
+            status={status}
+            actualDepartureTs={actualDepartureTs}
+            currentTimeTs={currentTimeTs}
+          />
+        </div>
         <p className="text-right">ETA: {leg.eta}</p>
       </div>
 
@@ -1243,6 +1329,77 @@ function LegCard({
       )}
     </button>
   );
+}
+
+function DepartureTimingStatus({
+  leg,
+  status,
+  actualDepartureTs,
+  currentTimeTs,
+}: {
+  leg: DutyLeg;
+  status: LegStatus;
+  actualDepartureTs: number | null;
+  currentTimeTs: number | null;
+}) {
+  if (currentTimeTs === null) {
+    return null;
+  }
+
+  const plannedDepartureTs =
+    leg.plannedDepartureTs ??
+    combineDateAndTime(new Date(currentTimeTs), leg.etd, 0);
+
+  if (status === "Completed" && actualDepartureTs === null) {
+    return (
+      <p className="mt-1 text-xs font-black text-[#6b7280]">Leg skipped</p>
+    );
+  }
+
+  const comparisonTs = actualDepartureTs ?? currentTimeTs;
+  const differenceMinutes = Math.floor(
+    (comparisonTs - plannedDepartureTs) / 60000
+  );
+  const isRecorded = actualDepartureTs !== null;
+
+  let label = "On time / early";
+  let className = "text-[#15803d]";
+
+  if (differenceMinutes === 0 && !isRecorded) {
+    label = "Due now";
+    className = "text-[#b45309]";
+  } else if (differenceMinutes > 0 && differenceMinutes <= 9) {
+    label = `${differenceMinutes} min${differenceMinutes === 1 ? "" : "s"} late`;
+    className = "text-[#b45309]";
+  } else if (differenceMinutes >= 10) {
+    label = `${differenceMinutes} mins late`;
+    className = "text-[#dc2626]";
+  }
+
+  if (isRecorded) {
+    label =
+      differenceMinutes <= 0
+        ? "Departed on time / early"
+        : `Departed ${label}`;
+  }
+
+  return (
+    <p className={`mt-1 text-xs font-black ${className}`}>{label}</p>
+  );
+}
+
+function useLiveCurrentTime() {
+  const [currentTimeTs, setCurrentTimeTs] = useState<number | null>(null);
+
+  useEffect(() => {
+    const updateTime = () => setCurrentTimeTs(Date.now());
+    updateTime();
+    const intervalId = window.setInterval(updateTime, 15_000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  return currentTimeTs;
 }
 
 function IssueSummaryOnLeg({
@@ -2340,8 +2497,11 @@ function DctWebScreen({
             <span className="rounded-full border border-[#1f7a34] bg-[#d9f7e5] px-3 py-2 text-[#166534]">
               Green = on time / early
             </span>
+            <span className="rounded-full border border-[#d97706] bg-[#fef3c7] px-3 py-2 text-[#92400e]">
+              Amber = up to 9 minutes late
+            </span>
             <span className="rounded-full border border-[#c62828] bg-[#fecaca] px-3 py-2 text-[#7f1d1d]">
-              Red = late
+              Red = 10+ minutes late
             </span>
             <span className="rounded-full border border-[#6b7280] bg-[#e5e7eb] px-3 py-2 text-[#374151]">
               Grey = not yet populated
@@ -2509,9 +2669,17 @@ function buildIssueReportText({
   return reportParts.join(" | ");
 }
 
-function buildPlannedDctRows(mockupType: MockupType, dutyId: string) {
-  const sourceLegs = mockupType === "mockup2" ? mockup2Legs : flexLegs;
-  const baseDate = new Date();
+function buildPlannedDctRows(
+  mockupType: MockupType,
+  dutyId: string,
+  sourceLegsOverride?: DutyLeg[]
+) {
+  const sourceLegs =
+    sourceLegsOverride ??
+    (mockupType === "mockup2" ? defaultMockup2Legs : flexLegs);
+  const baseDate = new Date(
+    sourceLegs[0]?.plannedDepartureTs ?? Date.now()
+  );
   baseDate.setHours(0, 0, 0, 0);
 
   let previousDepartureTs: number | null = null;
@@ -2526,13 +2694,16 @@ function buildPlannedDctRows(mockupType: MockupType, dutyId: string) {
             dueToConvey: "1C 24 Mail",
           };
 
-    let departureTs = combineDateAndTime(baseDate, leg.etd, 0);
+    let departureTs =
+      leg.plannedDepartureTs ?? combineDateAndTime(baseDate, leg.etd, 0);
 
     while (previousDepartureTs !== null && departureTs <= previousDepartureTs) {
       departureTs += 24 * 60 * 60 * 1000;
     }
 
-    let arrivalTs = combineDateAndTime(new Date(departureTs), leg.eta, 0);
+    let arrivalTs =
+      leg.plannedArrivalTs ??
+      combineDateAndTime(new Date(departureTs), leg.eta, 0);
 
     while (arrivalTs < departureTs) {
       arrivalTs += 24 * 60 * 60 * 1000;
@@ -2605,7 +2776,10 @@ function updateDctForDeparture(
       return {
         ...row,
         status: "In Progress" as DctStatus,
-        departureActualTs: actualTimes.departureActualTs,
+        departureActualTs:
+          context.currentMockup === "mockup2" && row.legNumber === 1
+            ? Date.now()
+            : actualTimes.departureActualTs,
         departureAssets: assetCount,
         arrivalAssets: assetCount,
         yorkBarCodes,
@@ -2655,11 +2829,17 @@ function getTimingCellClass(
     return "bg-[#f3f4f6] text-[#374151]";
   }
 
-  if (actualTs > plannedTs) {
-    return "bg-[#fecaca] text-[#7f1d1d]";
+  const differenceMinutes = Math.round((actualTs - plannedTs) / 60000);
+
+  if (differenceMinutes <= 0) {
+    return "bg-[#bbf7d0] text-[#166534]";
   }
 
-  return "bg-[#bbf7d0] text-[#166534]";
+  if (differenceMinutes <= 9) {
+    return "bg-[#fef3c7] text-[#92400e]";
+  }
+
+  return "bg-[#fecaca] text-[#7f1d1d]";
 }
 
 function getTimingBand(plannedTs: number, actualTs: number | null) {
@@ -2716,6 +2896,35 @@ function formatDelayTotal(totalMinutes: number) {
 
 function normaliseLocationName(value: string) {
   return value.trim().toLowerCase();
+}
+
+function buildMockup2Legs(referenceTs: number): DutyLeg[] {
+  const currentMinute = new Date(referenceTs);
+  currentMinute.setSeconds(0, 0);
+  const firstDepartureTs = currentMinute.getTime() - 10 * 60 * 1000;
+
+  return defaultMockup2Legs.map((leg, index) => {
+    const relativeTiming = mockup2RelativeTimingMinutes[index];
+    const plannedDepartureTs =
+      firstDepartureTs + relativeTiming.departure * 60 * 1000;
+    const plannedArrivalTs =
+      firstDepartureTs + relativeTiming.arrival * 60 * 1000;
+
+    return {
+      ...leg,
+      etd: formatTimeOnly(plannedDepartureTs),
+      eta: formatTimeOnly(plannedArrivalTs),
+      plannedDepartureTs,
+      plannedArrivalTs,
+    };
+  });
+}
+
+function formatTimeOnly(timestamp: number) {
+  const date = new Date(timestamp);
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
 }
 
 function combineDateAndTime(baseDate: Date, timeText: string, dayOffset: number) {
