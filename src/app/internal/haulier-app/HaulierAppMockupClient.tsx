@@ -308,7 +308,11 @@ export default function HaulierAppMockupClient() {
   const [dctDutyId, setDctDutyId] = useState(DEFAULT_DCT_DUTY_ID);
 
   const today = useMemo(() => getTodayDateText(), []);
+  const currentTimeTs = useLiveCurrentTime();
   const legs = mockup === "mockup2" ? mockup2Legs : flexLegs;
+  const currentDctRow = dctRows.find(
+    (row) => row.legNumber === selectedLeg
+  );
   const dutyDate =
     mockup === "mockup2" && mockup2Legs[0]?.plannedDepartureTs
       ? formatDateOnly(mockup2Legs[0].plannedDepartureTs)
@@ -692,12 +696,16 @@ export default function HaulierAppMockupClient() {
         }
 
         const actualTimes = getActualTimesForRow(mockup, row);
+        const departureActualTs =
+          row.departureActualTs ?? actualTimes.departureActualTs;
+        const departureVarianceTs =
+          departureActualTs - row.plannedDepartureTs;
 
         return {
           ...row,
           status: "Complete",
-          departureActualTs: row.departureActualTs ?? actualTimes.departureActualTs,
-          arrivalActualTs: actualTimes.arrivalActualTs,
+          departureActualTs,
+          arrivalActualTs: row.plannedArrivalTs + departureVarianceTs,
           issueCategory: issueText ? issueCategory : "",
           issues: issueText,
           liveTracking: "Yes",
@@ -769,6 +777,7 @@ export default function HaulierAppMockupClient() {
             dctRows={dctRows}
             legStatus={legStatus}
             issueReports={issueReports}
+            currentTimeTs={currentTimeTs}
             canOpenLeg={canOpenLeg}
             onOpenLeg={openLeg}
             onBack={() => setScreen("menu")}
@@ -783,6 +792,9 @@ export default function HaulierAppMockupClient() {
             trailerNumber={trailerNumber}
             leg={currentLeg}
             status={legStatus(selectedLeg)}
+            actualDepartureTs={currentDctRow?.departureActualTs ?? null}
+            actualArrivalTs={currentDctRow?.arrivalActualTs ?? null}
+            currentTimeTs={currentTimeTs}
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("duty")}
             onTask={selectTask}
@@ -836,6 +848,9 @@ export default function HaulierAppMockupClient() {
             leg={currentLeg}
             status={legStatus(selectedLeg)}
             selectedTask={selectedTask}
+            actualDepartureTs={currentDctRow?.departureActualTs ?? null}
+            actualArrivalTs={currentDctRow?.arrivalActualTs ?? null}
+            currentTimeTs={currentTimeTs}
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("origin")}
             onArriveIntoDepot={arriveIntoDepot}
@@ -850,6 +865,9 @@ export default function HaulierAppMockupClient() {
             trailerNumber={trailerNumber}
             leg={currentLeg}
             status={legStatus(selectedLeg)}
+            actualDepartureTs={currentDctRow?.departureActualTs ?? null}
+            actualArrivalTs={currentDctRow?.arrivalActualTs ?? null}
+            currentTimeTs={currentTimeTs}
             issueReport={issueReports[selectedLeg]}
             onBack={() => setScreen("destination")}
             onUnloadAll={() => setUnloadModalOpen(true)}
@@ -865,6 +883,9 @@ export default function HaulierAppMockupClient() {
             leg={currentLeg}
             dutyId={getDutyIdForMockup(mockup)}
             status="Completed"
+            actualDepartureTs={currentDctRow?.departureActualTs ?? null}
+            actualArrivalTs={currentDctRow?.arrivalActualTs ?? null}
+            currentTimeTs={currentTimeTs}
             issueReport={issueReports[selectedLeg]}
             onBackToMenu={() => setScreen("menu")}
           />
@@ -1163,6 +1184,7 @@ function DutyScreen({
   dctRows,
   legStatus,
   issueReports,
+  currentTimeTs,
   canOpenLeg,
   onOpenLeg,
   onBack,
@@ -1175,13 +1197,12 @@ function DutyScreen({
   dctRows: DctRow[];
   legStatus: (legNumber: number) => LegStatus;
   issueReports: Record<number, LegIssueReport>;
+  currentTimeTs: number | null;
   canOpenLeg: (legNumber: number) => boolean;
   onOpenLeg: (legNumber: number) => void;
   onBack: () => void;
   onBackToMenu: () => void;
 }) {
-  const currentTimeTs = useLiveCurrentTime();
-
   return (
     <>
       <AppHeader title="Haulier Mock Up" left="Back" onBack={onBack} />
@@ -1208,6 +1229,10 @@ function DutyScreen({
               actualDepartureTs={
                 dctRows.find((row) => row.legNumber === leg.number)
                   ?.departureActualTs ?? null
+              }
+              actualArrivalTs={
+                dctRows.find((row) => row.legNumber === leg.number)
+                  ?.arrivalActualTs ?? null
               }
               currentTimeTs={currentTimeTs}
               issueReport={issueReports[leg.number]}
@@ -1243,6 +1268,7 @@ function LegCard({
   leg,
   status,
   actualDepartureTs = null,
+  actualArrivalTs = null,
   currentTimeTs = null,
   issueReport,
   canOpen,
@@ -1251,6 +1277,7 @@ function LegCard({
   leg: DutyLeg;
   status: LegStatus;
   actualDepartureTs?: number | null;
+  actualArrivalTs?: number | null;
   currentTimeTs?: number | null;
   issueReport?: LegIssueReport;
   canOpen?: boolean;
@@ -1301,7 +1328,16 @@ function LegCard({
             currentTimeTs={currentTimeTs}
           />
         </div>
-        <p className="text-right">ETA: {leg.eta}</p>
+        <div className="text-right">
+          <p>ETA: {leg.eta}</p>
+          <ArrivalTimingStatus
+            leg={leg}
+            status={status}
+            actualDepartureTs={actualDepartureTs}
+            actualArrivalTs={actualArrivalTs}
+            currentTimeTs={currentTimeTs}
+          />
+        </div>
       </div>
 
       <div className="mt-6 grid grid-cols-[1fr_42px_1fr] items-center gap-2">
@@ -1386,6 +1422,82 @@ function DepartureTimingStatus({
   return (
     <p className={`mt-1 text-xs font-black ${className}`}>{label}</p>
   );
+}
+
+function ArrivalTimingStatus({
+  leg,
+  status,
+  actualDepartureTs,
+  actualArrivalTs,
+  currentTimeTs,
+}: {
+  leg: DutyLeg;
+  status: LegStatus;
+  actualDepartureTs: number | null;
+  actualArrivalTs: number | null;
+  currentTimeTs: number | null;
+}) {
+  if (currentTimeTs === null) {
+    return null;
+  }
+
+  const plannedDepartureTs =
+    leg.plannedDepartureTs ??
+    combineDateAndTime(new Date(currentTimeTs), leg.etd, 0);
+
+  let plannedArrivalTs =
+    leg.plannedArrivalTs ??
+    combineDateAndTime(new Date(plannedDepartureTs), leg.eta, 0);
+
+  while (plannedArrivalTs < plannedDepartureTs) {
+    plannedArrivalTs += 24 * 60 * 60 * 1000;
+  }
+
+  if (status === "Completed" && actualArrivalTs === null) {
+    return (
+      <p className="mt-1 text-xs font-black text-[#6b7280]">Leg skipped</p>
+    );
+  }
+
+  const isRecorded = actualArrivalTs !== null;
+  const departureComparisonTs = actualDepartureTs ?? currentTimeTs;
+  const departureDifferenceMinutes = Math.floor(
+    (departureComparisonTs - plannedDepartureTs) / 60000
+  );
+  const comparisonTs =
+    actualArrivalTs ??
+    plannedArrivalTs + departureDifferenceMinutes * 60 * 1000;
+  const differenceMinutes = Math.floor(
+    (comparisonTs - plannedArrivalTs) / 60000
+  );
+
+  let label = isRecorded
+    ? "Arrived on time / early"
+    : "Arriving on time / early";
+  let className = "text-[#15803d]";
+
+  if (differenceMinutes === 0 && !isRecorded) {
+    label = "Arriving on time";
+    className = "text-[#15803d]";
+  } else if (differenceMinutes > 0 && differenceMinutes <= 9) {
+    label = `${isRecorded ? "Arrived" : "Arriving"} ${formatLateMinutes(
+      differenceMinutes
+    )}`;
+    className = "text-[#b45309]";
+  } else if (differenceMinutes >= 10) {
+    label = `${isRecorded ? "Arrived" : "Arriving"} ${formatLateMinutes(
+      differenceMinutes
+    )}`;
+    className = "text-[#dc2626]";
+  }
+
+  return (
+    <p className={`mt-1 text-xs font-black ${className}`}>{label}</p>
+  );
+}
+
+function formatLateMinutes(differenceMinutes: number) {
+  return `${differenceMinutes} min${differenceMinutes === 1 ? "" : "s"} late`;
 }
 
 function useLiveCurrentTime() {
@@ -1548,6 +1660,9 @@ function OriginScreen({
   trailerNumber,
   leg,
   status,
+  actualDepartureTs,
+  actualArrivalTs,
+  currentTimeTs,
   issueReport,
   onBack,
   onTask,
@@ -1558,6 +1673,9 @@ function OriginScreen({
   trailerNumber: string;
   leg: DutyLeg;
   status: LegStatus;
+  actualDepartureTs: number | null;
+  actualArrivalTs: number | null;
+  currentTimeTs: number | null;
   issueReport?: LegIssueReport;
   onBack: () => void;
   onTask: (task: TaskType) => void;
@@ -1573,7 +1691,14 @@ function OriginScreen({
         <p className="mt-6 text-lg font-bold text-[#333]">{today}</p>
 
         <div className="mt-3">
-          <LegCard leg={leg} status={status} issueReport={issueReport} />
+          <LegCard
+            leg={leg}
+            status={status}
+            actualDepartureTs={actualDepartureTs}
+            actualArrivalTs={actualArrivalTs}
+            currentTimeTs={currentTimeTs}
+            issueReport={issueReport}
+          />
         </div>
 
         <h2 className="mt-7 text-xl font-black text-[#222]">
@@ -1835,6 +1960,9 @@ function DestinationScreen({
   leg,
   status,
   selectedTask,
+  actualDepartureTs,
+  actualArrivalTs,
+  currentTimeTs,
   issueReport,
   onBack,
   onArriveIntoDepot,
@@ -1846,6 +1974,9 @@ function DestinationScreen({
   leg: DutyLeg;
   status: LegStatus;
   selectedTask: TaskType;
+  actualDepartureTs: number | null;
+  actualArrivalTs: number | null;
+  currentTimeTs: number | null;
   issueReport?: LegIssueReport;
   onBack: () => void;
   onArriveIntoDepot: () => void;
@@ -1861,7 +1992,14 @@ function DestinationScreen({
         <p className="mt-6 text-lg font-bold text-[#333]">{today}</p>
 
         <div className="mt-3">
-          <LegCard leg={leg} status={status} issueReport={issueReport} />
+          <LegCard
+            leg={leg}
+            status={status}
+            actualDepartureTs={actualDepartureTs}
+            actualArrivalTs={actualArrivalTs}
+            currentTimeTs={currentTimeTs}
+            issueReport={issueReport}
+          />
         </div>
 
         <h2 className="mt-8 text-2xl font-black text-[#222]">
@@ -1909,6 +2047,9 @@ function UnloadScreen({
   trailerNumber,
   leg,
   status,
+  actualDepartureTs,
+  actualArrivalTs,
+  currentTimeTs,
   issueReport,
   onBack,
   onUnloadAll,
@@ -1919,6 +2060,9 @@ function UnloadScreen({
   trailerNumber: string;
   leg: DutyLeg;
   status: LegStatus;
+  actualDepartureTs: number | null;
+  actualArrivalTs: number | null;
+  currentTimeTs: number | null;
   issueReport?: LegIssueReport;
   onBack: () => void;
   onUnloadAll: () => void;
@@ -1934,7 +2078,14 @@ function UnloadScreen({
         <p className="mt-6 text-lg font-bold text-[#333]">{today}</p>
 
         <div className="mt-3">
-          <LegCard leg={leg} status={status} issueReport={issueReport} />
+          <LegCard
+            leg={leg}
+            status={status}
+            actualDepartureTs={actualDepartureTs}
+            actualArrivalTs={actualArrivalTs}
+            currentTimeTs={currentTimeTs}
+            issueReport={issueReport}
+          />
         </div>
 
         <h2 className="mt-8 text-2xl font-black text-[#222]">
@@ -1977,6 +2128,9 @@ function CompleteScreen({
   leg,
   dutyId,
   status,
+  actualDepartureTs,
+  actualArrivalTs,
+  currentTimeTs,
   issueReport,
   onBackToMenu,
 }: {
@@ -1986,6 +2140,9 @@ function CompleteScreen({
   leg: DutyLeg;
   dutyId: string;
   status: LegStatus;
+  actualDepartureTs: number | null;
+  actualArrivalTs: number | null;
+  currentTimeTs: number | null;
   issueReport?: LegIssueReport;
   onBackToMenu: () => void;
 }) {
@@ -2003,7 +2160,14 @@ function CompleteScreen({
         <p className="mt-8 text-xl font-bold text-[#333]">{today}</p>
 
         <div className="mt-4">
-          <LegCard leg={leg} status={status} issueReport={issueReport} />
+          <LegCard
+            leg={leg}
+            status={status}
+            actualDepartureTs={actualDepartureTs}
+            actualArrivalTs={actualArrivalTs}
+            currentTimeTs={currentTimeTs}
+            issueReport={issueReport}
+          />
         </div>
 
         <VehicleNumberBanner vehicleNumber={vehicleNumber} trailerNumber={trailerNumber} />
