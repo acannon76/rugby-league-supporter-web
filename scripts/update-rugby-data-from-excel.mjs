@@ -64,11 +64,11 @@ const tableDisplayNameByTeam = {
   "Catalans Dragons": "Catalans Dragons",
   "Huddersfield Giants": "Huddersfield Giants",
   "Hull FC": "Hull FC",
-  "Hull KR": "Hull Kingston Rovers",
+  "Hull KR": "Hull KR",
   "Leeds Rhinos": "Leeds Rhinos",
   "Leigh Leopards": "Leigh Leopards",
   "St Helens": "St Helens",
-  "Toulouse Olympique": "Toulouse",
+  "Toulouse Olympique": "Toulouse Olympique",
   "Wakefield Trinity": "Wakefield Trinity",
   "Warrington Wolves": "Warrington Wolves",
   "Wigan Warriors": "Wigan Warriors",
@@ -323,7 +323,7 @@ function buildLeagueTable(rows) {
 
     home.pointsFor += row.homeScore;
     home.pointsAgainst += row.awayScore;
-    away.pointsFor += row.awayScore;s
+    away.pointsFor += row.awayScore;
     away.pointsAgainst += row.homeScore;
 
     if (row.homeScore > row.awayScore) {

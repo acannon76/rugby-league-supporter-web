@@ -1545,11 +1545,13 @@ export const fixturesData: FixtureDay[] = [
     sortDate: "2026-07-16",
     games: [
       {
-        status: "20:00",
+        status: "FT",
         kickOff: "20:00",
         home: "Bradford Bulls",
         away: "Wakefield Trinity",
-        venue: "Odsal Stadium"
+        venue: "Odsal Stadium",
+        homeScore: 12,
+        awayScore: 26
       }
     ]
   },
@@ -1558,18 +1560,22 @@ export const fixturesData: FixtureDay[] = [
     sortDate: "2026-07-17",
     games: [
       {
-        status: "20:00",
+        status: "FT",
         kickOff: "20:00",
         home: "Huddersfield Giants",
         away: "Wigan Warriors",
-        venue: "John Smith's Stadium"
+        venue: "John Smith's Stadium",
+        homeScore: 10,
+        awayScore: 24
       },
       {
-        status: "20:00",
+        status: "FT",
         kickOff: "20:00",
         home: "St Helens",
         away: "Catalans Dragons",
-        venue: "Totally Wicked Stadium"
+        venue: "Totally Wicked Stadium",
+        homeScore: 34,
+        awayScore: 18
       }
     ]
   },
@@ -1578,25 +1584,31 @@ export const fixturesData: FixtureDay[] = [
     sortDate: "2026-07-18",
     games: [
       {
-        status: "15:00",
+        status: "FT",
         kickOff: "15:00",
         home: "Warrington Wolves",
         away: "Hull KR",
-        venue: "Halliwell Jones Stadium"
+        venue: "Halliwell Jones Stadium",
+        homeScore: 34,
+        awayScore: 12
       },
       {
-        status: "17:30",
+        status: "FT",
         kickOff: "17:30",
         home: "Hull FC",
         away: "Leigh Leopards",
-        venue: "MKM Stadium"
+        venue: "MKM Stadium",
+        homeScore: 22,
+        awayScore: 32
       },
       {
-        status: "20:00",
+        status: "FT",
         kickOff: "20:00",
         home: "Toulouse Olympique",
         away: "York Knights",
-        venue: "Stade Ernest Wallon"
+        venue: "Stade Ernest Wallon",
+        homeScore: 30,
+        awayScore: 22
       }
     ]
   },
@@ -1605,11 +1617,13 @@ export const fixturesData: FixtureDay[] = [
     sortDate: "2026-07-19",
     games: [
       {
-        status: "15:00",
+        status: "FT",
         kickOff: "15:00",
         home: "Castleford Tigers",
         away: "Leeds Rhinos",
-        venue: "The Jungle"
+        venue: "The Jungle",
+        homeScore: 36,
+        awayScore: 34
       }
     ]
   },
@@ -1618,11 +1632,13 @@ export const fixturesData: FixtureDay[] = [
     sortDate: "2026-07-23",
     games: [
       {
-        status: "20:00",
+        status: "FT",
         kickOff: "20:00",
         home: "Hull FC",
         away: "Hull KR",
-        venue: "MKM Stadium"
+        venue: "MKM Stadium",
+        homeScore: 20,
+        awayScore: 34
       }
     ]
   },
@@ -1631,18 +1647,22 @@ export const fixturesData: FixtureDay[] = [
     sortDate: "2026-07-24",
     games: [
       {
-        status: "20:00",
+        status: "FT",
         kickOff: "20:00",
         home: "Wakefield Trinity",
         away: "Castleford Tigers",
-        venue: "Belle Vue"
+        venue: "Belle Vue",
+        homeScore: 52,
+        awayScore: 14
       },
       {
-        status: "20:00",
+        status: "FT",
         kickOff: "20:00",
         home: "Wigan Warriors",
         away: "St Helens",
-        venue: "The Brick Community Stadium"
+        venue: "The Brick Community Stadium",
+        homeScore: 38,
+        awayScore: 16
       }
     ]
   },
@@ -1651,25 +1671,31 @@ export const fixturesData: FixtureDay[] = [
     sortDate: "2026-07-25",
     games: [
       {
-        status: "15:00",
+        status: "FT",
         kickOff: "15:00",
         home: "York Knights",
         away: "Huddersfield Giants",
-        venue: "LNER Community Stadium"
+        venue: "LNER Community Stadium",
+        homeScore: 22,
+        awayScore: 24
       },
       {
-        status: "17:30",
+        status: "FT",
         kickOff: "17:30",
         home: "Leigh Leopards",
         away: "Warrington Wolves",
-        venue: "Leigh Sports Village"
+        venue: "Leigh Sports Village",
+        homeScore: 28,
+        awayScore: 12
       },
       {
-        status: "20:00",
+        status: "FT",
         kickOff: "20:00",
         home: "Toulouse Olympique",
         away: "Catalans Dragons",
-        venue: "Stade Ernest Wallon"
+        venue: "Stade Ernest Wallon",
+        homeScore: 16,
+        awayScore: 18
       }
     ]
   },
@@ -1678,11 +1704,13 @@ export const fixturesData: FixtureDay[] = [
     sortDate: "2026-07-26",
     games: [
       {
-        status: "15:00",
+        status: "FT",
         kickOff: "15:00",
         home: "Leeds Rhinos",
         away: "Bradford Bulls",
-        venue: "Headingley Stadium"
+        venue: "Headingley Stadium",
+        homeScore: 42,
+        awayScore: 12
       }
     ]
   },
@@ -1691,11 +1719,13 @@ export const fixturesData: FixtureDay[] = [
     sortDate: "2026-07-30",
     games: [
       {
-        status: "20:00",
+        status: "FT",
         kickOff: "20:00",
         home: "Huddersfield Giants",
         away: "Hull FC",
-        venue: "John Smith's Stadium"
+        venue: "John Smith's Stadium",
+        homeScore: 22,
+        awayScore: 16
       }
     ]
   },
@@ -1704,25 +1734,31 @@ export const fixturesData: FixtureDay[] = [
     sortDate: "2026-07-31",
     games: [
       {
-        status: "20:00",
+        status: "FT",
         kickOff: "20:00",
         home: "Hull KR",
         away: "Bradford Bulls",
-        venue: "Craven Park"
+        venue: "Craven Park",
+        homeScore: 40,
+        awayScore: 16
       },
       {
-        status: "20:00",
+        status: "FT",
         kickOff: "20:00",
         home: "Leeds Rhinos",
         away: "Toulouse Olympique",
-        venue: "Headingley Stadium"
+        venue: "Headingley Stadium",
+        homeScore: 46,
+        awayScore: 0
       },
       {
-        status: "20:00",
+        status: "FT",
         kickOff: "20:00",
         home: "Leigh Leopards",
         away: "Wigan Warriors",
-        venue: "Leigh Sports Village"
+        venue: "Leigh Sports Village",
+        homeScore: 8,
+        awayScore: 20
       }
     ]
   },
@@ -1731,25 +1767,31 @@ export const fixturesData: FixtureDay[] = [
     sortDate: "2026-08-01",
     games: [
       {
-        status: "15:00",
+        status: "FT",
         kickOff: "15:00",
         home: "Castleford Tigers",
         away: "Warrington Wolves",
-        venue: "The Jungle"
+        venue: "The Jungle",
+        homeScore: 18,
+        awayScore: 48
       },
       {
-        status: "17:30",
+        status: "FT",
         kickOff: "17:30",
         home: "York Knights",
         away: "St Helens",
-        venue: "LNER Community Stadium"
+        venue: "LNER Community Stadium",
+        homeScore: 34,
+        awayScore: 32
       },
       {
-        status: "20:00",
+        status: "FT",
         kickOff: "20:00",
         home: "Catalans Dragons",
         away: "Wakefield Trinity",
-        venue: "Stade Gilbert Brutus"
+        venue: "Stade Gilbert Brutus",
+        homeScore: 12,
+        awayScore: 32
       }
     ]
   },
@@ -1762,7 +1804,7 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "20:00",
         home: "St Helens",
         away: "Hull FC",
-        venue: "Totally Wicked Stadium"
+        venue: "The BrewDog Stadium"
       }
     ]
   },
@@ -1775,21 +1817,21 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "20:00",
         home: "Castleford Tigers",
         away: "Hull KR",
-        venue: "The Jungle"
+        venue: "The OneBore Stadium"
       },
       {
         status: "20:00",
         kickOff: "20:00",
         home: "Leigh Leopards",
         away: "York Knights",
-        venue: "Leigh Sports Village"
+        venue: "Leigh Sports Village Stadium"
       },
       {
         status: "20:00",
         kickOff: "20:00",
         home: "Wakefield Trinity",
         away: "Leeds Rhinos",
-        venue: "Belle Vue"
+        venue: "The Diy Kitchens Stadium"
       }
     ]
   },
@@ -1802,14 +1844,7 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "14:00",
         home: "Huddersfield Giants",
         away: "Catalans Dragons",
-        venue: "John Smith's Stadium"
-      },
-      {
-        status: "15:00",
-        kickOff: "15:00",
-        home: "Bradford Bulls",
-        away: "Warrington Wolves",
-        venue: "Odsal Stadium"
+        venue: "The Accu Stadium"
       },
       {
         status: "17:30",
@@ -1817,6 +1852,13 @@ export const fixturesData: FixtureDay[] = [
         home: "Wigan Warriors",
         away: "Toulouse Olympique",
         venue: "The Brick Community Stadium"
+      },
+      {
+        status: "18:30",
+        kickOff: "18:30",
+        home: "Bradford Bulls",
+        away: "Warrington Wolves",
+        venue: "Bartercard Odsal Stadium"
       }
     ]
   },
@@ -1829,14 +1871,14 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "20:00",
         home: "Hull KR",
         away: "Catalans Dragons",
-        venue: "Craven Park"
+        venue: "Sewell Group Craven Park"
       },
       {
         status: "20:00",
         kickOff: "20:00",
         home: "Leeds Rhinos",
         away: "Leigh Leopards",
-        venue: "Headingley Stadium"
+        venue: "AMT Headingley Stadium"
       },
       {
         status: "20:00",
@@ -1869,14 +1911,14 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "15:00",
         home: "Bradford Bulls",
         away: "Wigan Warriors",
-        venue: "Odsal Stadium"
+        venue: "Bartercard Odsal Stadium"
       },
       {
         status: "17:30",
         kickOff: "17:30",
         home: "Wakefield Trinity",
         away: "St Helens",
-        venue: "Belle Vue"
+        venue: "The Diy Kitchens Stadium"
       },
       {
         status: "20:00",
@@ -1896,7 +1938,7 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "20:00",
         home: "Hull KR",
         away: "Warrington Wolves",
-        venue: "Craven Park"
+        venue: "Sewell Group Craven Park"
       }
     ]
   },
@@ -1909,7 +1951,7 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "20:00",
         home: "Leigh Leopards",
         away: "Bradford Bulls",
-        venue: "Leigh Sports Village"
+        venue: "Leigh Sports Village Stadium"
       },
       {
         status: "20:00",
@@ -1929,14 +1971,14 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "15:00",
         home: "St Helens",
         away: "Castleford Tigers",
-        venue: "Totally Wicked Stadium"
+        venue: "The BrewDog Stadium"
       },
       {
         status: "17:30",
         kickOff: "17:30",
         home: "Hull KR",
         away: "Toulouse Olympique",
-        venue: "Craven Park"
+        venue: "Sewell Group Craven Park"
       },
       {
         status: "20:00",
@@ -1989,21 +2031,21 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "20:00",
         home: "Castleford Tigers",
         away: "Catalans Dragons",
-        venue: "The Jungle"
+        venue: "The OneBore Stadium"
       },
       {
         status: "20:00",
         kickOff: "20:00",
         home: "Huddersfield Giants",
         away: "Leigh Leopards",
-        venue: "John Smith's Stadium"
+        venue: "The Accu Stadium"
       },
       {
         status: "20:00",
         kickOff: "20:00",
         home: "St Helens",
         away: "Leeds Rhinos",
-        venue: "Totally Wicked Stadium"
+        venue: "The BrewDog Stadium"
       }
     ]
   },
@@ -2016,7 +2058,7 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "15:00",
         home: "Wakefield Trinity",
         away: "York Knights",
-        venue: "Belle Vue"
+        venue: "The Diy Kitchens Stadium"
       },
       {
         status: "17:30",
@@ -2043,7 +2085,7 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "20:00",
         home: "Bradford Bulls",
         away: "Castleford Tigers",
-        venue: "Odsal Stadium"
+        venue: "Bartercard Odsal Stadium"
       }
     ]
   },
@@ -2063,14 +2105,14 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "20:00",
         home: "Hull KR",
         away: "Huddersfield Giants",
-        venue: "Craven Park"
+        venue: "Sewell Group Craven Park"
       },
       {
         status: "20:00",
         kickOff: "20:00",
         home: "Leigh Leopards",
         away: "St Helens",
-        venue: "Leigh Sports Village"
+        venue: "Leigh Sports Village Stadium"
       }
     ]
   },
@@ -2083,7 +2125,7 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "15:00",
         home: "Wakefield Trinity",
         away: "Warrington Wolves",
-        venue: "Belle Vue"
+        venue: "The Diy Kitchens Stadium"
       },
       {
         status: "17:00",
@@ -2097,7 +2139,7 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "20:00",
         home: "Leeds Rhinos",
         away: "Wigan Warriors",
-        venue: "Headingley Stadium"
+        venue: "AMT Headingley Stadium"
       }
     ]
   },
@@ -2110,28 +2152,28 @@ export const fixturesData: FixtureDay[] = [
         kickOff: "20:00",
         home: "Huddersfield Giants",
         away: "Castleford Tigers",
-        venue: "John Smith's Stadium"
+        venue: "The Accu Stadium"
       },
       {
         status: "20:00",
         kickOff: "20:00",
         home: "Leeds Rhinos",
         away: "Hull FC",
-        venue: "Headingley Stadium"
+        venue: "AMT Headingley Stadium"
       },
       {
         status: "20:00",
         kickOff: "20:00",
         home: "Leigh Leopards",
         away: "Wakefield Trinity",
-        venue: "Leigh Sports Village"
+        venue: "Leigh Sports Village Stadium"
       },
       {
         status: "20:00",
         kickOff: "20:00",
         home: "St Helens",
         away: "Hull KR",
-        venue: "Totally Wicked Stadium"
+        venue: "The BrewDog Stadium"
       },
       {
         status: "20:00",
