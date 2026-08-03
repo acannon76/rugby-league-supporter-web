@@ -16,8 +16,8 @@ type ReportDirectoryItem = {
   description: string;
   href: string;
   status: string;
-  accent: "red" | "green" | "blue";
-  icon: "reports" | "compliance" | "dashboard";
+  accent: "red" | "green" | "blue" | "amber";
+  icon: "reports" | "compliance" | "dashboard" | "plan";
   capabilities: readonly string[];
 };
 
@@ -70,6 +70,17 @@ const reportOptions: readonly ReportDirectoryItem[] = [
     icon: "dashboard",
     capabilities: ["Interactive dashboard", "Enhanced PDF", "Email scheduling"],
   },
+  {
+    number: "Report 4",
+    title: "National vs Local Plan Dashboard",
+    description:
+      "Compare National Duties Planned with the Local Agreed Plan, quantify local changes and review VE/E/OT/L/VL/F performance using fully responsive filters.",
+    href: "/internal/app-ideas/link-message-mock/reports/option-4",
+    status: "Available",
+    accent: "amber",
+    icon: "plan",
+    capabilities: ["Fully filtered dashboard", "Excel, CSV & PDF", "Email scheduling"],
+  },
 ] as const;
 
 const accentStyles = {
@@ -87,6 +98,11 @@ const accentStyles = {
     border: "border-t-[#1756a9]",
     icon: "bg-[#1756a9]",
     badge: "bg-[#edf4ff] text-[#174d91] ring-[#cbdcf5]",
+  },
+  amber: {
+    border: "border-t-[#d97706]",
+    icon: "bg-[#d97706]",
+    badge: "bg-[#fffbeb] text-[#92400e] ring-[#fde68a]",
   },
 } as const;
 
@@ -108,7 +124,7 @@ export default function ReportsOptionsPage() {
               </div>
 
               <div className="grid w-full grid-cols-2 gap-3 sm:w-auto">
-                <DirectorySummary label="Reports available" value="3" />
+                <DirectorySummary label="Reports available" value="4" />
                 <DirectorySummary label="Download formats" value="3" />
               </div>
             </header>
@@ -124,7 +140,7 @@ export default function ReportsOptionsPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 2xl:grid-cols-4">
                 {reportOptions.map((report) => {
                   const styles = accentStyles[report.accent];
 
@@ -196,6 +212,20 @@ function DirectorySummary({ label, value }: { label: string; value: string }) {
 }
 
 function ReportIcon({ type }: { type: ReportDirectoryItem["icon"] }) {
+  if (type === "plan") {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 48 48" className="h-9 w-9 fill-none stroke-current" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8 37h32" />
+        <path d="M12 31V19M22 31V11M32 31V16" />
+        <path d="m10 14 10-5 10 4 8-7" />
+        <circle cx="10" cy="14" r="2" fill="currentColor" stroke="none" />
+        <circle cx="20" cy="9" r="2" fill="currentColor" stroke="none" />
+        <circle cx="30" cy="13" r="2" fill="currentColor" stroke="none" />
+        <circle cx="38" cy="6" r="2" fill="currentColor" stroke="none" />
+      </svg>
+    );
+  }
+
   if (type === "compliance") {
     return (
       <svg aria-hidden="true" viewBox="0 0 48 48" className="h-9 w-9 fill-none stroke-current" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
