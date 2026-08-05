@@ -34,6 +34,7 @@ type HaulierMessage = {
   body: string;
   receivedAt: string;
   read: boolean;
+  direction?: "incoming" | "sent";
 };
 
 type MessagePriorityConfig = {
@@ -347,6 +348,7 @@ export default function HaulierAppMockupClient() {
   const [messages, setMessages] = useState<HaulierMessage[]>([]);
   const [messagesLoaded, setMessagesLoaded] = useState(false);
   const [messageSimulatorOpen, setMessageSimulatorOpen] = useState(false);
+  const [messageComposerOpen, setMessageComposerOpen] = useState(false);
 
   const [simulationReferenceTs, setSimulationReferenceTs] = useState<
     number | null
@@ -383,7 +385,9 @@ export default function HaulierAppMockupClient() {
       : today;
   const currentLeg = legs.find((leg) => leg.number === selectedLeg) || legs[0];
   const isDctScreen = screen === "dct";
-  const unreadMessages = messages.filter((message) => !message.read);
+  const unreadMessages = messages.filter(
+    (message) => message.direction !== "sent" && !message.read
+  );
   const highestUnreadMessage = unreadMessages.reduce<HaulierMessage | null>(
     (highest, message) => {
       if (!highest) {
@@ -540,6 +544,7 @@ export default function HaulierAppMockupClient() {
     setDctDutyId(DEFAULT_DCT_DUTY_ID);
     setMessages([]);
     setMessageSimulatorOpen(false);
+    setMessageComposerOpen(false);
     closeAllModals();
   }
 
@@ -557,11 +562,33 @@ export default function HaulierAppMockupClient() {
       body: config.body,
       receivedAt: formatMessageDateTime(now),
       read: false,
+      direction: "incoming",
     };
 
     setMessages((current) => [nextMessage, ...current]);
     setMessageSimulatorOpen(false);
     setScreen("duty");
+  }
+
+  function sendDriverMessage(
+    priority: MessagePriority,
+    subject: string,
+    body: string
+  ) {
+    const now = new Date();
+    const nextMessage: HaulierMessage = {
+      id: `HAULIER-SENT-${Date.now()}`,
+      priority,
+      subject: subject.trim(),
+      body: body.trim(),
+      receivedAt: formatMessageDateTime(now),
+      read: true,
+      direction: "sent",
+    };
+
+    setMessages((current) => [nextMessage, ...current]);
+    setMessageComposerOpen(false);
+    setScreen("messages");
   }
 
   function markMessageRead(messageId: string) {
@@ -948,6 +975,7 @@ export default function HaulierAppMockupClient() {
             highestUnreadConfig={highestUnreadConfig}
             onOpenDuty={() => setScreen("duty")}
             onOpenMessageSimulator={() => setMessageSimulatorOpen(true)}
+            onOpenComposer={() => setMessageComposerOpen(true)}
             onMarkRead={markMessageRead}
             onMarkAllRead={markAllMessagesRead}
           />
@@ -1129,6 +1157,14 @@ export default function HaulierAppMockupClient() {
           <MessageSimulatorModal
             onCancel={() => setMessageSimulatorOpen(false)}
             onSimulate={simulateIncomingMessage}
+          />
+        )}
+
+        {messageComposerOpen && (
+          <MessageComposerModal
+            dutyId={getDutyIdForMockup(mockup)}
+            onCancel={() => setMessageComposerOpen(false)}
+            onSend={sendDriverMessage}
           />
         )}
       </div>
@@ -1574,6 +1610,7 @@ function MessagesScreen({
   highestUnreadConfig,
   onOpenDuty,
   onOpenMessageSimulator,
+  onOpenComposer,
   onMarkRead,
   onMarkAllRead,
 }: {
@@ -1583,6 +1620,7 @@ function MessagesScreen({
   highestUnreadConfig: MessagePriorityConfig | null;
   onOpenDuty: () => void;
   onOpenMessageSimulator: () => void;
+  onOpenComposer: () => void;
   onMarkRead: (messageId: string) => void;
   onMarkAllRead: () => void;
 }) {
@@ -1607,10 +1645,20 @@ function MessagesScreen({
             <p className="text-xs font-black uppercase tracking-[0.15em] text-[#d6001c]">
               Driver messages
             </p>
-            <h2 className="mt-2 text-2xl font-black text-[#222]">Inbox</h2>
+            <h2 className="mt-2 text-2xl font-black text-[#222]">Messages</h2>
           </div>
 
-          {unreadMessageCount > 0 && (
+          <button
+            type="button"
+            onClick={onOpenComposer}
+            className="rounded-full bg-[#001b3a] px-4 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-white"
+          >
+            Compose
+          </button>
+        </div>
+
+        {unreadMessageCount > 0 && (
+          <div className="mt-3 flex justify-end">
             <button
               type="button"
               onClick={onMarkAllRead}
@@ -1618,8 +1666,8 @@ function MessagesScreen({
             >
               Mark all read
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {messages.length === 0 ? (
           <section className="mt-4 rounded-[18px] border border-[#d0d7df] bg-[#f8fafc] p-5 text-center">
@@ -1628,7 +1676,7 @@ function MessagesScreen({
             </div>
             <h3 className="mt-4 text-lg font-black text-[#222]">No messages</h3>
             <p className="mt-2 text-sm font-bold leading-6 text-[#64748b]">
-              Use the small + test button to replicate an incoming Normal, High or Critical message.
+              Press Compose to send a message to the Transport Office, or use the small + test button to replicate an incoming message.
             </p>
           </section>
         ) : (
@@ -1655,6 +1703,7 @@ function HaulierMessageCard({
   onMarkRead: () => void;
 }) {
   const config = messagePriorityConfigs[message.priority];
+  const isSent = message.direction === "sent";
 
   return (
     <article
@@ -1666,15 +1715,15 @@ function HaulierMessageCard({
         <div
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] text-lg font-black ${config.buttonClass}`}
         >
-          {config.icon}
+          {isSent ? "➤" : config.icon}
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className={`text-[10px] font-black uppercase tracking-[0.12em] ${config.textClass}`}>
-              {message.priority} priority
+              {isSent ? `Sent • ${message.priority} priority` : `${message.priority} priority`}
             </span>
-            {!message.read && (
+            {!isSent && !message.read && (
               <span className="rounded-full bg-[#001b3a] px-2 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-white">
                 Unread
               </span>
@@ -1688,12 +1737,12 @@ function HaulierMessageCard({
             {message.body}
           </p>
           <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.08em] text-[#64748b]">
-            Received {message.receivedAt}
+            {isSent ? "Sent to NWH Transport Office" : "Received"} {message.receivedAt}
           </p>
         </div>
       </div>
 
-      {!message.read && (
+      {!isSent && !message.read && (
         <button
           type="button"
           onClick={onMarkRead}
@@ -1703,6 +1752,139 @@ function HaulierMessageCard({
         </button>
       )}
     </article>
+  );
+}
+
+
+function MessageComposerModal({
+  dutyId,
+  onCancel,
+  onSend,
+}: {
+  dutyId: string;
+  onCancel: () => void;
+  onSend: (priority: MessagePriority, subject: string, body: string) => void;
+}) {
+  const [priority, setPriority] = useState<MessagePriority>("Normal");
+  const [subject, setSubject] = useState(`Duty ${dutyId} message`);
+  const [body, setBody] = useState("");
+  const [validationMessage, setValidationMessage] = useState("");
+  const config = messagePriorityConfigs[priority];
+
+  function handleSend() {
+    if (!subject.trim() || !body.trim()) {
+      setValidationMessage("Please enter a subject and message before sending.");
+      return;
+    }
+
+    onSend(priority, subject, body);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 px-5 py-4">
+      <section className="max-h-[92vh] w-full max-w-[460px] overflow-y-auto rounded-[20px] bg-white p-6 shadow-2xl">
+        <p className="text-xs font-black uppercase tracking-[0.15em] text-[#d6001c]">
+          Driver message
+        </p>
+        <h2 className="mt-2 text-2xl font-black text-[#111]">Compose message</h2>
+        <p className="mt-3 text-sm font-bold leading-6 text-[#64748b]">
+          Send a message for Duty {dutyId} to the NWH Transport Office.
+        </p>
+
+        <div className="mt-5">
+          <label className="text-[10px] font-black uppercase tracking-[0.12em] text-[#64748b]">
+            Priority
+          </label>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {(Object.keys(messagePriorityConfigs) as MessagePriority[]).map(
+              (option) => {
+                const optionConfig = messagePriorityConfigs[option];
+                const selected = priority === option;
+
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => {
+                      setPriority(option);
+                      setValidationMessage("");
+                    }}
+                    className={`rounded-[13px] border-2 px-2 py-3 text-[10px] font-black uppercase tracking-[0.08em] ${
+                      selected
+                        ? `${optionConfig.borderClass} ${optionConfig.panelClass} ${optionConfig.textClass}`
+                        : "border-[#d0d7df] bg-white text-[#475569]"
+                    }`}
+                  >
+                    {option}
+                  </button>
+                );
+              }
+            )}
+          </div>
+        </div>
+
+        <label className="mt-5 block text-[10px] font-black uppercase tracking-[0.12em] text-[#64748b]">
+          Subject
+          <input
+            type="text"
+            value={subject}
+            onChange={(event) => {
+              setSubject(event.target.value);
+              setValidationMessage("");
+            }}
+            maxLength={80}
+            className="mt-2 w-full rounded-[13px] border border-[#cbd5e1] bg-white px-4 py-3 text-sm font-bold normal-case tracking-normal text-[#111] outline-none focus:border-[#001b3a]"
+          />
+        </label>
+
+        <label className="mt-4 block text-[10px] font-black uppercase tracking-[0.12em] text-[#64748b]">
+          Message
+          <textarea
+            value={body}
+            onChange={(event) => {
+              setBody(event.target.value);
+              setValidationMessage("");
+            }}
+            rows={6}
+            maxLength={500}
+            placeholder="Type the message for the Transport Office..."
+            className="mt-2 w-full resize-y rounded-[13px] border border-[#cbd5e1] bg-white px-4 py-3 text-sm font-bold leading-6 normal-case tracking-normal text-[#111] outline-none focus:border-[#001b3a]"
+          />
+        </label>
+
+        <div className={`mt-4 rounded-[13px] border-2 p-3 ${config.borderClass} ${config.panelClass}`}>
+          <p className={`text-[10px] font-black uppercase tracking-[0.1em] ${config.textClass}`}>
+            {priority} priority
+          </p>
+          <p className={`mt-1 text-xs font-bold leading-5 ${config.mutedTextClass}`}>
+            The sent message will use the same {priority.toLowerCase()} priority colour scheme.
+          </p>
+        </div>
+
+        {validationMessage && (
+          <p className="mt-3 rounded-[12px] border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-xs font-bold text-[#b91c1c]">
+            {validationMessage}
+          </p>
+        )}
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-[14px] border-2 border-[#333] bg-white px-4 py-3 text-sm font-black text-[#333]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSend}
+            className={`rounded-[14px] px-4 py-3 text-sm font-black ${config.buttonClass}`}
+          >
+            Send Message
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
