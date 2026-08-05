@@ -353,7 +353,7 @@ function DutyScreen({
 }) {
   return (
     <>
-      <AppHeader title="Manifest" left="Back" onBack={() => window.history.back()} />
+      <AppHeader title="Duty 318" left="Back" onBack={() => window.history.back()} />
 
       <section className="bg-white px-5 py-6 sm:px-8">
         <div className="grid gap-5 md:grid-cols-[1fr_2fr]">
@@ -361,9 +361,9 @@ function DutyScreen({
           <SpecialInstructionsCard />
         </div>
 
-        <h2 className="mt-10 text-2xl font-black text-[#222]">Duty details</h2>
+        <h2 className="mt-5 text-2xl font-black text-[#222]">Duty details</h2>
 
-        <DutyDateHeader today={today} />
+        <DutyDateHeader today={today} extraTopMargin="mt-3" />
 
         <div className="mt-4 space-y-3">
           <DutyActivityBox time="19:30 - 20:00" title="Start Facility" />
