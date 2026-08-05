@@ -392,12 +392,61 @@ export function readStoredManifestState(): StoredManifestState {
   }
 
   try {
-    return JSON.parse(saved) as StoredManifestState;
+    const storedState = JSON.parse(saved) as StoredManifestState;
+    const currentState = moveStoredManifestToToday(storedState);
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState));
+    return currentState;
   } catch {
     const startingState = buildInitialManifestState();
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(startingState));
     return startingState;
   }
+}
+
+function moveStoredManifestToToday(
+  storedState: StoredManifestState
+): StoredManifestState {
+  const firstRow = storedState.dctRows?.[0];
+
+  if (!firstRow || !Number.isFinite(firstRow.plannedDepartureTs)) {
+    return buildInitialManifestState();
+  }
+
+  const storedDate = new Date(firstRow.plannedDepartureTs);
+  storedDate.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const dateShiftMs = today.getTime() - storedDate.getTime();
+
+  if (dateShiftMs === 0) {
+    return storedState;
+  }
+
+  return {
+    ...storedState,
+    dctRows: storedState.dctRows.map((row) => {
+      const plannedDepartureTs = row.plannedDepartureTs + dateShiftMs;
+      const plannedArrivalTs = row.plannedArrivalTs + dateShiftMs;
+
+      return {
+        ...row,
+        startDate: formatDateOnly(plannedDepartureTs),
+        plannedDepartureTs,
+        plannedArrivalTs,
+        departureActualTs:
+          row.departureActualTs === null
+            ? null
+            : row.departureActualTs + dateShiftMs,
+        arrivalActualTs:
+          row.arrivalActualTs === null
+            ? null
+            : row.arrivalActualTs + dateShiftMs,
+      };
+    }),
+  };
 }
 
 export function writeStoredManifestState(state: StoredManifestState) {

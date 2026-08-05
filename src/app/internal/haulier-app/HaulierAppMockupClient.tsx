@@ -11,6 +11,7 @@ type TaskType = "empty" | "repat" | "load" | "skip" | "flex";
 type IssueMode = "arrival" | "skip";
 type PendingIssueAction = "arrival-complete" | null;
 type DctStatus = "Planned" | "In Progress" | "Complete" | "Skip";
+type MessagePriority = "Normal" | "High" | "Critical";
 
 type Screen =
   | "no-duty"
@@ -23,7 +24,29 @@ type Screen =
   | "destination"
   | "unload"
   | "complete"
-  | "dct";
+  | "dct"
+  | "messages";
+
+type HaulierMessage = {
+  id: string;
+  priority: MessagePriority;
+  subject: string;
+  body: string;
+  receivedAt: string;
+  read: boolean;
+};
+
+type MessagePriorityConfig = {
+  label: MessagePriority;
+  icon: string;
+  heading: string;
+  body: string;
+  borderClass: string;
+  panelClass: string;
+  textClass: string;
+  mutedTextClass: string;
+  buttonClass: string;
+};
 
 type DutyLeg = {
   number: number;
@@ -83,6 +106,43 @@ type DctRow = {
 const DEFAULT_VEHICLE_REG = "MX71ESN";
 const DEFAULT_DCT_MOCKUP: MockupType = "mockup2";
 const DEFAULT_DCT_DUTY_ID = "NWH254";
+const HAULIER_MESSAGE_STORAGE_KEY = "haulier-app-incoming-messages-v1";
+
+const messagePriorityConfigs: Record<MessagePriority, MessagePriorityConfig> = {
+  Normal: {
+    label: "Normal",
+    icon: "✉",
+    heading: "Normal Message From NWH Transport",
+    body: "Routine operational message received. Please check the message when safe to do so.",
+    borderClass: "border-[#1d4ed8]",
+    panelClass: "bg-[#dbeafe]",
+    textClass: "text-[#1d4ed8]",
+    mutedTextClass: "text-[#1e3a8a]",
+    buttonClass: "bg-[#1d4ed8] text-white",
+  },
+  High: {
+    label: "High",
+    icon: "▲",
+    heading: "High Priority Message From NWH Transport",
+    body: "High priority operational message received. Please review it before continuing your duty.",
+    borderClass: "border-[#d97706]",
+    panelClass: "bg-[#fef3c7]",
+    textClass: "text-[#b45309]",
+    mutedTextClass: "text-[#92400e]",
+    buttonClass: "bg-[#d97706] text-white",
+  },
+  Critical: {
+    label: "Critical",
+    icon: "!",
+    heading: "Critical Message From NWH Transport",
+    body: "Critical operational message received. Stop when safe and contact the Transport Office immediately.",
+    borderClass: "border-[#dc2626]",
+    panelClass: "bg-[#fee2e2]",
+    textClass: "text-[#b91c1c]",
+    mutedTextClass: "text-[#7f1d1d]",
+    buttonClass: "bg-[#dc2626] text-white",
+  },
+};
 
 const mockup2RelativeTimingMinutes = [
   { departure: 0, arrival: 50 },
@@ -284,6 +344,10 @@ export default function HaulierAppMockupClient() {
     Record<number, LegIssueReport>
   >({});
 
+  const [messages, setMessages] = useState<HaulierMessage[]>([]);
+  const [messagesLoaded, setMessagesLoaded] = useState(false);
+  const [messageSimulatorOpen, setMessageSimulatorOpen] = useState(false);
+
   const [simulationReferenceTs, setSimulationReferenceTs] = useState<
     number | null
   >(null);
@@ -319,6 +383,23 @@ export default function HaulierAppMockupClient() {
       : today;
   const currentLeg = legs.find((leg) => leg.number === selectedLeg) || legs[0];
   const isDctScreen = screen === "dct";
+  const unreadMessages = messages.filter((message) => !message.read);
+  const highestUnreadMessage = unreadMessages.reduce<HaulierMessage | null>(
+    (highest, message) => {
+      if (!highest) {
+        return message;
+      }
+
+      return messagePriorityRank(message.priority) >
+        messagePriorityRank(highest.priority)
+        ? message
+        : highest;
+    },
+    null
+  );
+  const highestUnreadConfig = highestUnreadMessage
+    ? messagePriorityConfigs[highestUnreadMessage.priority]
+    : null;
 
   useEffect(() => {
     const initialiseTimer = window.setTimeout(() => {
@@ -343,6 +424,42 @@ export default function HaulierAppMockupClient() {
       window.scrollTo({ top: 0, behavior: "auto" });
     }
   }, [screen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const loadMessagesTimer = window.setTimeout(() => {
+      const savedMessages = window.localStorage.getItem(
+        HAULIER_MESSAGE_STORAGE_KEY
+      );
+
+      if (savedMessages) {
+        try {
+          const parsedMessages = JSON.parse(savedMessages) as HaulierMessage[];
+          setMessages(Array.isArray(parsedMessages) ? parsedMessages : []);
+        } catch {
+          window.localStorage.removeItem(HAULIER_MESSAGE_STORAGE_KEY);
+        }
+      }
+
+      setMessagesLoaded(true);
+    }, 0);
+
+    return () => window.clearTimeout(loadMessagesTimer);
+  }, []);
+
+  useEffect(() => {
+    if (!messagesLoaded || typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(
+      HAULIER_MESSAGE_STORAGE_KEY,
+      JSON.stringify(messages)
+    );
+  }, [messages, messagesLoaded]);
 
   function startMockup(nextMockup: MockupType) {
     const nextReferenceTs = Date.now();
@@ -421,11 +538,44 @@ export default function HaulierAppMockupClient() {
     );
     setDctSourceMockup(DEFAULT_DCT_MOCKUP);
     setDctDutyId(DEFAULT_DCT_DUTY_ID);
+    setMessages([]);
+    setMessageSimulatorOpen(false);
     closeAllModals();
   }
 
   function handleCompleteReset() {
     resetAllData();
+  }
+
+  function simulateIncomingMessage(priority: MessagePriority) {
+    const config = messagePriorityConfigs[priority];
+    const now = new Date();
+    const nextMessage: HaulierMessage = {
+      id: `HAULIER-MSG-${Date.now()}`,
+      priority,
+      subject: config.heading,
+      body: config.body,
+      receivedAt: formatMessageDateTime(now),
+      read: false,
+    };
+
+    setMessages((current) => [nextMessage, ...current]);
+    setMessageSimulatorOpen(false);
+    setScreen("duty");
+  }
+
+  function markMessageRead(messageId: string) {
+    setMessages((current) =>
+      current.map((message) =>
+        message.id === messageId ? { ...message, read: true } : message
+      )
+    );
+  }
+
+  function markAllMessagesRead() {
+    setMessages((current) =>
+      current.map((message) => ({ ...message, read: true }))
+    );
   }
 
   function legStatus(legNumber: number) {
@@ -782,6 +932,24 @@ export default function HaulierAppMockupClient() {
             onOpenLeg={openLeg}
             onBack={() => setScreen("menu")}
             onBackToMenu={() => setScreen("menu")}
+            unreadMessageCount={unreadMessages.length}
+            highestUnreadMessage={highestUnreadMessage}
+            highestUnreadConfig={highestUnreadConfig}
+            onOpenMessages={() => setScreen("messages")}
+            onOpenMessageSimulator={() => setMessageSimulatorOpen(true)}
+          />
+        )}
+
+        {screen === "messages" && (
+          <MessagesScreen
+            dutyId={getDutyIdForMockup(mockup)}
+            messages={messages}
+            unreadMessageCount={unreadMessages.length}
+            highestUnreadConfig={highestUnreadConfig}
+            onOpenDuty={() => setScreen("duty")}
+            onOpenMessageSimulator={() => setMessageSimulatorOpen(true)}
+            onMarkRead={markMessageRead}
+            onMarkAllRead={markAllMessagesRead}
           />
         )}
 
@@ -954,6 +1122,13 @@ export default function HaulierAppMockupClient() {
             onCancel={() => setIssueModalOpen(false)}
             onSave={saveIssueDetails}
             onNoIssue={continueWithoutIssue}
+          />
+        )}
+
+        {messageSimulatorOpen && (
+          <MessageSimulatorModal
+            onCancel={() => setMessageSimulatorOpen(false)}
+            onSimulate={simulateIncomingMessage}
           />
         )}
       </div>
@@ -1189,6 +1364,11 @@ function DutyScreen({
   onOpenLeg,
   onBack,
   onBackToMenu,
+  unreadMessageCount,
+  highestUnreadMessage,
+  highestUnreadConfig,
+  onOpenMessages,
+  onOpenMessageSimulator,
 }: {
   today: string;
   title: string;
@@ -1202,13 +1382,36 @@ function DutyScreen({
   onOpenLeg: (legNumber: number) => void;
   onBack: () => void;
   onBackToMenu: () => void;
+  unreadMessageCount: number;
+  highestUnreadMessage: HaulierMessage | null;
+  highestUnreadConfig: MessagePriorityConfig | null;
+  onOpenMessages: () => void;
+  onOpenMessageSimulator: () => void;
 }) {
   return (
     <>
       <AppHeader title="Haulier Mock Up" left="Back" onBack={onBack} />
 
+      <HaulierDutyMessageNavigation
+        activeView="duty"
+        unreadMessageCount={unreadMessageCount}
+        highestUnreadConfig={highestUnreadConfig}
+        onOpenDuty={() => undefined}
+        onOpenMessages={onOpenMessages}
+        onOpenMessageSimulator={onOpenMessageSimulator}
+      />
+
       <section className="bg-white px-5 py-6">
         <OverviewCard dutyId={dutyId} />
+
+        {highestUnreadMessage && highestUnreadConfig && (
+          <IncomingMessageAlert
+            message={highestUnreadMessage}
+            config={highestUnreadConfig}
+            unreadMessageCount={unreadMessageCount}
+            onOpenMessages={onOpenMessages}
+          />
+        )}
 
         <h2 className="mt-10 text-2xl font-black text-[#222]">
           Duty details
@@ -1245,6 +1448,324 @@ function DutyScreen({
         <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
     </>
+  );
+}
+
+function HaulierDutyMessageNavigation({
+  activeView,
+  unreadMessageCount,
+  highestUnreadConfig,
+  onOpenDuty,
+  onOpenMessages,
+  onOpenMessageSimulator,
+}: {
+  activeView: "duty" | "messages";
+  unreadMessageCount: number;
+  highestUnreadConfig: MessagePriorityConfig | null;
+  onOpenDuty: () => void;
+  onOpenMessages: () => void;
+  onOpenMessageSimulator: () => void;
+}) {
+  const messageButtonClass = highestUnreadConfig
+    ? highestUnreadConfig.buttonClass
+    : activeView === "messages"
+    ? "bg-[#001b3a] text-white"
+    : "bg-[#e8f7ee] text-[#067a35]";
+
+  return (
+    <nav className="border-b border-[#e5e7eb] bg-white px-5 py-3" aria-label="Haulier app sections">
+      <div className="grid grid-cols-[1fr_1fr_48px] gap-2">
+        <button
+          type="button"
+          onClick={onOpenDuty}
+          disabled={activeView === "duty"}
+          className={`min-h-[44px] rounded-[14px] px-4 py-2 text-xs font-black uppercase tracking-[0.13em] transition ${
+            activeView === "duty"
+              ? "bg-[#001b3a] text-white"
+              : "border border-[#cbd5e1] bg-white text-[#001b3a]"
+          }`}
+        >
+          Duty
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenMessages}
+          disabled={activeView === "messages"}
+          className={`relative min-h-[44px] rounded-[14px] px-3 py-2 text-xs font-black uppercase tracking-[0.1em] transition ${messageButtonClass}`}
+        >
+          {highestUnreadConfig
+            ? `${highestUnreadConfig.label} Message`
+            : "Message"}
+          {unreadMessageCount > 0 && (
+            <span className="absolute -right-2 -top-2 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-[#001b3a] px-1 text-[10px] font-black text-white">
+              {unreadMessageCount}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenMessageSimulator}
+          title="Simulate an incoming message"
+          aria-label="Simulate an incoming message"
+          className="flex h-11 w-12 items-center justify-center rounded-[14px] border-2 border-dashed border-[#d6001c] bg-[#fff0f2] text-xl font-black text-[#d6001c] transition hover:bg-[#ffe1e6]"
+        >
+          +
+        </button>
+      </div>
+      <p className="mt-1 text-right text-[9px] font-black uppercase tracking-[0.12em] text-[#9f1239]">
+        + Test message
+      </p>
+    </nav>
+  );
+}
+
+function IncomingMessageAlert({
+  message,
+  config,
+  unreadMessageCount,
+  onOpenMessages,
+}: {
+  message: HaulierMessage;
+  config: MessagePriorityConfig;
+  unreadMessageCount: number;
+  onOpenMessages: () => void;
+}) {
+  return (
+    <section
+      className={`mt-4 rounded-[18px] border-2 p-4 shadow-sm ${config.borderClass} ${config.panelClass}`}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] text-xl font-black ${config.buttonClass}`}
+        >
+          {config.icon}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className={`text-xs font-black uppercase tracking-[0.12em] ${config.textClass}`}>
+            {message.subject}
+          </p>
+          <p className={`mt-2 text-sm font-bold leading-5 ${config.mutedTextClass}`}>
+            {message.body}
+          </p>
+          <p className={`mt-2 text-[10px] font-black uppercase tracking-[0.08em] ${config.textClass}`}>
+            {unreadMessageCount} unread message{unreadMessageCount === 1 ? "" : "s"}
+          </p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={onOpenMessages}
+        className={`mt-4 w-full rounded-[13px] px-4 py-3 text-xs font-black uppercase tracking-[0.13em] ${config.buttonClass}`}
+      >
+        Open Messages
+      </button>
+    </section>
+  );
+}
+
+function MessagesScreen({
+  dutyId,
+  messages,
+  unreadMessageCount,
+  highestUnreadConfig,
+  onOpenDuty,
+  onOpenMessageSimulator,
+  onMarkRead,
+  onMarkAllRead,
+}: {
+  dutyId: string;
+  messages: HaulierMessage[];
+  unreadMessageCount: number;
+  highestUnreadConfig: MessagePriorityConfig | null;
+  onOpenDuty: () => void;
+  onOpenMessageSimulator: () => void;
+  onMarkRead: (messageId: string) => void;
+  onMarkAllRead: () => void;
+}) {
+  return (
+    <>
+      <AppHeader title="Messages" left="Back" onBack={onOpenDuty} />
+
+      <HaulierDutyMessageNavigation
+        activeView="messages"
+        unreadMessageCount={unreadMessageCount}
+        highestUnreadConfig={highestUnreadConfig}
+        onOpenDuty={onOpenDuty}
+        onOpenMessages={() => undefined}
+        onOpenMessageSimulator={onOpenMessageSimulator}
+      />
+
+      <section className="bg-white px-5 py-6">
+        <OverviewCard dutyId={dutyId} />
+
+        <div className="mt-7 flex items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.15em] text-[#d6001c]">
+              Driver messages
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-[#222]">Inbox</h2>
+          </div>
+
+          {unreadMessageCount > 0 && (
+            <button
+              type="button"
+              onClick={onMarkAllRead}
+              className="rounded-full border border-[#001b3a] bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-[#001b3a]"
+            >
+              Mark all read
+            </button>
+          )}
+        </div>
+
+        {messages.length === 0 ? (
+          <section className="mt-4 rounded-[18px] border border-[#d0d7df] bg-[#f8fafc] p-5 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e8f7ee] text-xl font-black text-[#067a35]">
+              ✉
+            </div>
+            <h3 className="mt-4 text-lg font-black text-[#222]">No messages</h3>
+            <p className="mt-2 text-sm font-bold leading-6 text-[#64748b]">
+              Use the small + test button to replicate an incoming Normal, High or Critical message.
+            </p>
+          </section>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {messages.map((message) => (
+              <HaulierMessageCard
+                key={message.id}
+                message={message}
+                onMarkRead={() => onMarkRead(message.id)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+    </>
+  );
+}
+
+function HaulierMessageCard({
+  message,
+  onMarkRead,
+}: {
+  message: HaulierMessage;
+  onMarkRead: () => void;
+}) {
+  const config = messagePriorityConfigs[message.priority];
+
+  return (
+    <article
+      className={`rounded-[18px] border-2 p-4 shadow-sm ${config.borderClass} ${
+        message.read ? "bg-white" : config.panelClass
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] text-lg font-black ${config.buttonClass}`}
+        >
+          {config.icon}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className={`text-[10px] font-black uppercase tracking-[0.12em] ${config.textClass}`}>
+              {message.priority} priority
+            </span>
+            {!message.read && (
+              <span className="rounded-full bg-[#001b3a] px-2 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-white">
+                Unread
+              </span>
+            )}
+          </div>
+
+          <h3 className="mt-2 text-base font-black leading-5 text-[#222]">
+            {message.subject}
+          </h3>
+          <p className="mt-2 text-sm font-bold leading-6 text-[#475569]">
+            {message.body}
+          </p>
+          <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.08em] text-[#64748b]">
+            Received {message.receivedAt}
+          </p>
+        </div>
+      </div>
+
+      {!message.read && (
+        <button
+          type="button"
+          onClick={onMarkRead}
+          className={`mt-4 w-full rounded-[13px] px-4 py-3 text-xs font-black uppercase tracking-[0.12em] ${config.buttonClass}`}
+        >
+          Mark as Read
+        </button>
+      )}
+    </article>
+  );
+}
+
+function MessageSimulatorModal({
+  onCancel,
+  onSimulate,
+}: {
+  onCancel: () => void;
+  onSimulate: (priority: MessagePriority) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 px-5 py-4">
+      <section className="w-full max-w-[430px] rounded-[20px] bg-white p-6 shadow-2xl">
+        <p className="text-xs font-black uppercase tracking-[0.15em] text-[#d6001c]">
+          Test control
+        </p>
+        <h2 className="mt-2 text-2xl font-black text-[#111]">
+          Simulate incoming message
+        </h2>
+        <p className="mt-3 text-sm font-bold leading-6 text-[#64748b]">
+          Select a priority to show how the Haulier App alerts the driver.
+        </p>
+
+        <div className="mt-5 space-y-3">
+          {(Object.keys(messagePriorityConfigs) as MessagePriority[]).map(
+            (priority) => {
+              const config = messagePriorityConfigs[priority];
+
+              return (
+                <button
+                  key={priority}
+                  type="button"
+                  onClick={() => onSimulate(priority)}
+                  className={`flex w-full items-center gap-3 rounded-[15px] border-2 p-4 text-left ${config.borderClass} ${config.panelClass}`}
+                >
+                  <span
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] text-lg font-black ${config.buttonClass}`}
+                  >
+                    {config.icon}
+                  </span>
+                  <span>
+                    <span className={`block text-sm font-black ${config.textClass}`}>
+                      {priority} priority
+                    </span>
+                    <span className={`mt-1 block text-xs font-bold ${config.mutedTextClass}`}>
+                      {config.body}
+                    </span>
+                  </span>
+                </button>
+              );
+            }
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={onCancel}
+          className="mt-5 w-full rounded-[14px] border-2 border-[#333] bg-white px-4 py-3 text-sm font-black text-[#333]"
+        >
+          Cancel
+        </button>
+      </section>
+    </div>
   );
 }
 
@@ -3143,6 +3664,28 @@ function formatRefreshDateTime(date: Date) {
   const seconds = String(date.getSeconds()).padStart(2, "0");
 
   return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+}
+
+function formatMessageDateTime(date: Date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
+
+function messagePriorityRank(priority: MessagePriority) {
+  if (priority === "Critical") {
+    return 3;
+  }
+
+  if (priority === "High") {
+    return 2;
+  }
+
+  return 1;
 }
 
 function getTodayDateText() {
