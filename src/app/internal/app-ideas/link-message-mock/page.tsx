@@ -964,20 +964,6 @@ export default function LinkMessageMockPage() {
               >
                 All Duties <span className="ml-1 text-xs text-inherit">({duties.length})</span>
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveDutyTab("roadHaulage");
-                  setSelectedDetail("Road Haulage Duties tab opened.");
-                }}
-                className={`rounded-t-md border px-4 py-3 text-sm font-black transition ${
-                  activeDutyTab === "roadHaulage"
-                    ? "border-[#e40000] bg-[#fff5f5] text-[#e40000]"
-                    : "border-[#d9dee6] bg-[#f8fafc] text-[#4b5563] hover:border-[#e40000]"
-                }`}
-              >
-                Road Haulage Duties <span className="ml-1 text-xs text-inherit">({duties.filter((duty) => isRoadHaulageDuty(duty.duty)).length})</span>
-              </button>
             </div>
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex flex-wrap gap-2">
