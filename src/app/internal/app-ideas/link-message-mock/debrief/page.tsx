@@ -731,7 +731,11 @@ function DebriefModal({
   onSave: (row: DebriefRow) => void;
 }) {
   const [form, setForm] = useState<DebriefFormState>(() => buildFormState(row));
+  const [showFollowUp, setShowFollowUp] = useState(false);
   const delayMinutes = getPositiveDelayMinutes(row.plannedEndTs, row.actualEndTs);
+  const hasFollowUpDetails = Boolean(
+    form.actionOwner.trim() || form.followUpDate || form.officeNotes.trim()
+  );
 
   function updateField<Key extends keyof DebriefFormState>(key: Key, value: DebriefFormState[Key]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -859,28 +863,54 @@ function DebriefModal({
           </section>
 
           <section className="mt-4 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 3</p>
-              <h3 className="mt-2 text-2xl font-black text-[#111827]">Follow-up</h3>
-              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                <TextBox label="Action owner" value={form.actionOwner} onChange={(value) => updateField("actionOwner", value)} />
-                <label className="block">
-                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">Follow-up date</span>
-                  <input
-                    type="date"
-                    value={form.followUpDate}
-                    onChange={(event) => updateField("followUpDate", event.target.value)}
-                    className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 3</p>
+                <h3 className="mt-2 text-2xl font-black text-[#111827]">Follow-up</h3>
+                <p className="mt-1 text-sm font-bold text-[#6b7280]">
+                  {hasFollowUpDetails
+                    ? "Follow-up details are recorded for this debrief."
+                    : "Only open this section when further action is required."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFollowUp((current) => !current)}
+                aria-expanded={showFollowUp}
+                className="self-start rounded-lg border border-[#001b3a] bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.1em] text-[#001b3a] transition hover:bg-[#eef4fb] md:self-center"
+              >
+                {showFollowUp
+                  ? "Hide Follow-up"
+                  : hasFollowUpDetails
+                    ? "View / Edit Follow-up"
+                    : "Add Follow-up"}
+              </button>
+            </div>
+
+            {showFollowUp && (
+              <div className="mt-4 border-t border-[#e5e7eb] pt-4">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <TextBox label="Action owner" value={form.actionOwner} onChange={(value) => updateField("actionOwner", value)} />
+                  <label className="block">
+                    <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">Follow-up date</span>
+                    <input
+                      type="date"
+                      value={form.followUpDate}
+                      onChange={(event) => updateField("followUpDate", event.target.value)}
+                      className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
+                    />
+                  </label>
+                </div>
+                <div className="mt-3">
+                  <TextAreaBox
+                    label="Office debrief notes"
+                    value={form.officeNotes}
+                    onChange={(value) => updateField("officeNotes", value)}
+                    placeholder="What the debriefer agreed, what needs chasing, and who owns the next action."
                   />
-                </label>
+                </div>
               </div>
-              <div className="mt-3">
-                <TextAreaBox
-                  label="Office debrief notes"
-                  value={form.officeNotes}
-                  onChange={(value) => updateField("officeNotes", value)}
-                  placeholder="What the debriefer agreed, what needs chasing, and who owns the next action."
-                />
-              </div>
+            )}
           </section>
 
           <section className="mt-4 flex flex-col gap-3 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
