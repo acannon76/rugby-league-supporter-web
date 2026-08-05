@@ -36,6 +36,7 @@ export default function ManifestMockupClient() {
   const [state, setState] = useState<StoredManifestState>(buildInitialManifestState);
 
   const today = useMemo(() => getTodayDateText(), []);
+  const currentTimeTs = useLiveCurrentTime();
   const currentLeg = manifestLegs.find((leg) => leg.number === selectedLeg) || manifestLegs[0];
 
   useEffect(() => {
@@ -203,6 +204,8 @@ export default function ManifestMockupClient() {
             legs={manifestLegs}
             legStatuses={state.legStatuses}
             issueReports={state.issueReports}
+            dctRows={state.dctRows}
+            currentTimeTs={currentTimeTs}
             canOpenLeg={canOpenLeg}
             onOpenLeg={openLeg}
             onReset={resetMockup}
@@ -216,6 +219,8 @@ export default function ManifestMockupClient() {
             leg={currentLeg}
             status={getLegStatus(selectedLeg)}
             issueReport={state.issueReports[selectedLeg]}
+            dctRow={state.dctRows.find((row) => row.legNumber === selectedLeg)}
+            currentTimeTs={currentTimeTs}
             onBack={() => setScreen("duty")}
             onArriveIntoDepot={openArrivalIssueModal}
           />
@@ -227,6 +232,8 @@ export default function ManifestMockupClient() {
             trailerNumber={state.trailerNumber}
             legStatuses={state.legStatuses}
             issueReports={state.issueReports}
+            dctRows={state.dctRows}
+            currentTimeTs={currentTimeTs}
             onReset={resetMockup}
           />
         )}
@@ -285,8 +292,8 @@ function AppHeader({
   onBack?: () => void;
 }) {
   return (
-    <header className="flex h-[72px] items-center justify-between border-b border-[#e5e7eb] bg-white px-5">
-      <div className="w-[120px]">
+    <header className="flex min-h-[82px] items-center justify-between border-b border-[#e5e7eb] bg-white px-5 py-2">
+      <div className="w-[120px] shrink-0">
         {left && onBack && (
           <button
             type="button"
@@ -298,12 +305,28 @@ function AppHeader({
         )}
       </div>
 
-      <h1 className="text-xl font-black text-[#222]">{title}</h1>
+      <div className="min-w-0 flex-1 text-center">
+        <h1 className="text-xl font-black text-[#222]">{title}</h1>
+        <LastRefreshedText />
+      </div>
 
-      <div className="w-[120px] text-right text-3xl font-black text-[#333]">
+      <div className="w-[120px] shrink-0 text-right text-3xl font-black text-[#333]">
         ⋮
       </div>
     </header>
+  );
+}
+
+function LastRefreshedText() {
+  const [lastRefreshed] = useState(() => formatRefreshDateTime(new Date()));
+
+  return (
+    <p
+      suppressHydrationWarning
+      className="mt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#6b7280]"
+    >
+      Last refreshed: {lastRefreshed}
+    </p>
   );
 }
 
@@ -312,6 +335,8 @@ function DutyScreen({
   legs,
   legStatuses,
   issueReports,
+  dctRows,
+  currentTimeTs,
   canOpenLeg,
   onOpenLeg,
   onReset,
@@ -320,6 +345,8 @@ function DutyScreen({
   legs: DutyLeg[];
   legStatuses: Record<number, LegStatus>;
   issueReports: Record<number, LegIssueReport>;
+  dctRows: StoredManifestState["dctRows"];
+  currentTimeTs: number | null;
   canOpenLeg: (legNumber: number) => boolean;
   onOpenLeg: (legNumber: number) => void;
   onReset: () => void;
@@ -347,6 +374,8 @@ function DutyScreen({
               leg={leg}
               status={legStatuses[leg.number] || "To do"}
               issueReport={issueReports[leg.number]}
+              dctRow={dctRows.find((row) => row.legNumber === leg.number)}
+              currentTimeTs={currentTimeTs}
               canOpen={canOpenLeg(leg.number)}
               onOpenLeg={onOpenLeg}
             />
@@ -368,6 +397,8 @@ function DestinationScreen({
   leg,
   status,
   issueReport,
+  dctRow,
+  currentTimeTs,
   onBack,
   onArriveIntoDepot,
 }: {
@@ -376,6 +407,8 @@ function DestinationScreen({
   leg: DutyLeg;
   status: LegStatus;
   issueReport?: LegIssueReport;
+  dctRow?: StoredManifestState["dctRows"][number];
+  currentTimeTs: number | null;
   onBack: () => void;
   onArriveIntoDepot: () => void;
 }) {
@@ -389,7 +422,13 @@ function DestinationScreen({
         <p className="mt-6 text-lg font-bold text-[#333]">{today}</p>
 
         <div className="mt-3">
-          <LegCard leg={leg} status={status} issueReport={issueReport} />
+          <LegCard
+            leg={leg}
+            status={status}
+            issueReport={issueReport}
+            dctRow={dctRow}
+            currentTimeTs={currentTimeTs}
+          />
         </div>
 
         <h2 className="mt-8 text-2xl font-black text-[#222]">
@@ -420,12 +459,16 @@ function CompleteScreen({
   trailerNumber,
   legStatuses,
   issueReports,
+  dctRows,
+  currentTimeTs,
   onReset,
 }: {
   today: string;
   trailerNumber: string;
   legStatuses: Record<number, LegStatus>;
   issueReports: Record<number, LegIssueReport>;
+  dctRows: StoredManifestState["dctRows"];
+  currentTimeTs: number | null;
   onReset: () => void;
 }) {
   return (
@@ -453,6 +496,8 @@ function CompleteScreen({
               leg={leg}
               status={legStatuses[leg.number] || "Completed"}
               issueReport={issueReports[leg.number]}
+              dctRow={dctRows.find((row) => row.legNumber === leg.number)}
+              currentTimeTs={currentTimeTs}
             />
           ))}
 
@@ -499,12 +544,16 @@ function DutySequenceBlock({
   leg,
   status,
   issueReport,
+  dctRow,
+  currentTimeTs = null,
   canOpen,
   onOpenLeg,
 }: {
   leg: DutyLeg;
   status: LegStatus;
   issueReport?: LegIssueReport;
+  dctRow?: StoredManifestState["dctRows"][number];
+  currentTimeTs?: number | null;
   canOpen?: boolean;
   onOpenLeg?: (legNumber: number) => void;
 }) {
@@ -516,6 +565,8 @@ function DutySequenceBlock({
         leg={leg}
         status={status}
         issueReport={issueReport}
+        dctRow={dctRow}
+        currentTimeTs={currentTimeTs}
         canOpen={canOpen}
         onClick={onOpenLeg ? () => onOpenLeg(leg.number) : undefined}
       />
@@ -589,9 +640,20 @@ function SpecialInstructionsCard() {
         Special Instructions
       </p>
       <ul className="mt-4 space-y-3 text-sm font-black leading-6 text-[#222]">
-        <li>Enter the trailer number before starting each leg.</li>
-        <li>Complete legs in order from Leg 1 to Leg 6.</li>
-        <li>Record any issue, route change or arrival delay before completing the leg.</li>
+        <li>Safe Systems of Work MUST be followed.</li>
+        <li>
+          Uniforms must be worn at all times. This includes Toetector shoes and
+          reflective jackets.
+        </li>
+        <li>CPC-issued diversions MUST be followed.</li>
+        <li>
+          All drivers must refuel their vehicles at the end of the duty. If unable
+          to do so, report this to the Shift Manager.
+        </li>
+        <li>
+          In case of an emergency or query, please contact the Distribution Shift
+          Manager / Traffic Office.
+        </li>
       </ul>
     </section>
   );
@@ -601,12 +663,16 @@ function LegCard({
   leg,
   status,
   issueReport,
+  dctRow,
+  currentTimeTs = null,
   canOpen,
   onClick,
 }: {
   leg: DutyLeg;
   status: LegStatus;
   issueReport?: LegIssueReport;
+  dctRow?: StoredManifestState["dctRows"][number];
+  currentTimeTs?: number | null;
   canOpen?: boolean;
   onClick?: () => void;
 }) {
@@ -645,7 +711,16 @@ function LegCard({
             <p className="mt-2 text-base font-black uppercase leading-tight text-[#111] sm:text-lg">
               {leg.from}
             </p>
-            <p className="mt-2 text-base font-bold text-[#666]">ETD: {leg.etd}</p>
+            <p className="mt-2 text-base font-bold text-[#666]">
+              Planned Departure Time: {leg.etd}
+            </p>
+            <DepartureTimingStatus
+              leg={leg}
+              status={status}
+              plannedDepartureTs={dctRow?.plannedDepartureTs}
+              actualDepartureTs={dctRow?.departureActualTs ?? null}
+              currentTimeTs={currentTimeTs}
+            />
           </div>
 
           <div className="hidden text-center text-3xl font-black text-[#d6d6d6] md:block">
@@ -659,7 +734,18 @@ function LegCard({
             <p className="mt-2 text-base font-black uppercase leading-tight text-[#111] sm:text-lg">
               {leg.to}
             </p>
-            <p className="mt-2 text-base font-bold text-[#666]">ETA: {leg.eta}</p>
+            <p className="mt-2 text-base font-bold text-[#666]">
+              Planned Arrival Time: {leg.eta}
+            </p>
+            <ArrivalTimingStatus
+              leg={leg}
+              status={status}
+              plannedDepartureTs={dctRow?.plannedDepartureTs}
+              plannedArrivalTs={dctRow?.plannedArrivalTs}
+              actualDepartureTs={dctRow?.departureActualTs ?? null}
+              actualArrivalTs={dctRow?.arrivalActualTs ?? null}
+              currentTimeTs={currentTimeTs}
+            />
           </div>
         </div>
       </div>
@@ -686,6 +772,157 @@ function LegCard({
       )}
     </button>
   );
+}
+
+function DepartureTimingStatus({
+  leg,
+  status,
+  plannedDepartureTs,
+  actualDepartureTs,
+  currentTimeTs,
+}: {
+  leg: DutyLeg;
+  status: LegStatus;
+  plannedDepartureTs?: number;
+  actualDepartureTs: number | null;
+  currentTimeTs: number | null;
+}) {
+  if (currentTimeTs === null) {
+    return null;
+  }
+
+  const plannedTs =
+    plannedDepartureTs ?? combineDateAndTime(new Date(currentTimeTs), leg.etd);
+
+  if (status === "Completed" && actualDepartureTs === null) {
+    return <p className="mt-1 text-xs font-black text-[#6b7280]">Leg skipped</p>;
+  }
+
+  const comparisonTs = actualDepartureTs ?? currentTimeTs;
+  const differenceMinutes = Math.floor((comparisonTs - plannedTs) / 60000);
+  const isRecorded = actualDepartureTs !== null;
+
+  let label = "On time / early";
+  let className = "text-[#15803d]";
+
+  if (differenceMinutes === 0 && !isRecorded) {
+    label = "Due now";
+    className = "text-[#b45309]";
+  } else if (differenceMinutes > 0 && differenceMinutes <= 9) {
+    label = `${formatLateMinutes(differenceMinutes)}`;
+    className = "text-[#b45309]";
+  } else if (differenceMinutes >= 10) {
+    label = `${formatLateMinutes(differenceMinutes)}`;
+    className = "text-[#dc2626]";
+  }
+
+  if (isRecorded) {
+    label =
+      differenceMinutes <= 0
+        ? "Departed on time / early"
+        : `Departed ${label}`;
+  }
+
+  return <p className={`mt-1 text-xs font-black ${className}`}>{label}</p>;
+}
+
+function ArrivalTimingStatus({
+  leg,
+  status,
+  plannedDepartureTs,
+  plannedArrivalTs,
+  actualDepartureTs,
+  actualArrivalTs,
+  currentTimeTs,
+}: {
+  leg: DutyLeg;
+  status: LegStatus;
+  plannedDepartureTs?: number;
+  plannedArrivalTs?: number;
+  actualDepartureTs: number | null;
+  actualArrivalTs: number | null;
+  currentTimeTs: number | null;
+}) {
+  if (currentTimeTs === null) {
+    return null;
+  }
+
+  const departureTs =
+    plannedDepartureTs ?? combineDateAndTime(new Date(currentTimeTs), leg.etd);
+  let arrivalTs =
+    plannedArrivalTs ?? combineDateAndTime(new Date(departureTs), leg.eta);
+
+  while (arrivalTs < departureTs) {
+    arrivalTs += 24 * 60 * 60 * 1000;
+  }
+
+  if (status === "Completed" && actualArrivalTs === null) {
+    return <p className="mt-1 text-xs font-black text-[#6b7280]">Leg skipped</p>;
+  }
+
+  const isRecorded = actualArrivalTs !== null;
+  const departureComparisonTs = actualDepartureTs ?? currentTimeTs;
+  const departureDifferenceMinutes = Math.floor(
+    (departureComparisonTs - departureTs) / 60000
+  );
+  const comparisonTs =
+    actualArrivalTs ?? arrivalTs + departureDifferenceMinutes * 60 * 1000;
+  const differenceMinutes = Math.floor((comparisonTs - arrivalTs) / 60000);
+
+  let label = isRecorded ? "Arrived on time / early" : "Arriving on time / early";
+  let className = "text-[#15803d]";
+
+  if (differenceMinutes === 0 && !isRecorded) {
+    label = "Arriving on time";
+  } else if (differenceMinutes > 0 && differenceMinutes <= 9) {
+    label = `${isRecorded ? "Arrived" : "Arriving"} ${formatLateMinutes(
+      differenceMinutes
+    )}`;
+    className = "text-[#b45309]";
+  } else if (differenceMinutes >= 10) {
+    label = `${isRecorded ? "Arrived" : "Arriving"} ${formatLateMinutes(
+      differenceMinutes
+    )}`;
+    className = "text-[#dc2626]";
+  }
+
+  return <p className={`mt-1 text-xs font-black ${className}`}>{label}</p>;
+}
+
+function formatLateMinutes(differenceMinutes: number) {
+  return `${differenceMinutes} min${differenceMinutes === 1 ? "" : "s"} late`;
+}
+
+function combineDateAndTime(baseDate: Date, timeText: string) {
+  const [hours, minutes] = timeText.split(":").map(Number);
+  const next = new Date(baseDate);
+  next.setHours(hours, minutes, 0, 0);
+  return next.getTime();
+}
+
+function useLiveCurrentTime() {
+  const [currentTimeTs, setCurrentTimeTs] = useState<number | null>(null);
+
+  useEffect(() => {
+    const updateTime = () => setCurrentTimeTs(Date.now());
+    updateTime();
+    const intervalId = window.setInterval(updateTime, 15_000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  return currentTimeTs;
+}
+
+function formatRefreshDateTime(date: Date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+
+  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 }
 
 function getSpecialInstruction(legNumber: number) {
