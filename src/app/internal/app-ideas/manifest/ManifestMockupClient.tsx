@@ -712,7 +712,7 @@ function LegCard({
               {leg.from}
             </p>
             <p className="mt-2 text-base font-bold text-[#666]">
-              Planned Departure Time: {leg.etd}
+              Planned Dep Time: {leg.etd}
             </p>
             <DepartureTimingStatus
               leg={leg}
@@ -735,7 +735,7 @@ function LegCard({
               {leg.to}
             </p>
             <p className="mt-2 text-base font-bold text-[#666]">
-              Planned Arrival Time: {leg.eta}
+              Planned Arr Time: {leg.eta}
             </p>
             <ArrivalTimingStatus
               leg={leg}
