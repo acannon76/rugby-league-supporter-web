@@ -100,8 +100,6 @@ type DebriefFormState = {
   debriefOutcome: DebriefOutcome;
   issueCategory: string;
   driverNotes: string;
-  depAssets: number;
-  arrAssets: number;
   lateReason: string;
   actionOwner: string;
   followUpDate: string;
@@ -749,8 +747,6 @@ function DebriefModal({
       debriefOutcome: form.debriefOutcome,
       issueCategory: form.issueCategory,
       driverNotes: form.driverNotes,
-      depAssets: form.depAssets,
-      arrAssets: form.arrAssets,
       lateReason: form.lateReason,
       actionOwner: form.actionOwner,
       followUpDate: form.followUpDate,
@@ -806,7 +802,7 @@ function DebriefModal({
         </div>
 
         <div className="overflow-y-auto p-4">
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
             <div className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
@@ -828,8 +824,12 @@ function DebriefModal({
                     <ReadOnlyBox label="Start location" value={row.startLocation} />
                     <ReadOnlyBox label="Planned start" value={formatDateTime(row.plannedStartTs)} />
                     <ReadOnlyBox label="Actual start" value={formatDateTime(row.actualStartTs)} />
-                    <ReadOnlyBox label="Start difference" value={formatTimeDifference(row.plannedStartTs, row.actualStartTs)} />
-                    <ReadOnlyBox label="DTT" value={getStartToTimeCode(row)} />
+                    <ReadOnlyBox
+                      label="Start difference"
+                      value={formatTimeDifference(row.plannedStartTs, row.actualStartTs)}
+                      toneCode={getStartToTimeCode(row)}
+                    />
+                    <ReadOnlyBox label="DTT" value={getStartToTimeCode(row)} toneCode={getStartToTimeCode(row)} />
                   </div>
                 </div>
 
@@ -839,8 +839,12 @@ function DebriefModal({
                     <ReadOnlyBox label="Final destination" value={row.finalDestination} />
                     <ReadOnlyBox label="Planned finish" value={formatDateTime(row.plannedEndTs)} />
                     <ReadOnlyBox label="Actual finish" value={formatDateTime(row.actualEndTs)} />
-                    <ReadOnlyBox label="Finish difference" value={formatTimeDifference(row.plannedEndTs, row.actualEndTs)} />
-                    <ReadOnlyBox label="ATT" value={getFinishToTimeCode(row)} />
+                    <ReadOnlyBox
+                      label="Finish difference"
+                      value={formatTimeDifference(row.plannedEndTs, row.actualEndTs)}
+                      toneCode={getFinishToTimeCode(row)}
+                    />
+                    <ReadOnlyBox label="ATT" value={getFinishToTimeCode(row)} toneCode={getFinishToTimeCode(row)} />
                   </div>
                 </div>
               </div>
@@ -852,6 +856,7 @@ function DebriefModal({
               <div className="mt-4 grid grid-cols-1 gap-3">
                 <SummaryCard label="Finish delay" value={delayMinutes > 0 ? `${delayMinutes} mins` : "On time"} />
                 <SummaryCard label="Current status" value={form.debriefStatus} />
+                <SummaryTextCard label="Driver issue notes" value={form.driverNotes} />
               </div>
             </div>
           </section>
@@ -864,16 +869,16 @@ function DebriefModal({
               <SelectBox label="Debrief status" value={form.debriefStatus} options={debriefStatuses} onChange={(value) => updateField("debriefStatus", value as DebriefStatus)} />
               <SelectBox label="Outcome" value={form.debriefOutcome} options={debriefOutcomes} onChange={(value) => updateField("debriefOutcome", value as DebriefOutcome)} />
               <SelectBox label="Issue category" value={form.issueCategory} options={issueCategories} onChange={(value) => updateField("issueCategory", value)} />
-              <NumberBox label="Departure assets" value={form.depAssets} onChange={(value) => updateField("depAssets", value)} />
-              <NumberBox label="Arrival assets" value={form.arrAssets} onChange={(value) => updateField("arrAssets", value)} />
+              <ReadOnlyBox label="Departure assets" value={String(row.depAssets)} />
+              <ReadOnlyBox label="Arrival assets" value={String(row.arrAssets)} />
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
               <TextAreaBox
-                label="Late / timing reason"
+                label="Debrief notes"
                 value={form.lateReason}
                 onChange={(value) => updateField("lateReason", value)}
-                placeholder="Explain delay reason, early departure, waiting time, missing driver, site delay etc."
+                placeholder="Add any notes recorded during the debrief."
               />
               <TextAreaBox
                 label="Driver issue notes"
@@ -1039,6 +1044,19 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
   );
 }
 
+function SummaryTextCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[12px] border border-[#d6dee8] bg-[#f8fafc] p-4">
+      <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#64748b]">
+        {label}
+      </p>
+      <p className="mt-2 whitespace-pre-wrap break-words text-sm font-bold leading-5 text-[#172033]">
+        {value.trim() || "No driver issue notes recorded."}
+      </p>
+    </div>
+  );
+}
+
 function DebriefHeader({
   label,
   headerClass,
@@ -1055,14 +1073,24 @@ function DebriefHeader({
   );
 }
 
-function ReadOnlyBox({ label, value }: { label: string; value: string }) {
+function ReadOnlyBox({
+  label,
+  value,
+  toneCode,
+}: {
+  label: string;
+  value: string;
+  toneCode?: ToTimeCode | "";
+}) {
+  const toneClass = toneCode ? getToTimeInputClass(toneCode) : "border-[#ccd5e2] bg-[#f8fafc] text-[#111827]";
+
   return (
     <label className="block">
       <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">{label}</span>
       <input
         value={value}
         readOnly
-        className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-[#f8fafc] px-3 text-sm font-black text-[#111827] outline-none"
+        className={`mt-2 h-11 w-full rounded-lg border px-3 text-sm font-black outline-none ${toneClass}`}
       />
     </label>
   );
@@ -1110,28 +1138,6 @@ function TextBox({
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
-      />
-    </label>
-  );
-}
-
-function NumberBox({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <label className="block">
-      <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">{label}</span>
-      <input
-        type="number"
-        value={value}
-        onChange={(event) => onChange(Number(event.target.value))}
         className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
       />
     </label>
@@ -1360,6 +1366,22 @@ function getToTimeCardClass(code: ToTimeCode) {
   return "border-[#15803d] bg-[#ecfdf3] text-[#166534]";
 }
 
+function getToTimeInputClass(code: ToTimeCode | "") {
+  if (!code) {
+    return "border-[#ccd5e2] bg-[#f8fafc] text-[#6b7280]";
+  }
+
+  if (code === "F") {
+    return "border-[#991b1b] bg-[#fee2e2] text-[#7f1d1d]";
+  }
+
+  if (code === "VL" || code === "L") {
+    return "border-[#f5a400] bg-[#fff7e6] text-[#8a5200]";
+  }
+
+  return "border-[#15803d] bg-[#ecfdf3] text-[#166534]";
+}
+
 function getToTimeCellClass(code: ToTimeCode | "") {
   if (!code) {
     return "bg-[#f3f4f6] text-[#6b7280]";
@@ -1515,7 +1537,7 @@ function buildInitialDebriefRows(): DebriefRow[] {
       debriefedAt: debriefStatus === "Debriefed" ? new Date().toISOString() : "",
       actionOwner: actionRequired ? "Transport Office" : "",
       followUpDate: actionRequired ? addDaysToInputDate(dutyDate, 1) : "",
-      lateReason: actualEndDelay > 10 ? buildLateReason(issueCategory) : "On time or within tolerance.",
+      lateReason: "",
       officeNotes: actionRequired ? `Requires office review before the duty can be fully closed.${division === "Contractor" ? " Pie Haulage contractor duty to be confirmed with RH." : ""}` : division === "Contractor" ? "Pie Haulage contractor duty." : "",
       checks: buildInitialChecks(debriefStatus, pod318Status),
     };
@@ -1591,12 +1613,14 @@ function buildDriverNotes(issueCategory: string, division: Division) {
     : "Driver reported an exception that needs office review.";
 }
 
-function buildLateReason(issueCategory: string) {
-  if (issueCategory === "No Issue") {
-    return "Minor timing difference only.";
-  }
+function normaliseDebriefNotes(value: string) {
+  const trimmedValue = value.trim();
+  const isOldAutomaticNote =
+    trimmedValue === "Minor timing difference only." ||
+    trimmedValue === "On time or within tolerance." ||
+    trimmedValue.endsWith("caused the timing exception. Office debriefer to validate evidence and notes.");
 
-  return `${issueCategory} caused the timing exception. Office debriefer to validate evidence and notes.`;
+  return isOldAutomaticNote ? "" : value;
 }
 
 function buildFormState(row: DebriefRow): DebriefFormState {
@@ -1605,9 +1629,7 @@ function buildFormState(row: DebriefRow): DebriefFormState {
     debriefOutcome: row.debriefOutcome,
     issueCategory: row.issueCategory,
     driverNotes: row.driverNotes,
-    depAssets: row.depAssets,
-    arrAssets: row.arrAssets,
-    lateReason: row.lateReason,
+    lateReason: normaliseDebriefNotes(row.lateReason),
     actionOwner: row.actionOwner,
     followUpDate: row.followUpDate,
     officeNotes: row.officeNotes,
@@ -1747,7 +1769,7 @@ function buildDummyDebriefRows(savedRowMap: Map<string, DebriefRow>) {
         debriefedAt: overlayAllowed ? savedRow.debriefedAt : "",
         actionOwner: overlayAllowed ? savedRow.actionOwner : issueCategory && issueCategory !== "No Issue" ? "Transport Office" : "",
         followUpDate: overlayAllowed ? savedRow.followUpDate : "",
-        lateReason: overlayAllowed ? savedRow.lateReason : isCompleted ? buildLateReason(issueCategory || "No Issue") : "",
+        lateReason: overlayAllowed ? normaliseDebriefNotes(savedRow.lateReason) : "",
         officeNotes: overlayAllowed ? savedRow.officeNotes : issueCategory && issueCategory !== "No Issue" ? "Requires debrief follow-up." : "",
         checks: overlayAllowed ? savedRow.checks : buildInitialChecks("Awaiting Debrief", isCompleted ? "Received" : isInProgress ? "Pending Upload" : ""),
       };
@@ -1822,7 +1844,7 @@ function buildDebriefRowFromManifestRow(
     debriefedAt: hasSavedOverlay ? savedRow.debriefedAt : "",
     actionOwner: hasSavedOverlay ? savedRow.actionOwner : completed && issueCategory && issueCategory !== "No Issue" ? "Transport Office" : "",
     followUpDate: hasSavedOverlay ? savedRow.followUpDate : "",
-    lateReason: hasSavedOverlay ? savedRow.lateReason : completed ? buildLateReason(issueCategory || "No Issue") : "",
+    lateReason: hasSavedOverlay ? normaliseDebriefNotes(savedRow.lateReason) : "",
     officeNotes: hasSavedOverlay ? savedRow.officeNotes : completed && issueCategory && issueCategory !== "No Issue" ? "Requires debrief follow-up." : "",
     checks: hasSavedOverlay ? savedRow.checks : buildInitialChecks(defaultDebriefStatus, pod318Status),
   };
