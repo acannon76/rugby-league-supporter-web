@@ -100,22 +100,12 @@ type DebriefFormState = {
   debriefOutcome: DebriefOutcome;
   issueCategory: string;
   driverNotes: string;
-  pod318Status: string;
-  routeChange: string;
-  trailerChange: string;
-  vehicleDefect: string;
-  rtcBreakdown: string;
-  tachoBreak: string;
-  fuelPurchased: string;
-  sealNumber: string;
-  yorkBarcode: string;
   depAssets: number;
   arrAssets: number;
   lateReason: string;
   actionOwner: string;
   followUpDate: string;
   officeNotes: string;
-  checks: DebriefChecks;
 };
 
 const DEBRIEF_STORAGE_KEY = "mock-driver-debrief-rows-v4";
@@ -138,7 +128,6 @@ const issueCategories = [
 
 const debriefStatuses: DebriefStatus[] = ["Awaiting Debrief", "In Review", "Debriefed", "Action Required"];
 const debriefOutcomes: DebriefOutcome[] = ["Complete", "Part Complete", "Failed", "Cancelled"];
-const podStatuses = ["Received", "Pending Upload", "Missing", "Not Required", "Query"];
 const toTimeOptions: ToTimeCode[] = ["VE", "E", "OT", "L", "VL", "F"];
 const legStateOptions = ["Planned", "In Progress", "Complete"] as const;
 const trafficValues = [
@@ -194,7 +183,6 @@ export default function DebriefPage() {
         query.length === 0 ||
         [
           row.dutyNumber,
-          formatDivisionCell(row),
           row.driverName,
           row.userId,
           row.vehicle,
@@ -225,10 +213,12 @@ export default function DebriefPage() {
   const toTimeDistribution = useMemo(() => buildToTimeDistribution(filteredRows), [filteredRows]);
 
   function saveRow(nextRow: DebriefRow) {
-    const nextRows = rows.map((row) => (row.id === nextRow.id ? nextRow : row));
-    setRows(nextRows);
-    saveDebriefRowsToStorage(nextRows);
-    setSelectedRow(nextRow);
+    setRows((currentRows) => {
+      const nextRows = currentRows.map((row) => (row.id === nextRow.id ? nextRow : row));
+      saveDebriefRowsToStorage(nextRows);
+      return nextRows;
+    });
+    setSelectedRow(null);
   }
 
   function resetMockup() {
@@ -428,7 +418,7 @@ export default function DebriefPage() {
 
           <section className="mt-4 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[2380px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+              <table className="min-w-[2285px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
                   <tr>
                     <DebriefHeader label="Debrief Action" headerClass="bg-[#cfeefa]" widthClass="w-[105px]" />
@@ -438,7 +428,6 @@ export default function DebriefPage() {
                     <DebriefHeader label="Week Number" headerClass="bg-[#cfeefa]" widthClass="w-[78px]" />
                     <DebriefHeader label="Duty Order" headerClass="bg-[#cfeefa]" widthClass="w-[78px]" />
                     <DebriefHeader label="Duty ID" headerClass="bg-[#cfeefa]" widthClass="w-[95px]" />
-                    <DebriefHeader label="Division" headerClass="bg-[#cfeefa]" widthClass="w-[95px]" />
                     <DebriefHeader label="Driver" headerClass="bg-[#cfeefa]" widthClass="w-[135px]" />
                     <DebriefHeader label="Vehicle Reg" headerClass="bg-[#cfeefa]" widthClass="w-[98px]" />
                     <DebriefHeader label="Trailer Number" headerClass="bg-[#cfeefa]" widthClass="w-[105px]" />
@@ -466,7 +455,7 @@ export default function DebriefPage() {
                 <tbody>
                   {filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={29} className="border border-black px-4 py-10 text-center text-sm font-black text-[#64748b]">
+                      <td colSpan={28} className="border border-black px-4 py-10 text-center text-sm font-black text-[#64748b]">
                         No duties match the selected debrief filters.
                       </td>
                     </tr>
@@ -492,7 +481,6 @@ export default function DebriefPage() {
                         <td className="border border-black px-1 py-2 text-center font-normal">{row.weekNumber}</td>
                         <td className="border border-black px-1 py-2 text-center font-black">{row.dutyOrder}</td>
                         <td className="border border-black px-1 py-2 text-center font-black whitespace-nowrap">{row.dutyNumber}</td>
-                        <td className="border border-black px-1 py-2 text-center font-black whitespace-nowrap">{formatDivisionCell(row)}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.driverName}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.vehicle}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.trailerNumber}</td>
@@ -558,21 +546,9 @@ function DebriefModal({
 }) {
   const [form, setForm] = useState<DebriefFormState>(() => buildFormState(row));
   const delayMinutes = getPositiveDelayMinutes(row.plannedEndTs, row.actualEndTs);
-  const checklistComplete = Object.values(form.checks).filter(Boolean).length;
-  const checklistTotal = Object.values(form.checks).length;
 
   function updateField<Key extends keyof DebriefFormState>(key: Key, value: DebriefFormState[Key]) {
     setForm((current) => ({ ...current, [key]: value }));
-  }
-
-  function updateCheck(key: keyof DebriefChecks, value: boolean) {
-    setForm((current) => ({
-      ...current,
-      checks: {
-        ...current.checks,
-        [key]: value,
-      },
-    }));
   }
 
   function saveDebrief() {
@@ -583,22 +559,12 @@ function DebriefModal({
       debriefOutcome: form.debriefOutcome,
       issueCategory: form.issueCategory,
       driverNotes: form.driverNotes,
-      pod318Status: form.pod318Status,
-      routeChange: form.routeChange,
-      trailerChange: form.trailerChange,
-      vehicleDefect: form.vehicleDefect,
-      rtcBreakdown: form.rtcBreakdown,
-      tachoBreak: form.tachoBreak,
-      fuelPurchased: form.fuelPurchased,
-      sealNumber: form.sealNumber,
-      yorkBarcode: form.yorkBarcode,
       depAssets: form.depAssets,
       arrAssets: form.arrAssets,
       lateReason: form.lateReason,
       actionOwner: form.actionOwner,
       followUpDate: form.followUpDate,
       officeNotes: form.officeNotes,
-      checks: form.checks,
       debriefedBy: "Peter Finch",
       debriefedAt: now,
     });
@@ -612,7 +578,7 @@ function DebriefModal({
             <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Driver debrief</p>
             <h2 className="mt-1 text-2xl font-black text-[#111827]">{row.dutyNumber}</h2>
             <p className="mt-1 text-sm font-bold text-[#6b7280]">
-              Review actual timings, issues, GPS, 318/POD evidence and follow-up actions for the completed duty.
+              Review actual timings, issues and follow-up actions for the completed duty.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -652,7 +618,6 @@ function DebriefModal({
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <ReadOnlyBox label="Duty ID" value={row.dutyNumber} />
                 <ReadOnlyBox label="Duty order" value={String(row.dutyOrder)} />
-                <ReadOnlyBox label="Division" value={formatDivisionCell(row)} />
                 <ReadOnlyBox label="Driver" value={row.driverName} />
                 <ReadOnlyBox label="Vehicle Reg" value={row.vehicle} />
                 <ReadOnlyBox label="Trailer" value={row.trailerNumber} />
@@ -670,17 +635,8 @@ function DebriefModal({
             </div>
 
             <div className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Debrief score</p>
-              <h3 className="mt-2 text-2xl font-black text-[#111827]">Checklist progress</h3>
-              <p className="mt-1 text-sm font-bold leading-6 text-[#6b7280]">
-                {checklistComplete} of {checklistTotal} debrief checks marked as complete.
-              </p>
-              <div className="mt-4 h-4 overflow-hidden rounded-full bg-[#e5e7eb]">
-                <div
-                  className="h-full bg-[#157347] transition-all"
-                  style={{ width: `${Math.round((checklistComplete / checklistTotal) * 100)}%` }}
-                />
-              </div>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Debrief summary</p>
+              <h3 className="mt-2 text-2xl font-black text-[#111827]">Current position</h3>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <SummaryCard label="Finish delay" value={delayMinutes > 0 ? `${delayMinutes} mins` : "On time"} />
                 <SummaryCard label="Current status" value={form.debriefStatus} />
@@ -692,15 +648,12 @@ function DebriefModal({
             <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 2</p>
             <h3 className="mt-2 text-2xl font-black text-[#111827]">Debrief decision</h3>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               <SelectBox label="Debrief status" value={form.debriefStatus} options={debriefStatuses} onChange={(value) => updateField("debriefStatus", value as DebriefStatus)} />
               <SelectBox label="Outcome" value={form.debriefOutcome} options={debriefOutcomes} onChange={(value) => updateField("debriefOutcome", value as DebriefOutcome)} />
               <SelectBox label="Issue category" value={form.issueCategory} options={issueCategories} onChange={(value) => updateField("issueCategory", value)} />
-              <SelectBox label="318 / POD status" value={form.pod318Status} options={podStatuses} onChange={(value) => updateField("pod318Status", value)} />
               <NumberBox label="Departure assets" value={form.depAssets} onChange={(value) => updateField("depAssets", value)} />
               <NumberBox label="Arrival assets" value={form.arrAssets} onChange={(value) => updateField("arrAssets", value)} />
-              <TextBox label="Seal number" value={form.sealNumber} onChange={(value) => updateField("sealNumber", value)} />
-              <TextBox label="York barcode" value={form.yorkBarcode} onChange={(value) => updateField("yorkBarcode", value)} />
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -719,32 +672,10 @@ function DebriefModal({
             </div>
           </section>
 
-          <section className="mt-4 grid gap-4 xl:grid-cols-2">
-            <div className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
+          <section className="mt-4 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 3</p>
-              <h3 className="mt-2 text-2xl font-black text-[#111827]">Structured checks</h3>
+              <h3 className="mt-2 text-2xl font-black text-[#111827]">Follow-up</h3>
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                <CheckBox label="Duty complete confirmed" checked={form.checks.dutyCompleteConfirmed} onChange={(value) => updateCheck("dutyCompleteConfirmed", value)} />
-                <CheckBox label="Timing checked" checked={form.checks.timingChecked} onChange={(value) => updateCheck("timingChecked", value)} />
-                <CheckBox label="GPS/geofence checked" checked={form.checks.gpsChecked} onChange={(value) => updateCheck("gpsChecked", value)} />
-                <CheckBox label="Assets and seals checked" checked={form.checks.assetsChecked} onChange={(value) => updateCheck("assetsChecked", value)} />
-                <CheckBox label="318/POD checked" checked={form.checks.pod318Checked} onChange={(value) => updateCheck("pod318Checked", value)} />
-                <CheckBox label="Tacho/break checked" checked={form.checks.tachoBreakChecked} onChange={(value) => updateCheck("tachoBreakChecked", value)} />
-                <CheckBox label="Vehicle/trailer checked" checked={form.checks.vehicleTrailerChecked} onChange={(value) => updateCheck("vehicleTrailerChecked", value)} />
-                <CheckBox label="Follow-up raised if needed" checked={form.checks.followUpRaised} onChange={(value) => updateCheck("followUpRaised", value)} />
-              </div>
-            </div>
-
-            <div className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 4</p>
-              <h3 className="mt-2 text-2xl font-black text-[#111827]">Exceptions and follow-up</h3>
-              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                <TextBox label="Route change" value={form.routeChange} onChange={(value) => updateField("routeChange", value)} />
-                <TextBox label="Trailer change" value={form.trailerChange} onChange={(value) => updateField("trailerChange", value)} />
-                <TextBox label="Vehicle defect" value={form.vehicleDefect} onChange={(value) => updateField("vehicleDefect", value)} />
-                <TextBox label="Breakdown / RTC" value={form.rtcBreakdown} onChange={(value) => updateField("rtcBreakdown", value)} />
-                <TextBox label="Tacho / breaks" value={form.tachoBreak} onChange={(value) => updateField("tachoBreak", value)} />
-                <TextBox label="Fuel / AdBlue" value={form.fuelPurchased} onChange={(value) => updateField("fuelPurchased", value)} />
                 <TextBox label="Action owner" value={form.actionOwner} onChange={(value) => updateField("actionOwner", value)} />
                 <label className="block">
                   <span className="text-xs font-black uppercase tracking-[0.12em] text-[#6b7280]">Follow-up date</span>
@@ -764,12 +695,11 @@ function DebriefModal({
                   placeholder="What the debriefer agreed, what needs chasing, and who owns the next action."
                 />
               </div>
-            </div>
           </section>
 
           <section className="mt-4 flex flex-col gap-3 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
             <p className="text-sm font-bold leading-6 text-[#4b5563]">
-              Saving this debrief updates the mock table only. It is stored locally in the browser so the demo can show status changes without a backend.
+              Saving this debrief updates the table immediately and stores the changes locally in the browser.
             </p>
             <div className="flex flex-wrap gap-3">
               <button
@@ -990,28 +920,6 @@ function TextAreaBox({
         placeholder={placeholder}
         className="mt-2 min-h-[110px] w-full rounded-lg border border-[#ccd5e2] bg-white px-3 py-3 text-sm font-bold leading-6 text-[#111827] outline-none transition focus:border-[#e40000]"
       />
-    </label>
-  );
-}
-
-function CheckBox({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (value: boolean) => void;
-}) {
-  return (
-    <label className="flex items-center gap-3 rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-3 py-3 text-sm font-black text-[#374151]">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="h-4 w-4"
-      />
-      {label}
     </label>
   );
 }
@@ -1262,10 +1170,6 @@ function getLegStateCellClass(state: ReturnType<typeof getLegState>) {
   return "bg-[#f3f4f6] text-[#6b7280]";
 }
 
-function formatDivisionCell(row: DebriefRow) {
-  return row.division === "Contractor" ? "Pie Haulage" : row.division;
-}
-
 function buildInitialDebriefRows(): DebriefRow[] {
   const drivers = [
     "Andrew Cannon",
@@ -1463,22 +1367,12 @@ function buildFormState(row: DebriefRow): DebriefFormState {
     debriefOutcome: row.debriefOutcome,
     issueCategory: row.issueCategory,
     driverNotes: row.driverNotes,
-    pod318Status: row.pod318Status,
-    routeChange: row.routeChange,
-    trailerChange: row.trailerChange,
-    vehicleDefect: row.vehicleDefect,
-    rtcBreakdown: row.rtcBreakdown,
-    tachoBreak: row.tachoBreak,
-    fuelPurchased: row.fuelPurchased,
-    sealNumber: row.sealNumber,
-    yorkBarcode: row.yorkBarcode,
     depAssets: row.depAssets,
     arrAssets: row.arrAssets,
     lateReason: row.lateReason,
     actionOwner: row.actionOwner,
     followUpDate: row.followUpDate,
     officeNotes: row.officeNotes,
-    checks: row.checks,
   };
 }
 
@@ -1588,10 +1482,16 @@ function buildDummyDebriefRows(savedRowMap: Map<string, DebriefRow>) {
         actualStartTs,
         plannedEndTs,
         actualEndTs,
-        depAssets: 34 + ((dutyIndex * 7 + legIndex * 9) % 55),
-        arrAssets: 34 + ((dutyIndex * 5 + legIndex * 7) % 55),
-        issueCategory,
-        driverNotes: isCompleted ? buildDriverNotes(issueCategory || "No Issue", "Network") : isInProgress ? "Driver is currently completing this leg." : "",
+        depAssets: overlayAllowed ? savedRow.depAssets : 34 + ((dutyIndex * 7 + legIndex * 9) % 55),
+        arrAssets: overlayAllowed ? savedRow.arrAssets : 34 + ((dutyIndex * 5 + legIndex * 7) % 55),
+        issueCategory: overlayAllowed ? savedRow.issueCategory : issueCategory,
+        driverNotes: overlayAllowed
+          ? savedRow.driverNotes
+          : isCompleted
+            ? buildDriverNotes(issueCategory || "No Issue", "Network")
+            : isInProgress
+              ? "Driver is currently completing this leg."
+              : "",
         gpsDeparture: isCompleted || isInProgress ? `${startLocation} • ${formatDateTime(actualStartTs)}` : "",
         gpsArrival: isCompleted ? `${finalDestination} • ${formatDateTime(actualEndTs)}` : "",
         yorkBarcode: isCompleted ? `YRK${String(70000 + dutyIndex * 100 + legIndex * 11).padStart(6, "0")}` : "",
@@ -1656,10 +1556,10 @@ function buildDebriefRowFromManifestRow(
     actualStartTs: manifestRow.departureActualTs ? new Date(manifestRow.departureActualTs).toISOString() : "",
     plannedEndTs: new Date(manifestRow.plannedArrivalTs).toISOString(),
     actualEndTs: manifestRow.arrivalActualTs ? new Date(manifestRow.arrivalActualTs).toISOString() : "",
-    depAssets,
-    arrAssets,
-    issueCategory,
-    driverNotes,
+    depAssets: hasSavedOverlay ? savedRow.depAssets : depAssets,
+    arrAssets: hasSavedOverlay ? savedRow.arrAssets : arrAssets,
+    issueCategory: hasSavedOverlay ? savedRow.issueCategory : issueCategory,
+    driverNotes: hasSavedOverlay ? savedRow.driverNotes : driverNotes,
     gpsDeparture: manifestRow.gpsDeparture,
     gpsArrival: manifestRow.gpsArrival,
     yorkBarcode: completed ? `YBK${String(9000 + index * 11)}` : "",
@@ -1843,7 +1743,6 @@ function downloadDebriefRows(rows: DebriefRow[], format: ExportFormat) {
     "Week Number",
     "Duty Order",
     "Duty ID",
-    "Division",
     "Driver",
     "Vehicle Reg",
     "Trailer Number",
@@ -1876,7 +1775,6 @@ function downloadDebriefRows(rows: DebriefRow[], format: ExportFormat) {
     row.weekNumber,
     row.dutyOrder,
     row.dutyNumber,
-    formatDivisionCell(row),
     row.driverName,
     row.vehicle,
     row.trailerNumber,
