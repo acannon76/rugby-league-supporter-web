@@ -764,9 +764,25 @@ function DebriefModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
       <section className="flex max-h-[calc(100vh-2rem)] w-full max-w-[1450px] flex-col overflow-hidden rounded-2xl border border-[#d9dee6] bg-[#f4f6f9] shadow-2xl">
         <div className="flex flex-col gap-3 border-b border-[#d9dee6] bg-white p-4 md:flex-row md:items-center md:justify-between">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Driver debrief</p>
-            <h2 className="mt-1 text-2xl font-black text-[#111827]">{row.dutyNumber}</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <h2 className="text-2xl font-black text-[#111827]">{row.dutyNumber}</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-md border border-[#d6dee8] bg-[#f8fafc] px-3 py-1.5 text-sm font-black text-[#172033]">
+                  <span className="mr-2 text-[10px] uppercase tracking-[0.12em] text-[#6b7280]">Driver</span>
+                  {row.driverName || "-"}
+                </span>
+                <span className="rounded-md border border-[#d6dee8] bg-[#f8fafc] px-3 py-1.5 text-sm font-black text-[#172033]">
+                  <span className="mr-2 text-[10px] uppercase tracking-[0.12em] text-[#6b7280]">Vehicle</span>
+                  {row.vehicle || "-"}
+                </span>
+                <span className="rounded-md border border-[#d6dee8] bg-[#f8fafc] px-3 py-1.5 text-sm font-black text-[#172033]">
+                  <span className="mr-2 text-[10px] uppercase tracking-[0.12em] text-[#6b7280]">Trailer</span>
+                  {row.trailerNumber || "-"}
+                </span>
+              </div>
+            </div>
             <p className="mt-1 text-sm font-bold text-[#6b7280]">
               Review actual timings, issues and follow-up actions for the completed duty.
             </p>
@@ -790,44 +806,50 @@ function DebriefModal({
         </div>
 
         <div className="overflow-y-auto p-4">
-          <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
             <div className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Step 1</p>
                   <h3 className="mt-2 text-2xl font-black text-[#111827]">Duty summary</h3>
                   <p className="mt-1 text-sm font-bold text-[#6b7280]">
-                    This mirrors the duty execution data but is shown as a debrief record.
+                    Planned and actual departure and arrival details for this duty.
                   </p>
                 </div>
                 <div className="rounded-lg bg-[#fff0f0] px-4 py-3 text-sm font-black text-[#e40000]">
-                  {formatDate(row.dutyDate)} • Week {row.weekNumber}
+                  {formatDate(row.dutyDate)} • Week {row.weekNumber} • Order {row.dutyOrder}
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <ReadOnlyBox label="Duty ID" value={row.dutyNumber} />
-                <ReadOnlyBox label="Duty order" value={String(row.dutyOrder)} />
-                <ReadOnlyBox label="Driver" value={row.driverName} />
-                <ReadOnlyBox label="Vehicle Reg" value={row.vehicle} />
-                <ReadOnlyBox label="Trailer" value={row.trailerNumber} />
-                <ReadOnlyBox label="Start location" value={row.startLocation} />
-                <ReadOnlyBox label="Final destination" value={row.finalDestination} />
-                <ReadOnlyBox label="Planned start" value={formatDateTime(row.plannedStartTs)} />
-                <ReadOnlyBox label="Actual start" value={formatDateTime(row.actualStartTs)} />
-                <ReadOnlyBox label="Planned finish" value={formatDateTime(row.plannedEndTs)} />
-                <ReadOnlyBox label="Actual finish" value={formatDateTime(row.actualEndTs)} />
-                <ReadOnlyBox label="Start difference" value={formatTimeDifference(row.plannedStartTs, row.actualStartTs)} />
-                <ReadOnlyBox label="DTT" value={getStartToTimeCode(row)} />
-                <ReadOnlyBox label="Finish difference" value={formatTimeDifference(row.plannedEndTs, row.actualEndTs)} />
-                <ReadOnlyBox label="ATT" value={getFinishToTimeCode(row)} />
+              <div className="mt-5 space-y-4">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#475569]">Departure</p>
+                  <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.35fr_1fr_1fr_0.8fr_0.5fr]">
+                    <ReadOnlyBox label="Start location" value={row.startLocation} />
+                    <ReadOnlyBox label="Planned start" value={formatDateTime(row.plannedStartTs)} />
+                    <ReadOnlyBox label="Actual start" value={formatDateTime(row.actualStartTs)} />
+                    <ReadOnlyBox label="Start difference" value={formatTimeDifference(row.plannedStartTs, row.actualStartTs)} />
+                    <ReadOnlyBox label="DTT" value={getStartToTimeCode(row)} />
+                  </div>
+                </div>
+
+                <div className="border-t border-[#e5e7eb] pt-4">
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#475569]">Arrival</p>
+                  <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.35fr_1fr_1fr_0.8fr_0.5fr]">
+                    <ReadOnlyBox label="Final destination" value={row.finalDestination} />
+                    <ReadOnlyBox label="Planned finish" value={formatDateTime(row.plannedEndTs)} />
+                    <ReadOnlyBox label="Actual finish" value={formatDateTime(row.actualEndTs)} />
+                    <ReadOnlyBox label="Finish difference" value={formatTimeDifference(row.plannedEndTs, row.actualEndTs)} />
+                    <ReadOnlyBox label="ATT" value={getFinishToTimeCode(row)} />
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Debrief summary</p>
               <h3 className="mt-2 text-2xl font-black text-[#111827]">Current position</h3>
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3">
                 <SummaryCard label="Finish delay" value={delayMinutes > 0 ? `${delayMinutes} mins` : "On time"} />
                 <SummaryCard label="Current status" value={form.debriefStatus} />
               </div>
