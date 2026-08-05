@@ -150,6 +150,7 @@ export default function DebriefPage() {
   const [attFilter, setAttFilter] = useState<"All" | ToTimeCode>("All");
   const [legStateFilter, setLegStateFilter] = useState<"All" | (typeof legStateOptions)[number]>("All");
   const [selectedRow, setSelectedRow] = useState<DebriefRow | null>(null);
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     const syncRows = () => {
@@ -195,16 +196,25 @@ export default function DebriefPage() {
           .toLowerCase()
           .includes(query);
       const matchesStatus = statusFilter === "All" || row.debriefStatus === statusFilter;
-      const matchesAwaitingTimingException =
-        statusFilter !== "Awaiting Debrief" || hasActualTimingException(row);
       const matchesIssue = issueFilter === "All" || row.issueCategory === issueFilter;
       const matchesDtt = dttFilter === "All" || getStartToTimeCode(row) === dttFilter;
       const matchesAtt = attFilter === "All" || getFinishToTimeCode(row) === attFilter;
       const matchesLegState = legStateFilter === "All" || getLegState(row) === legStateFilter;
 
-      return matchesSearch && matchesStatus && matchesAwaitingTimingException && matchesIssue && matchesDtt && matchesAtt && matchesLegState;
+      return matchesSearch && matchesStatus && matchesIssue && matchesDtt && matchesAtt && matchesLegState;
     });
   }, [rows, searchTerm, statusFilter, issueFilter, dttFilter, attFilter, legStateFilter]);
+
+  const bulkEligibleRows = useMemo(
+    () => filteredRows.filter((row) => isBulkDebriefEligible(row)),
+    [filteredRows]
+  );
+  const selectedBulkRows = useMemo(
+    () => bulkEligibleRows.filter((row) => selectedRowIds.has(row.id)),
+    [bulkEligibleRows, selectedRowIds]
+  );
+  const allEligibleRowsSelected =
+    bulkEligibleRows.length > 0 && selectedBulkRows.length === bulkEligibleRows.length;
 
   const awaitingCount = rows.filter((row) => row.debriefStatus === "Awaiting Debrief").length;
   const actionRequiredCount = rows.filter((row) => row.debriefStatus === "Action Required").length;
@@ -218,13 +228,92 @@ export default function DebriefPage() {
       saveDebriefRowsToStorage(nextRows);
       return nextRows;
     });
+    setSelectedRowIds((currentIds) => {
+      if (!currentIds.has(nextRow.id)) {
+        return currentIds;
+      }
+      const nextIds = new Set(currentIds);
+      nextIds.delete(nextRow.id);
+      return nextIds;
+    });
     setSelectedRow(null);
+  }
+
+  function toggleRowSelection(rowId: string) {
+    setSelectedRowIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      if (nextIds.has(rowId)) {
+        nextIds.delete(rowId);
+      } else {
+        nextIds.add(rowId);
+      }
+      return nextIds;
+    });
+  }
+
+  function toggleSelectAllFilteredRows() {
+    setSelectedRowIds(
+      allEligibleRowsSelected ? new Set() : new Set(bulkEligibleRows.map((row) => row.id))
+    );
+  }
+
+  function showCompleteNoIssueRows() {
+    setSearchTerm("");
+    setStatusFilter("Awaiting Debrief");
+    setIssueFilter("No Issue");
+    setDttFilter("All");
+    setAttFilter("All");
+    setLegStateFilter("Complete");
+    setSelectedRowIds(new Set());
+  }
+
+  function bulkDebriefSelectedRows() {
+    const selectedIds = new Set(selectedBulkRows.map((row) => row.id));
+
+    if (selectedIds.size === 0) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Debrief ${selectedIds.size} selected ${selectedIds.size === 1 ? "row" : "rows"} as No Issue?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    setRows((currentRows) => {
+      const nextRows = currentRows.map((row) => {
+        if (!selectedIds.has(row.id) || !isBulkDebriefEligible(row)) {
+          return row;
+        }
+
+        return {
+          ...row,
+          debriefStatus: "Debriefed" as DebriefStatus,
+          debriefOutcome: "Complete" as DebriefOutcome,
+          issueCategory: "No Issue",
+          debriefedBy: "Peter Finch",
+          debriefedAt: now,
+          actionOwner: "",
+          followUpDate: "",
+          officeNotes: row.officeNotes || "Bulk debriefed as No Issue.",
+          checks: buildInitialChecks("Debriefed", row.pod318Status),
+        };
+      });
+
+      saveDebriefRowsToStorage(nextRows);
+      return nextRows;
+    });
+    setSelectedRowIds(new Set());
   }
 
   function resetMockup() {
     const nextRows = buildDebriefRowsFromManifestState(readStoredManifestState(), []);
     setRows(nextRows);
     setSelectedRow(null);
+    setSelectedRowIds(new Set());
     saveDebriefRowsToStorage(nextRows);
   }
 
@@ -313,7 +402,10 @@ export default function DebriefPage() {
                 </span>
                 <input
                   value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
+                  onChange={(event) => {
+                    setSearchTerm(event.target.value);
+                    setSelectedRowIds(new Set());
+                  }}
                   placeholder="Duty, driver, vehicle, trailer, issue or location"
                   className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
                 />
@@ -325,7 +417,10 @@ export default function DebriefPage() {
                 </span>
                 <select
                   value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value as "All" | DebriefStatus)}
+                  onChange={(event) => {
+                    setStatusFilter(event.target.value as "All" | DebriefStatus);
+                    setSelectedRowIds(new Set());
+                  }}
                   className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
                 >
                   <option>All</option>
@@ -341,7 +436,10 @@ export default function DebriefPage() {
                 </span>
                 <select
                   value={issueFilter}
-                  onChange={(event) => setIssueFilter(event.target.value)}
+                  onChange={(event) => {
+                    setIssueFilter(event.target.value);
+                    setSelectedRowIds(new Set());
+                  }}
                   className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
                 >
                   <option>All</option>
@@ -357,7 +455,10 @@ export default function DebriefPage() {
                 </span>
                 <select
                   value={dttFilter}
-                  onChange={(event) => setDttFilter(event.target.value as "All" | ToTimeCode)}
+                  onChange={(event) => {
+                    setDttFilter(event.target.value as "All" | ToTimeCode);
+                    setSelectedRowIds(new Set());
+                  }}
                   className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
                 >
                   <option>All</option>
@@ -373,7 +474,10 @@ export default function DebriefPage() {
                 </span>
                 <select
                   value={attFilter}
-                  onChange={(event) => setAttFilter(event.target.value as "All" | ToTimeCode)}
+                  onChange={(event) => {
+                    setAttFilter(event.target.value as "All" | ToTimeCode);
+                    setSelectedRowIds(new Set());
+                  }}
                   className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
                 >
                   <option>All</option>
@@ -389,7 +493,10 @@ export default function DebriefPage() {
                 </span>
                 <select
                   value={legStateFilter}
-                  onChange={(event) => setLegStateFilter(event.target.value as "All" | (typeof legStateOptions)[number])}
+                  onChange={(event) => {
+                    setLegStateFilter(event.target.value as "All" | (typeof legStateOptions)[number]);
+                    setSelectedRowIds(new Set());
+                  }}
                   className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
                 >
                   <option>All</option>
@@ -399,28 +506,84 @@ export default function DebriefPage() {
                 </select>
               </label>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchTerm("");
-                  setStatusFilter("All");
-                  setIssueFilter("All");
-                  setDttFilter("All");
-                  setAttFilter("All");
-                  setLegStateFilter("All");
-                }}
-                className="h-11 rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-5 text-sm font-black uppercase tracking-[0.12em] text-[#4b5563] transition hover:border-[#e40000] xl:col-span-7"
-              >
-                Clear Filters
-              </button>
+              <div className="flex flex-col gap-3 md:flex-row xl:col-span-7">
+                <button
+                  type="button"
+                  onClick={showCompleteNoIssueRows}
+                  className="h-11 flex-1 rounded-lg border border-[#15803d] bg-[#ecfdf3] px-5 text-sm font-black uppercase tracking-[0.12em] text-[#166534] transition hover:bg-[#dcfce7]"
+                >
+                  Show Complete No Issues
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setStatusFilter("All");
+                    setIssueFilter("All");
+                    setDttFilter("All");
+                    setAttFilter("All");
+                    setLegStateFilter("All");
+                    setSelectedRowIds(new Set());
+                  }}
+                  className="h-11 flex-1 rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-5 text-sm font-black uppercase tracking-[0.12em] text-[#4b5563] transition hover:border-[#e40000]"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section className="mt-4 rounded-[14px] border border-[#cfd8e3] bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Quick debrief</p>
+                <h2 className="mt-1 text-lg font-black text-[#172033]">Bulk debrief completed duties with no issue</h2>
+                <p className="mt-1 text-sm font-bold text-[#64748b]">
+                  Tick individual rows, or use Select All Filtered after applying the Complete and No Issue filters.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="rounded-full bg-[#eef2f7] px-4 py-2 text-sm font-black text-[#334155]">
+                  {selectedBulkRows.length} selected
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleSelectAllFilteredRows}
+                  disabled={bulkEligibleRows.length === 0}
+                  className="rounded-lg border border-[#001b3a] bg-white px-4 py-2 text-sm font-black uppercase tracking-[0.1em] text-[#001b3a] transition hover:bg-[#eef4fb] disabled:cursor-not-allowed disabled:border-[#cbd5e1] disabled:text-[#94a3b8]"
+                >
+                  {allEligibleRowsSelected ? "Clear Selected" : `Select All Filtered (${bulkEligibleRows.length})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={bulkDebriefSelectedRows}
+                  disabled={selectedBulkRows.length === 0}
+                  className="rounded-lg bg-[#15803d] px-4 py-2 text-sm font-black uppercase tracking-[0.1em] text-white transition hover:bg-[#166534] disabled:cursor-not-allowed disabled:bg-[#94a3b8]"
+                >
+                  Debrief Selected as No Issue
+                </button>
+              </div>
             </div>
           </section>
 
           <section className="mt-4 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[2285px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
+              <table className="min-w-[2355px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
                   <tr>
+                    <th className="w-[70px] border border-black bg-[#cfeefa] px-2 py-2 text-center font-normal align-middle">
+                      <label className="flex cursor-pointer flex-col items-center gap-1" title="Select all eligible rows currently shown">
+                        <input
+                          type="checkbox"
+                          checked={allEligibleRowsSelected}
+                          onChange={toggleSelectAllFilteredRows}
+                          disabled={bulkEligibleRows.length === 0}
+                          className="h-4 w-4 accent-[#15803d] disabled:cursor-not-allowed"
+                          aria-label="Select all eligible filtered rows"
+                        />
+                        <span>Select</span>
+                      </label>
+                    </th>
                     <DebriefHeader label="Debrief Action" headerClass="bg-[#cfeefa]" widthClass="w-[105px]" />
                     <DebriefHeader label="Debrief Status" headerClass="bg-[#cfeefa]" widthClass="w-[120px]" />
                     <DebriefHeader label="Leg State" headerClass="bg-[#cfeefa]" widthClass="w-[105px]" />
@@ -455,13 +618,35 @@ export default function DebriefPage() {
                 <tbody>
                   {filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={28} className="border border-black px-4 py-10 text-center text-sm font-black text-[#64748b]">
+                      <td colSpan={29} className="border border-black px-4 py-10 text-center text-sm font-black text-[#64748b]">
                         No duties match the selected debrief filters.
                       </td>
                     </tr>
                   ) : (
-                    filteredRows.map((row, index) => (
-                      <tr key={row.id} className={index % 2 === 0 ? "bg-white" : "bg-[#fcfcfc]"}>
+                    filteredRows.map((row, index) => {
+                      const bulkEligible = isBulkDebriefEligible(row);
+                      const rowSelected = selectedRowIds.has(row.id);
+
+                      return (
+                      <tr
+                        key={row.id}
+                        className={rowSelected ? "bg-[#fff7d6]" : index % 2 === 0 ? "bg-white" : "bg-[#fcfcfc]"}
+                      >
+                        <td className="border border-black px-1 py-2 text-center font-normal">
+                          <input
+                            type="checkbox"
+                            checked={rowSelected}
+                            onChange={() => toggleRowSelection(row.id)}
+                            disabled={!bulkEligible}
+                            className="h-4 w-4 accent-[#15803d] disabled:cursor-not-allowed disabled:opacity-30"
+                            aria-label={`Select ${row.dutyNumber} leg ${row.dutyOrder} for bulk debrief`}
+                            title={
+                              bulkEligible
+                                ? "Select this completed no-issue row"
+                                : "Only completed rows awaiting debrief with No Issue can be bulk debriefed"
+                            }
+                          />
+                        </td>
                         <td className="border border-black px-1 py-2 text-center font-normal">
                           <button
                             type="button"
@@ -515,7 +700,8 @@ export default function DebriefPage() {
                         <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.actionOwner || "-"}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.followUpDate ? formatDate(row.followUpDate) : "-"}</td>
                       </tr>
-                    ))
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -1694,8 +1880,12 @@ function getPositiveDelayMinutes(plannedTs: string, actualTs: string) {
   return Math.round((actual - planned) / 60000);
 }
 
-function hasActualTimingException(row: DebriefRow) {
-  return isLate(row.plannedStartTs, row.actualStartTs) || isLate(row.plannedEndTs, row.actualEndTs);
+function isBulkDebriefEligible(row: DebriefRow) {
+  return (
+    row.debriefStatus === "Awaiting Debrief" &&
+    getLegState(row) === "Complete" &&
+    row.issueCategory === "No Issue"
+  );
 }
 
 function isLate(plannedTs: string, actualTs: string) {
