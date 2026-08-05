@@ -50,10 +50,17 @@ export default function SystemConfigurationsPage() {
             </div>
 
             <div className="min-h-[calc(100vh-170px)] bg-[#f8fbfe] p-4 sm:p-6">
-              <div className="rounded-[18px] border-2 border-dashed border-[#cbd7e6] bg-white p-8 text-center shadow-sm">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#fff1f1] text-4xl text-[#e40000]">⚙</div>
-                <h2 className="mt-4 text-xl font-black text-[#10203a]">System configuration workspace</h2>
-                <p className="mt-2 text-sm font-bold text-[#6b7280]">System-wide configuration options will be added here.</p>
+              <div className="rounded-[18px] border border-[#d9e3ee] bg-white p-6 shadow-sm sm:p-8">
+                <h2 className="text-xl font-black text-[#10203a]">Future configuration areas</h2>
+                <ul className="mt-5 list-disc space-y-3 pl-6 text-base font-bold text-[#24344d]">
+                  <li>318 Special Instructions</li>
+                  <li>MTT Late Arrival Profiles</li>
+                  <li>Sites</li>
+                  <li>Due to Convey</li>
+                  <li>Debrief Reasons</li>
+                  <li>RHC Details</li>
+                  <li>Traffic</li>
+                </ul>
               </div>
             </div>
           </section>
