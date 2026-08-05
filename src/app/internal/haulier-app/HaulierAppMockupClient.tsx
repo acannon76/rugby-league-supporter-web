@@ -1320,7 +1320,8 @@ function LegCard({
 
       <div className="grid grid-cols-2 gap-4 text-lg font-bold text-[#666]">
         <div>
-          <p>Planned Dep Time: {leg.etd}</p>
+          <p>Planned Dep Time:</p>
+          <p>{leg.etd}</p>
           <DepartureTimingStatus
             leg={leg}
             status={status}
@@ -1329,7 +1330,8 @@ function LegCard({
           />
         </div>
         <div className="text-right">
-          <p>Planned Arr Time: {leg.eta}</p>
+          <p>Planned Arr Time:</p>
+          <p>{leg.eta}</p>
           <ArrivalTimingStatus
             leg={leg}
             status={status}

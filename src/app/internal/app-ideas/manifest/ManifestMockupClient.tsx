@@ -356,7 +356,7 @@ function DutyScreen({
       <AppHeader title="Manifest" left="Back" onBack={() => window.history.back()} />
 
       <section className="bg-white px-5 py-6 sm:px-8">
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-[1fr_2fr]">
           <OverviewCard />
           <SpecialInstructionsCard />
         </div>
@@ -639,21 +639,12 @@ function SpecialInstructionsCard() {
       <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
         Special Instructions
       </p>
-      <ul className="mt-4 space-y-3 text-sm font-black leading-6 text-[#222]">
+      <ul className="mt-3 list-disc space-y-0 pl-5 text-sm font-black leading-5 text-[#222]">
         <li>Safe Systems of Work MUST be followed.</li>
-        <li>
-          Uniforms must be worn at all times. This includes Toetector shoes and
-          reflective jackets.
-        </li>
+        <li>Uniforms must be worn at all times. This includes Toetector shoes and reflective jackets.</li>
         <li>CPC-issued diversions MUST be followed.</li>
-        <li>
-          All drivers must refuel their vehicles at the end of the duty. If unable
-          to do so, report this to the Shift Manager.
-        </li>
-        <li>
-          In case of an emergency or query, please contact the Distribution Shift
-          Manager / Traffic Office.
-        </li>
+        <li>All drivers must refuel their vehicles at the end of the duty. If unable to do so, report this to the Shift Manager.</li>
+        <li>In case of an emergency or query, please contact the Distribution Shift Manager / Traffic Office.</li>
       </ul>
     </section>
   );
