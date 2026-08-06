@@ -51,6 +51,26 @@ const DEFECT_EXAMPLES = [
   "Suspension: Air suspension warning displayed",
 ];
 
+const FIX_SUMMARIES = [
+  "Tyre replaced and pressure checked",
+  "Marker light bulb replaced and tested",
+  "Cab step secured and panel edge repaired",
+  "Brake sensor reset and system re-tested",
+  "Washer jet cleaned and flow restored",
+  "Diagnostic check completed and fault cleared",
+  "Air line inspected and suspension recalibrated",
+];
+
+const FIXED_BY_NAMES = [
+  "Wigan Workshop",
+  "Fleet Maintenance Team",
+  "Mobile Technician A. Hughes",
+  "Night Shift Workshop",
+  "Transport Engineering",
+  "Workshop Controller S. Green",
+  "Regional Fleet Support",
+];
+
 function createHistoricalEntries(): AltLogbookEntry[] {
   const entries: AltLogbookEntry[] = [];
   const newestHistoricalStart = new Date(2026, 7, 6, 12, 25).getTime();
@@ -126,6 +146,31 @@ function normaliseStoredEntry(entry: Partial<AltLogbookEntry>): AltLogbookEntry 
         ? entry.defectsSummary
         : ["NIL Defects"],
     pmts: entry.pmts || [],
+  };
+}
+
+function getOutcomeContent(entry: AltLogbookEntry, rowIndex: number) {
+  if (!entry.hasDefects) {
+    return {
+      title: "OK to continue with duty",
+      summary: "No fix required after driver vehicle check.",
+      fixedBy: `Checked by ${entry.driverName}`,
+    };
+  }
+
+  if (rowIndex === 0) {
+    return {
+      title: "Return to / contact office",
+      summary: "PMT sent to manager and repair action is awaiting allocation.",
+      fixedBy: "Pending manager / workshop action",
+    };
+  }
+
+  const defectIndex = rowIndex % FIX_SUMMARIES.length;
+  return {
+    title: "Return to / contact office",
+    summary: FIX_SUMMARIES[defectIndex],
+    fixedBy: `Fixed by ${FIXED_BY_NAMES[defectIndex]}`,
   };
 }
 
@@ -272,7 +317,7 @@ export default function LogbookPage() {
                     <TableHeader>Mileage End</TableHeader>
                     <TableHeader>Defects Found</TableHeader>
                     <TableHeader>PMT</TableHeader>
-                    <TableHeader>Outcome</TableHeader>
+                    <TableHeader>Outcome / Fix Summary</TableHeader>
                   </tr>
                 </thead>
 
@@ -304,9 +349,16 @@ export default function LogbookPage() {
                       </TableCell>
                       <TableCell>{entry.pmts.length > 0 ? entry.pmts.join(", ") : "-"}</TableCell>
                       <TableCell>
-                        {entry.hasDefects
-                          ? "Return to / contact office"
-                          : "OK to continue with duty"}
+                        {(() => {
+                          const outcome = getOutcomeContent(entry, index);
+                          return (
+                            <div className="space-y-1">
+                              <p className="font-black text-[#18243a]">{outcome.title}</p>
+                              <p className="text-xs font-bold leading-5 text-[#64748b]">{outcome.summary}</p>
+                              <p className="text-xs font-black leading-5 text-[#b00020]">{outcome.fixedBy}</p>
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                     </tr>
                   ))}
