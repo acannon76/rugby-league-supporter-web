@@ -174,7 +174,7 @@ export default function LogbookPage() {
               <p className="text-base font-black text-white"><DriverName /></p>
             </div>
 
-            <Link href="/internal/vehicle-checks-alt" className="text-sm font-black text-white no-underline">
+            <Link href="/internal/vehicle-check-type" className="text-sm font-black text-white no-underline">
               Back
             </Link>
           </div>
@@ -227,6 +227,22 @@ export default function LogbookPage() {
                 ? "The defect details have been sent to Vehicle History. The driver must return to or contact the office for further instruction."
                 : "No defects were found. The driver is clear to continue with duty."}
             </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/internal/vehicle-checks-alt"
+              className="inline-flex items-center justify-center rounded-[24px] bg-[#18243a] px-6 py-4 text-sm font-black uppercase tracking-[0.16em] text-white no-underline shadow-sm transition hover:bg-[#0f172a]"
+            >
+              Continue to Vehicle Checks
+            </Link>
+
+            <Link
+              href="/internal/vehicle-check-type"
+              className="inline-flex items-center justify-center rounded-[24px] bg-[#b00020] px-6 py-4 text-sm font-black uppercase tracking-[0.16em] text-white no-underline shadow-sm transition hover:bg-[#7d0017]"
+            >
+              Finish
+            </Link>
           </div>
 
           <section className="overflow-hidden rounded-[24px] border border-[#d6dce5] bg-white shadow-sm">
@@ -301,10 +317,10 @@ export default function LogbookPage() {
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
-              href="/internal/vehicle-check-history"
+              href="/internal/vehicle-checks-alt"
               className="inline-flex items-center justify-center rounded-[24px] bg-[#18243a] px-6 py-4 text-sm font-black uppercase tracking-[0.16em] text-white no-underline shadow-sm transition hover:bg-[#0f172a]"
             >
-              View Vehicle History
+              Continue to Vehicle Checks
             </Link>
 
             <Link

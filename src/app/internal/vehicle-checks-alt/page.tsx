@@ -157,7 +157,7 @@ export default function VehicleChecksAltPage() {
             </div>
 
             <Link
-              href="/internal/vehicle-check-history"
+              href="/internal/logbook"
               className="text-sm font-black text-white no-underline"
             >
               Back

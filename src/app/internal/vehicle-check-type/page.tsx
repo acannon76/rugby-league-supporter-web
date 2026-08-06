@@ -85,7 +85,7 @@ export default function VehicleCheckTypePage() {
           </Link>
 
           <Link
-            href="/internal/vehicle-check-history"
+            href="/internal/logbook"
             onClick={startVehicleCheckTimer}
             className="group flex min-h-[220px] flex-col rounded-[28px] border border-[#d0d7df] bg-white p-6 text-left text-[#001b3a] no-underline shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
           >
