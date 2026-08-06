@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import routeMapImage from "../../mock-route-map.png";
 import ExportDataMenu from "../ExportDataMenu";
 import { exportTabularData, type ExportFormat } from "../exportData";
 import { getOperationalWeekNumberFromDisplayDate } from "../../operationalWeek";
@@ -116,16 +118,14 @@ function DctWebScreen({
 
   const availableDutyIds = useMemo(() => Array.from(new Set(rows.map((row) => row.dutyId))), [rows]);
 
-  useEffect(() => {
-    if (!availableDutyIds.includes(selectedDutyId)) {
-      setSelectedDutyId(availableDutyIds[0] || "");
-    }
-  }, [availableDutyIds, selectedDutyId]);
+  const effectiveSelectedDutyId = availableDutyIds.includes(selectedDutyId)
+    ? selectedDutyId
+    : availableDutyIds[0] || "";
 
-  const selectedDutyRows = useMemo(() => {
-    const dutyToUse = selectedDutyId || availableDutyIds[0] || "";
-    return rows.filter((row) => row.dutyId === dutyToUse);
-  }, [rows, selectedDutyId, availableDutyIds]);
+  const selectedDutyRows = useMemo(
+    () => rows.filter((row) => row.dutyId === effectiveSelectedDutyId),
+    [rows, effectiveSelectedDutyId]
+  );
 
   function clearFilters() {
     setSearchTerm("");
@@ -250,7 +250,7 @@ function DctWebScreen({
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-black uppercase tracking-[0.16em] text-[#64748b]">Selected Duty</span>
               <select
-                value={selectedDutyId}
+                value={effectiveSelectedDutyId}
                 onChange={(event) => setSelectedDutyId(event.target.value)}
                 className="rounded-full border border-[#cfd8e3] bg-white px-4 py-2 text-sm font-black text-[#172033]"
               >
@@ -292,7 +292,7 @@ function DctWebScreen({
           </div>
           </>
         ) : (
-          <DctRouteMapPanel rows={selectedDutyRows} dutyId={selectedDutyId || availableDutyIds[0] || "-"} />
+          <DctRouteMapPanel rows={selectedDutyRows} dutyId={effectiveSelectedDutyId || "-"} />
         )}
         </section>
 
@@ -805,7 +805,7 @@ function DctRouteMapPanel({ rows, dutyId }: { rows: DctRow[]; dutyId: string }) 
           <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#d6001c]">Route map mock-up</p>
           <h3 className="mt-1 text-lg font-black text-[#172033]">Duty {dutyId} route view</h3>
         </div>
-        <img src="/mock-route-map.png" alt="Mock route map" className="h-[360px] w-full object-cover object-center" />
+        <Image src={routeMapImage} alt="Mock route map" className="h-[360px] w-full object-cover object-center" priority />
       </div>
 
       <div className="rounded-[14px] border border-[#d9dee6] bg-white p-4 shadow-sm">

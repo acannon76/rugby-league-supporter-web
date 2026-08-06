@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import routeMapImage from "../mock-route-map.png";
 import DriverName from "../DriverName";
 import { getStoredDriverUserId } from "../driverPdaSession";
 import { getOperationalWeekNumberFromDisplayDate } from "../operationalWeek";
@@ -3671,7 +3673,7 @@ function HaulierDctRouteMapPanel({ rows, dutyId }: { rows: DctRow[]; dutyId: str
           <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#d6001c]">Route map mock-up</p>
           <h3 className="mt-1 text-lg font-black text-[#172033]">Duty {dutyId || "-"} route view</h3>
         </div>
-        <img src="/mock-route-map.png" alt="Mock route map" className="h-[360px] w-full object-cover object-center" />
+        <Image src={routeMapImage} alt="Mock route map" className="h-[360px] w-full object-cover object-center" priority />
       </div>
       <div className="rounded-[14px] border border-[#d9dee6] bg-white p-4 shadow-sm">
         <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#d6001c]">Selected duty summary</p>

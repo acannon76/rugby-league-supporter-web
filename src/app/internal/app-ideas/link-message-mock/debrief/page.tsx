@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import routeMapImage from "../../../mock-route-map.png";
 import ExportDataMenu from "../../ExportDataMenu";
 import { exportTabularData, type ExportFormat } from "../../exportData";
 import { getOperationalWeekNumberFromInputDate } from "../../../operationalWeek";
@@ -859,7 +861,7 @@ function DebriefModal({
                 <h3 className="mt-1 text-xl font-black text-[#111827]">Duty route</h3>
                 <p className="mt-1 text-xs font-bold text-[#64748b]">Selected duty {row.dutyNumber} • {row.startLocation} to {row.finalDestination}</p>
               </div>
-              <img src="/mock-route-map.png" alt="Mock route map" className="h-[260px] w-full object-cover object-center" />
+              <Image src={routeMapImage} alt="Mock route map" className="h-[260px] w-full object-cover object-center" priority />
             </div>
 
             <div className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
