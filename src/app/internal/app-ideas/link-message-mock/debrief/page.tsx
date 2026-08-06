@@ -122,6 +122,7 @@ const issueCategories = [
   "RTC",
   "Load / Asset Issue",
   "Driver Query",
+  "Traffic",
 ];
 
 const debriefStatuses: DebriefStatus[] = ["Awaiting Debrief", "In Review", "Debriefed", "Action Required"];
@@ -607,6 +608,7 @@ export default function DebriefPage() {
                     <DebriefHeader label="Arr Assets" headerClass="bg-[#d9f1d5]" widthClass="w-[78px]" />
                     <DebriefHeader label="Issue Category" headerClass="bg-[#fde7c7]" widthClass="w-[130px]" />
                     <DebriefHeader label="Driver Notes" headerClass="bg-[#fde7c7]" widthClass="w-[220px]" />
+                    <DebriefHeader label="Debrief Notes" headerClass="bg-[#fde7c7]" widthClass="w-[220px]" />
                     <DebriefHeader label="Outcome" headerClass="bg-[#ead5ea]" widthClass="w-[105px]" />
                     <DebriefHeader label="Follow-up Owner" headerClass="bg-[#ead5ea]" widthClass="w-[130px]" />
                     <DebriefHeader label="Follow-up Date" headerClass="bg-[#ead5ea]" widthClass="w-[105px]" />
@@ -616,7 +618,7 @@ export default function DebriefPage() {
                 <tbody>
                   {filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={29} className="border border-black px-4 py-10 text-center text-sm font-black text-[#64748b]">
+                      <td colSpan={30} className="border border-black px-4 py-10 text-center text-sm font-black text-[#64748b]">
                         No duties match the selected debrief filters.
                       </td>
                     </tr>
@@ -694,6 +696,7 @@ export default function DebriefPage() {
                         <td className="border border-black px-1 py-2 text-center font-bold whitespace-nowrap">{row.arrAssets}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.issueCategory}</td>
                         <td className="border border-black px-1 py-2 font-normal break-words">{row.driverNotes || "-"}</td>
+                        <td className="border border-black px-1 py-2 font-normal break-words">{row.lateReason || "-"}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.debriefOutcome}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal break-words">{row.actionOwner || "-"}</td>
                         <td className="border border-black px-1 py-2 text-center font-normal whitespace-nowrap">{row.followUpDate ? formatDate(row.followUpDate) : "-"}</td>
@@ -850,6 +853,15 @@ function DebriefModal({
               </div>
             </div>
 
+            <div className="overflow-hidden rounded-md border border-[#d9dee6] bg-white shadow-sm">
+              <div className="border-b border-[#e5e7eb] px-4 py-3">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Route map mock-up</p>
+                <h3 className="mt-1 text-xl font-black text-[#111827]">Duty route</h3>
+                <p className="mt-1 text-xs font-bold text-[#64748b]">Selected duty {row.dutyNumber} • {row.startLocation} to {row.finalDestination}</p>
+              </div>
+              <img src="/mock-route-map.png" alt="Mock route map" className="h-[260px] w-full object-cover object-center" />
+            </div>
+
             <div className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Debrief summary</p>
               <h3 className="mt-2 text-2xl font-black text-[#111827]">Current position</h3>
@@ -869,8 +881,6 @@ function DebriefModal({
               <SelectBox label="Debrief status" value={form.debriefStatus} options={debriefStatuses} onChange={(value) => updateField("debriefStatus", value as DebriefStatus)} />
               <SelectBox label="Outcome" value={form.debriefOutcome} options={debriefOutcomes} onChange={(value) => updateField("debriefOutcome", value as DebriefOutcome)} />
               <SelectBox label="Issue category" value={form.issueCategory} options={issueCategories} onChange={(value) => updateField("issueCategory", value)} />
-              <ReadOnlyBox label="Departure assets" value={String(row.depAssets)} />
-              <ReadOnlyBox label="Arrival assets" value={String(row.arrAssets)} />
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -2025,6 +2035,7 @@ function downloadDebriefRows(rows: DebriefRow[], format: ExportFormat) {
     "Arr Assets",
     "Issue Category",
     "Driver Notes",
+    "Debrief Notes",
     "Outcome",
     "Follow-up Owner",
     "Follow-up Date",
@@ -2057,6 +2068,7 @@ function downloadDebriefRows(rows: DebriefRow[], format: ExportFormat) {
     row.arrAssets,
     row.issueCategory,
     row.driverNotes,
+    row.lateReason,
     row.debriefOutcome,
     row.actionOwner,
     row.followUpDate ? formatDate(row.followUpDate) : "",

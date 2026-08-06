@@ -65,6 +65,8 @@ function DctWebScreen({
   const [dttFilter, setDttFilter] = useState<"All" | ToTimeCode>("All");
   const [attFilter, setAttFilter] = useState<"All" | ToTimeCode>("All");
   const [issueFilter, setIssueFilter] = useState<"All" | "With issue" | "No issue">("All");
+  const [topView, setTopView] = useState<"summary" | "route">("summary");
+  const [selectedDutyId, setSelectedDutyId] = useState(() => rows[0]?.dutyId || "");
 
   const displayRows = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -111,6 +113,19 @@ function DctWebScreen({
       getPositiveDelayMinutes(row.plannedArrivalTs, row.arrivalActualTs),
     0
   );
+
+  const availableDutyIds = useMemo(() => Array.from(new Set(rows.map((row) => row.dutyId))), [rows]);
+
+  useEffect(() => {
+    if (!availableDutyIds.includes(selectedDutyId)) {
+      setSelectedDutyId(availableDutyIds[0] || "");
+    }
+  }, [availableDutyIds, selectedDutyId]);
+
+  const selectedDutyRows = useMemo(() => {
+    const dutyToUse = selectedDutyId || availableDutyIds[0] || "";
+    return rows.filter((row) => row.dutyId === dutyToUse);
+  }, [rows, selectedDutyId, availableDutyIds]);
 
   function clearFilters() {
     setSearchTerm("");
@@ -214,6 +229,40 @@ function DctWebScreen({
             </div>
           </div>
 
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex rounded-full border border-[#cfd8e3] bg-[#f8fafc] p-1">
+              <button
+                type="button"
+                onClick={() => setTopView("summary")}
+                className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.14em] transition ${topView === "summary" ? "bg-[#001b3a] text-white" : "text-[#475569] hover:bg-white"}`}
+              >
+                Summary
+              </button>
+              <button
+                type="button"
+                onClick={() => setTopView("route")}
+                className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.14em] transition ${topView === "route" ? "bg-[#001b3a] text-white" : "text-[#475569] hover:bg-white"}`}
+              >
+                Route Map
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-[0.16em] text-[#64748b]">Selected Duty</span>
+              <select
+                value={selectedDutyId}
+                onChange={(event) => setSelectedDutyId(event.target.value)}
+                className="rounded-full border border-[#cfd8e3] bg-white px-4 py-2 text-sm font-black text-[#172033]"
+              >
+                {availableDutyIds.map((dutyOption) => (
+                  <option key={dutyOption} value={dutyOption}>{dutyOption}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {topView === "summary" ? (
+          <>
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <SummaryCard label="Rows shown" value={String(displayRows.length)} />
             <SummaryCard
@@ -241,6 +290,10 @@ function DctWebScreen({
               Grey = not yet populated
             </span>
           </div>
+          </>
+        ) : (
+          <DctRouteMapPanel rows={selectedDutyRows} dutyId={selectedDutyId || availableDutyIds[0] || "-"} />
+        )}
         </section>
 
         <section className="mt-4 rounded-[14px] border border-[#cfd8e3] bg-white p-4 shadow-sm">
@@ -739,6 +792,36 @@ function getAssetCountForRow(row: DctRow) {
   };
 
   return String(mockAssetCounts[row.legNumber] ?? 0);
+}
+
+function DctRouteMapPanel({ rows, dutyId }: { rows: DctRow[]; dutyId: string }) {
+  const firstRow = rows[0];
+  const lastRow = rows[rows.length - 1];
+
+  return (
+    <section className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="overflow-hidden rounded-[14px] border border-[#d9dee6] bg-white shadow-sm">
+        <div className="border-b border-[#e5e7eb] px-4 py-3">
+          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#d6001c]">Route map mock-up</p>
+          <h3 className="mt-1 text-lg font-black text-[#172033]">Duty {dutyId} route view</h3>
+        </div>
+        <img src="/mock-route-map.png" alt="Mock route map" className="h-[360px] w-full object-cover object-center" />
+      </div>
+
+      <div className="rounded-[14px] border border-[#d9dee6] bg-white p-4 shadow-sm">
+        <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#d6001c]">Selected duty summary</p>
+        <h3 className="mt-1 text-lg font-black text-[#172033]">{dutyId}</h3>
+        <div className="mt-4 grid gap-3">
+          <SummaryCard label="Legs in duty" value={String(rows.length)} />
+          <SummaryCard label="Start location" value={firstRow?.departureLocation || "-"} />
+          <SummaryCard label="Final destination" value={lastRow?.arrivalLocation || "-"} />
+          <SummaryCard label="Due to convey" value={firstRow?.dueToConvey || "-"} />
+          <SummaryCard label="Planned first departure" value={firstRow ? formatDateTime(firstRow.plannedDepartureTs) : "-"} />
+          <SummaryCard label="Planned final arrival" value={lastRow ? formatDateTime(lastRow.plannedArrivalTs) : "-"} />
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
