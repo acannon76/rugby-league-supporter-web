@@ -223,14 +223,6 @@ const defaultMockup2Legs: DutyLeg[] = [
 
 const mockupOptions: MockupOption[] = [
   {
-    title: "Flex Mock Up",
-    text: "Open the flex duty journey mock-up.",
-    icon: "1",
-    active: true,
-    kind: "mockup",
-    mockupType: "flex",
-  },
-  {
     title: "Mockup 2",
     text: "Open a six-leg duty completed in order.",
     icon: "2",
@@ -1460,6 +1452,8 @@ function DutyScreen({
         <p className="mt-6 text-xl font-bold text-[#333]">{today}</p>
 
         <div className="mt-4 space-y-4">
+          {legs[0] && <StartFacilityCard firstLeg={legs[0]} />}
+
           {legs.map((leg) => (
             <LegCard
               key={leg.number}
@@ -1480,6 +1474,8 @@ function DutyScreen({
             />
           ))}
         </div>
+
+        <SpecialInstructionsCard />
 
         <BackToMenuButton onBackToMenu={onBackToMenu} />
       </section>
@@ -1963,6 +1959,53 @@ function OverviewCard({ dutyId = "NWH254" }: { dutyId?: string }) {
       <p className="mt-4 text-lg font-bold text-[#333]">
         <span className="font-black">Duty ID:</span> {dutyId}
       </p>
+    </section>
+  );
+}
+
+function StartFacilityCard({ firstLeg }: { firstLeg: DutyLeg }) {
+  const plannedDepartureTs =
+    firstLeg.plannedDepartureTs ??
+    combineDateAndTime(new Date(), firstLeg.etd, 0);
+  const startFacilityTs = plannedDepartureTs - 30 * 60 * 1000;
+
+  return (
+    <div
+      aria-label="Start Facility"
+      className="w-full rounded-[18px] border border-[#cbd5e1] bg-[#eef2f6] p-4 text-left shadow-sm"
+    >
+      <div className="flex items-center gap-3">
+        <div className="shrink-0 rounded-full bg-white px-3 py-2 text-sm font-black text-[#334155] shadow-sm">
+          {formatTimeOnly(startFacilityTs)} - {formatTimeOnly(plannedDepartureTs)}
+        </div>
+        <p className="text-base font-black text-[#334155]">Start Facility</p>
+      </div>
+    </div>
+  );
+}
+
+function SpecialInstructionsCard() {
+  return (
+    <section className="mt-6 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
+        Special Instructions
+      </p>
+      <ul className="mt-3 list-disc space-y-1 pl-5 text-sm font-black leading-5 text-[#222]">
+        <li>Safe Systems of Work MUST be followed.</li>
+        <li>
+          Uniforms must be worn at all times. This includes Toetector shoes and
+          reflective jackets.
+        </li>
+        <li>CPC-issued diversions MUST be followed.</li>
+        <li>
+          All drivers must refuel their vehicles at the end of the duty. If unable
+          to do so, report this to the Shift Manager.
+        </li>
+        <li>
+          In case of an emergency or query, please contact the Distribution Shift
+          Manager / Traffic Office.
+        </li>
+      </ul>
     </section>
   );
 }
