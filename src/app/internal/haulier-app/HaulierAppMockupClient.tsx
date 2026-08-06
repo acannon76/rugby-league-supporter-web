@@ -57,6 +57,10 @@ type DutyLeg = {
   to: string;
   plannedDepartureTs?: number;
   plannedArrivalTs?: number;
+  trailerType?: string;
+  planzCode?: string;
+  dueToConvey?: string;
+  specialInstruction?: string;
 };
 
 type MockupOption = {
@@ -102,6 +106,12 @@ type DctRow = {
   issues: string;
   liveTracking: string;
   loadAction: string;
+};
+
+type DutyActivity = {
+  startTs: number;
+  endTs: number;
+  label: string;
 };
 
 const DEFAULT_VEHICLE_REG = "MX71ESN";
@@ -156,14 +166,49 @@ const mockup2RelativeTimingMinutes = [
 
 const mockup2PlanningDetails: Record<
   number,
-  { trailerType: string; planzCode: string; dueToConvey: string }
+  {
+    trailerType: string;
+    planzCode: string;
+    dueToConvey: string;
+    specialInstruction: string;
+  }
 > = {
-  1: { trailerType: "49 Artic", planzCode: "NWH.M.3", dueToConvey: "1C 24 Mail" },
-  2: { trailerType: "49 Artic T/L", planzCode: "M.NWH.7", dueToConvey: "1C 24 Mail" },
-  3: { trailerType: "75 Artic DD", planzCode: "NWH.CH.4", dueToConvey: "1C 24 Mail" },
-  4: { trailerType: "95 Artic DD", planzCode: "CH.NWH.3", dueToConvey: "1C 24 Mail" },
-  5: { trailerType: "110 Artic DD", planzCode: "NWH.EH.4a", dueToConvey: "1C 24 Mail" },
-  6: { trailerType: "95 Artic DD", planzCode: "G.MSH.3b", dueToConvey: "1C 24 Mail" },
+  1: {
+    trailerType: "49 Artic",
+    planzCode: "NWH.M.3",
+    dueToConvey: "1C 24 Mail",
+    specialInstruction: "Pickup preloaded trailer from Bay 78",
+  },
+  2: {
+    trailerType: "49 Artic T/L",
+    planzCode: "M.NWH.7",
+    dueToConvey: "1C 24 Mail",
+    specialInstruction: "",
+  },
+  3: {
+    trailerType: "75 Artic DD",
+    planzCode: "NWH.CH.4",
+    dueToConvey: "1C 24 Mail",
+    specialInstruction: "",
+  },
+  4: {
+    trailerType: "95 Artic DD",
+    planzCode: "CH.NWH.3",
+    dueToConvey: "1C 24 Mail",
+    specialInstruction: "",
+  },
+  5: {
+    trailerType: "110 Artic DD",
+    planzCode: "NWH.EH.4a",
+    dueToConvey: "1C 24 Mail",
+    specialInstruction: "At Preston give trailer to BHV0012",
+  },
+  6: {
+    trailerType: "95 Artic DD",
+    planzCode: "G.MSH.3b",
+    dueToConvey: "1C 24 Mail",
+    specialInstruction: "Take trailer from BHV0024 & give to NWH564 at NWH",
+  },
 };
 
 const flexLegs: DutyLeg[] = [
@@ -183,6 +228,7 @@ const defaultMockup2Legs: DutyLeg[] = [
     eta: "20:50",
     from: "NORTH WEST HUB",
     to: "MANCHESTER MAIL CENTRE",
+    ...mockup2PlanningDetails[1],
   },
   {
     number: 2,
@@ -190,6 +236,7 @@ const defaultMockup2Legs: DutyLeg[] = [
     eta: "22:00",
     from: "MANCHESTER MAIL CENTRE",
     to: "NORTH WEST HUB",
+    ...mockup2PlanningDetails[2],
   },
   {
     number: 3,
@@ -197,6 +244,7 @@ const defaultMockup2Legs: DutyLeg[] = [
     eta: "23:50",
     from: "NORTH WEST HUB",
     to: "CHESTER MAIL CENTRE",
+    ...mockup2PlanningDetails[3],
   },
   {
     number: 4,
@@ -204,6 +252,7 @@ const defaultMockup2Legs: DutyLeg[] = [
     eta: "01:40",
     from: "CHESTER MAIL CENTRE",
     to: "NORTH WEST HUB",
+    ...mockup2PlanningDetails[4],
   },
   {
     number: 5,
@@ -211,6 +260,7 @@ const defaultMockup2Legs: DutyLeg[] = [
     eta: "04:20",
     from: "NORTH WEST HUB",
     to: "PRESTON MAIL CENTRE",
+    ...mockup2PlanningDetails[5],
   },
   {
     number: 6,
@@ -218,6 +268,7 @@ const defaultMockup2Legs: DutyLeg[] = [
     eta: "05:45",
     from: "PRESTON MAIL CENTRE",
     to: "NORTH WEST HUB",
+    ...mockup2PlanningDetails[6],
   },
 ];
 
@@ -1445,33 +1496,40 @@ function DutyScreen({
           Duty details
         </h2>
 
-        <p className="mt-2 text-sm font-black uppercase tracking-[0.14em] text-[#d6001c]">
-          {title}
-        </p>
-
-        <p className="mt-6 text-xl font-bold text-[#333]">{today}</p>
+        <div className="mt-6 flex items-start justify-between gap-4">
+          <p className="text-xl font-bold text-[#333]">{today}</p>
+          <DutyStartEndBadge legs={legs} />
+        </div>
 
         <div className="mt-4 space-y-4">
           {legs[0] && <StartFacilityCard firstLeg={legs[0]} />}
 
           {legs.map((leg) => (
-            <LegCard
-              key={leg.number}
-              leg={leg}
-              status={legStatus(leg.number)}
-              actualDepartureTs={
-                dctRows.find((row) => row.legNumber === leg.number)
-                  ?.departureActualTs ?? null
-              }
-              actualArrivalTs={
-                dctRows.find((row) => row.legNumber === leg.number)
-                  ?.arrivalActualTs ?? null
-              }
-              currentTimeTs={currentTimeTs}
-              issueReport={issueReports[leg.number]}
-              canOpen={canOpenLeg(leg.number)}
-              onClick={() => onOpenLeg(leg.number)}
-            />
+            <div key={leg.number} className="space-y-4">
+              <LegCard
+                leg={leg}
+                status={legStatus(leg.number)}
+                actualDepartureTs={
+                  dctRows.find((row) => row.legNumber === leg.number)
+                    ?.departureActualTs ?? null
+                }
+                actualArrivalTs={
+                  dctRows.find((row) => row.legNumber === leg.number)
+                    ?.arrivalActualTs ?? null
+                }
+                currentTimeTs={currentTimeTs}
+                issueReport={issueReports[leg.number]}
+                canOpen={canOpenLeg(leg.number)}
+                onClick={() => onOpenLeg(leg.number)}
+              />
+
+              {buildInterLegActivities(legs, leg.number).map((activity, activityIndex) => (
+                <DutyActivityCard
+                  key={`${leg.number}-${activity.label}-${activityIndex}`}
+                  activity={activity}
+                />
+              ))}
+            </div>
           ))}
         </div>
 
@@ -1984,6 +2042,50 @@ function StartFacilityCard({ firstLeg }: { firstLeg: DutyLeg }) {
   );
 }
 
+
+function DutyStartEndBadge({ legs }: { legs: DutyLeg[] }) {
+  if (!legs.length) {
+    return null;
+  }
+
+  const firstDepartureTs =
+    legs[0].plannedDepartureTs ?? combineDateAndTime(new Date(), legs[0].etd, 0);
+  const lastLeg = legs[legs.length - 1];
+  let endTs =
+    lastLeg.plannedArrivalTs ?? combineDateAndTime(new Date(firstDepartureTs), lastLeg.eta, 0);
+
+  while (endTs < firstDepartureTs) {
+    endTs += 24 * 60 * 60 * 1000;
+  }
+
+  const dutyStartTs = firstDepartureTs - 30 * 60 * 1000;
+  const dutyEndTs = endTs + 15 * 60 * 1000;
+
+  return (
+    <div className="shrink-0 rounded-[14px] border border-[#d7dde5] bg-[#f8fafc] px-4 py-3 text-right shadow-sm">
+      <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#64748b]">
+        Start / End Time
+      </p>
+      <p className="mt-1 text-lg font-black text-[#111827]">
+        {formatTimeOnly(dutyStartTs)} - {formatTimeOnly(dutyEndTs)}
+      </p>
+    </div>
+  );
+}
+
+function DutyActivityCard({ activity }: { activity: DutyActivity }) {
+  return (
+    <div className="w-full rounded-[12px] border border-[#c7d2e0] bg-[#eef2f6] px-3 py-2 text-left shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-black text-[#334155] shadow-sm">
+          {formatTimeOnly(activity.startTs)} - {formatTimeOnly(activity.endTs)}
+        </div>
+        <p className="text-[12px] font-black leading-4 text-[#334155]">{activity.label}</p>
+      </div>
+    </div>
+  );
+}
+
 function SpecialInstructionsCard() {
   return (
     <section className="mt-6 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
@@ -2102,6 +2204,15 @@ function LegCard({
         </p>
       </div>
 
+      {(leg.trailerType || leg.planzCode || leg.dueToConvey || leg.specialInstruction) && (
+        <div className="mt-4 grid grid-cols-[0.9fr_0.9fr_0.9fr_1.4fr] gap-2">
+          <CompactInfoTile label="Vehicle Type" value={leg.trailerType || "-"} />
+          <CompactInfoTile label="Planz Code" value={leg.planzCode || "-"} />
+          <CompactInfoTile label="Due To Convey" value={leg.dueToConvey || "-"} />
+          <CompactInfoTile label="Special Instruction" value={leg.specialInstruction || "-"} />
+        </div>
+      )}
+
       {issueReport && hasAnyIssue(issueReport) && (
         <IssueSummaryOnLeg legNumber={leg.number} issueReport={issueReport} />
       )}
@@ -2112,6 +2223,15 @@ function LegCard({
         </p>
       )}
     </button>
+  );
+}
+
+function CompactInfoTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[10px] border border-[#f2c8ce] bg-[#fffafb] px-3 py-2">
+      <p className="text-[8px] font-black uppercase tracking-[0.14em] text-[#64748b]">{label}</p>
+      <p className="mt-1 text-[10px] font-black leading-4 text-[#111827] break-words">{value}</p>
+    </div>
   );
 }
 
@@ -3808,6 +3928,69 @@ function formatDelayTotal(totalMinutes: number) {
 
 function normaliseLocationName(value: string) {
   return value.trim().toLowerCase();
+}
+
+function buildInterLegActivities(legs: DutyLeg[], legNumber: number): DutyActivity[] {
+  const currentIndex = legs.findIndex((leg) => leg.number === legNumber);
+
+  if (currentIndex < 0 || currentIndex >= legs.length - 1) {
+    return [];
+  }
+
+  const currentLeg = legs[currentIndex];
+  const nextLeg = legs[currentIndex + 1];
+  const currentArrivalTs = currentLeg.plannedArrivalTs;
+  const nextDepartureTs = nextLeg.plannedDepartureTs;
+
+  if (!currentArrivalTs || !nextDepartureTs || nextDepartureTs <= currentArrivalTs) {
+    return [];
+  }
+
+  const activityTemplates: Record<number, { label: string; durationMinutes?: number }[]> = {
+    1: [{ label: "Load(Assist)" }],
+    2: [
+      { label: "Unload(Assist)", durationMinutes: 30 },
+      { label: "Load(Assist)" },
+    ],
+    3: [
+      { label: "Meal Relief Whit Vehicle Un/Loaded", durationMinutes: 20 },
+      { label: "Load(Assist)" },
+    ],
+    4: [
+      { label: "Unload(Assist)", durationMinutes: 30 },
+      { label: "Meal Relief", durationMinutes: 30 },
+      { label: "Load(Assist)" },
+    ],
+    5: [
+      { label: "As Directed", durationMinutes: 25 },
+      { label: "Xchange Trailer" },
+    ],
+  };
+
+  const templates = activityTemplates[legNumber] || [];
+  const activities: DutyActivity[] = [];
+  let cursor = currentArrivalTs;
+
+  templates.forEach((template, index) => {
+    const isLast = index === templates.length - 1;
+    const remainingMinutes = Math.max(0, Math.round((nextDepartureTs - cursor) / 60000));
+    const durationMinutes = isLast
+      ? remainingMinutes
+      : Math.min(template.durationMinutes ?? remainingMinutes, remainingMinutes);
+    const endTs = cursor + durationMinutes * 60 * 1000;
+
+    if (endTs > cursor) {
+      activities.push({
+        startTs: cursor,
+        endTs,
+        label: template.label,
+      });
+    }
+
+    cursor = endTs;
+  });
+
+  return activities;
 }
 
 function buildMockup2Legs(referenceTs: number): DutyLeg[] {
