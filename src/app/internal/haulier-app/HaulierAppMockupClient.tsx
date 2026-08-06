@@ -3667,27 +3667,39 @@ function HaulierDctRouteMapPanel({ rows, dutyId }: { rows: DctRow[]; dutyId: str
   const lastRow = rows[rows.length - 1];
 
   return (
-    <section className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+    <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(330px,0.45fr)] xl:items-start">
       <div className="overflow-hidden rounded-[14px] border border-[#d9dee6] bg-white shadow-sm">
         <div className="border-b border-[#e5e7eb] px-4 py-3">
           <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#d6001c]">Route map mock-up</p>
           <h3 className="mt-1 text-lg font-black text-[#172033]">Duty {dutyId || "-"} route view</h3>
         </div>
-        <Image src={routeMapImage} alt="Mock route map" className="h-[360px] w-full object-cover object-center" priority />
+        <Image
+          src={routeMapImage}
+          alt="Mock route map"
+          className="aspect-[754/446] h-auto w-full object-cover object-center"
+          priority
+        />
       </div>
-      <div className="rounded-[14px] border border-[#d9dee6] bg-white p-4 shadow-sm">
+      <div className="rounded-[14px] border border-[#d9dee6] bg-white p-3 shadow-sm">
         <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#d6001c]">Selected duty summary</p>
         <h3 className="mt-1 text-lg font-black text-[#172033]">{dutyId || "-"}</h3>
-        <div className="mt-4 grid gap-3">
-          <SummaryCard label="Legs in duty" value={String(rows.length)} />
-          <SummaryCard label="Start location" value={firstRow?.departureLocation || "-"} />
-          <SummaryCard label="Final destination" value={lastRow?.arrivalLocation || "-"} />
-          <SummaryCard label="Due to convey" value={firstRow?.dueToConvey || "-"} />
-          <SummaryCard label="Planned first departure" value={firstRow ? formatDateTime(firstRow.plannedDepartureTs) : "-"} />
-          <SummaryCard label="Planned final arrival" value={lastRow ? formatDateTime(lastRow.plannedArrivalTs) : "-"} />
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+          <HaulierRouteSummaryCard label="Start location" value={firstRow?.departureLocation || "-"} />
+          <HaulierRouteSummaryCard label="Final destination" value={lastRow?.arrivalLocation || "-"} />
+          <HaulierRouteSummaryCard label="Planned first departure" value={firstRow ? formatDateTime(firstRow.plannedDepartureTs) : "-"} />
+          <HaulierRouteSummaryCard label="Planned final arrival" value={lastRow ? formatDateTime(lastRow.plannedArrivalTs) : "-"} />
         </div>
       </div>
     </section>
+  );
+}
+
+function HaulierRouteSummaryCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[10px] border border-[#d6dee8] bg-[#f8fafc] px-3 py-2.5">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#64748b]">{label}</p>
+      <p className="mt-1 text-sm font-black leading-5 text-[#172033]">{value || "-"}</p>
+    </div>
   );
 }
 

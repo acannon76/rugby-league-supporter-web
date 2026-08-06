@@ -864,10 +864,10 @@ function DebriefModal({
               <Image src={routeMapImage} alt="Mock route map" className="h-[260px] w-full object-cover object-center" priority />
             </div>
 
-            <div className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
+            <div className="rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm xl:col-span-2">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Debrief summary</p>
               <h3 className="mt-2 text-2xl font-black text-[#111827]">Current position</h3>
-              <div className="mt-4 grid grid-cols-1 gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
                 <SummaryCard label="Finish delay" value={delayMinutes > 0 ? `${delayMinutes} mins` : "On time"} />
                 <SummaryCard label="Current status" value={form.debriefStatus} />
                 <SummaryTextCard label="Driver issue notes" value={form.driverNotes} />
