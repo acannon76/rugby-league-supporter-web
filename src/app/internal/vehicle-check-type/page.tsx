@@ -57,13 +57,13 @@ export default function VehicleCheckTypePage() {
 
           <p className="mt-4 max-w-[720px] text-sm font-bold leading-6 text-[#ffecef] sm:text-base">
             Select the vehicle check type. Motive Unit is active in this mockup;
-            Rigid Vehicle and Trailers have been added ready for future build-out.
+            A second Motive Unit example has been added. Rigid Vehicle and Trailers remain in place ready for future build-out.
           </p>
         </div>
       </section>
 
       <section className="px-4 py-7 sm:px-6 lg:px-10">
-        <div className="mx-auto grid max-w-[900px] grid-cols-1 gap-5 md:grid-cols-3">
+        <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
           <Link
             href="/internal/vehicle-history"
             onClick={startVehicleCheckTimer}
@@ -84,13 +84,33 @@ export default function VehicleCheckTypePage() {
             </div>
           </Link>
 
+          <Link
+            href="/internal/vehicle-check-history"
+            onClick={startVehicleCheckTimer}
+            className="group flex min-h-[220px] flex-col rounded-[28px] border border-[#d0d7df] bg-white p-6 text-left text-[#001b3a] no-underline shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+          >
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#c4002f] text-2xl font-black text-white">
+              2
+            </div>
+
+            <h2 className="text-3xl font-black leading-tight">Motive Unit</h2>
+
+            <p className="mt-5 text-base font-bold leading-7 text-[#61748b]">
+              Open the alternative motive unit vehicle check mockup with the new 13 category check flow.
+            </p>
+
+            <div className="mt-auto pt-8 text-xs font-black uppercase tracking-[0.16em] text-[#c4002f]">
+              Open <span className="transition group-hover:translate-x-1">→</span>
+            </div>
+          </Link>
+
           <button
             type="button"
             disabled
             className="flex min-h-[220px] cursor-not-allowed flex-col rounded-[28px] border border-[#d0d7df] bg-white p-6 text-left text-[#001b3a] opacity-80 shadow-sm"
           >
             <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#c4002f] text-2xl font-black text-white">
-              2
+              3
             </div>
 
             <h2 className="text-3xl font-black leading-tight">Rigid Vehicle</h2>
@@ -110,7 +130,7 @@ export default function VehicleCheckTypePage() {
             className="flex min-h-[220px] cursor-not-allowed flex-col rounded-[28px] border border-[#d0d7df] bg-white p-6 text-left text-[#001b3a] opacity-80 shadow-sm"
           >
             <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#c4002f] text-2xl font-black text-white">
-              3
+              4
             </div>
 
             <h2 className="text-3xl font-black leading-tight">Trailers</h2>
