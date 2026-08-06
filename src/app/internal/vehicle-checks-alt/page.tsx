@@ -112,10 +112,10 @@ export default function VehicleChecksAltPage() {
 
     window.localStorage.setItem(altLogbookStorageKey, JSON.stringify(logbookEntry));
 
-    // Reset the completed check so the next vehicle check starts blank.
+    // Reset the completed check fields, but keep the shared countdown running.
+    // The timer is only cleared by the explicit mockup reset action.
     window.localStorage.removeItem(altStatusStorageKey);
     window.localStorage.removeItem(altMileageStorageKey);
-    window.localStorage.removeItem("hgv-check-timer-started-at");
     altCheckCategories.forEach((category) => {
       window.localStorage.removeItem(`hgv-alt-category-state-${category.slug}`);
     });

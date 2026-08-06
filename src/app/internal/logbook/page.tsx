@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import DriverName from "../DriverName";
+import VehicleCheckTimer from "../vehicle-checks/VehicleCheckTimer";
 import {
   altLogbookStorageKey,
   formatDateTime,
@@ -164,6 +165,8 @@ export default function LogbookPage() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <VehicleCheckTimer />
+
             <div className="rounded-2xl border border-white/30 bg-white/10 px-4 py-2">
               <p className="text-xs font-black uppercase tracking-widest text-[#ffd9df]">
                 Driver
