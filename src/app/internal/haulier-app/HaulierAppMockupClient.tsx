@@ -1293,22 +1293,10 @@ function NoDutyScreen({ onContinue }: { onContinue: () => void }) {
           Duty details
         </h2>
 
-        <section className="mt-6 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
-            No duty currently loaded
-          </p>
-
-          <p className="mt-4 text-base font-black leading-7 text-[#222]">
-            To load the duty, manually close the app to reload content. If the
-            duty still does not appear, ensure that your haulier has added your
-            correct email address to the Driver Details in Haulier Connect.
-          </p>
-        </section>
-
         <button
           type="button"
           onClick={onContinue}
-          className="mt-8 w-full rounded-[18px] bg-[#d6001c] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white"
+          className="mt-6 w-full rounded-[18px] bg-[#d6001c] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white"
         >
           Continue
         </button>
@@ -1492,11 +1480,11 @@ function DutyScreen({
           />
         )}
 
-        <h2 className="mt-10 text-2xl font-black text-[#222]">
+        <h2 className="mt-8 text-2xl font-black text-[#222]">
           Duty details
         </h2>
 
-        <div className="mt-6 flex items-start justify-between gap-4">
+        <div className="mt-3 flex items-start justify-between gap-4">
           <p className="text-xl font-bold text-[#333]">{today}</p>
           <DutyStartEndBadge legs={legs} />
         </div>
@@ -1531,6 +1519,8 @@ function DutyScreen({
               ))}
             </div>
           ))}
+
+          {legs.length > 0 && <EndFacilityCard lastLeg={legs[legs.length - 1]} />}
         </div>
 
         <SpecialInstructionsCard />
@@ -2007,14 +1997,14 @@ function MessageSimulatorModal({
 
 function OverviewCard({ dutyId = "NWH254" }: { dutyId?: string }) {
   return (
-    <section className="rounded-[18px] bg-[#f0f0f0] p-5">
+    <section className="rounded-[18px] bg-[#f0f0f0] px-5 py-4">
       <h2 className="text-2xl font-black text-[#222]">Overview</h2>
 
-      <p className="mt-6 text-lg font-bold text-[#333]">
+      <p className="mt-4 text-lg font-bold text-[#333]">
         <span className="font-black">Driver name:</span> <DriverName />
       </p>
 
-      <p className="mt-4 text-lg font-bold text-[#333]">
+      <p className="mt-2 text-lg font-bold text-[#333]">
         <span className="font-black">Duty ID:</span> {dutyId}
       </p>
     </section>
@@ -2042,6 +2032,26 @@ function StartFacilityCard({ firstLeg }: { firstLeg: DutyLeg }) {
   );
 }
 
+function EndFacilityCard({ lastLeg }: { lastLeg: DutyLeg }) {
+  const plannedArrivalTs =
+    lastLeg.plannedArrivalTs ??
+    combineDateAndTime(new Date(), lastLeg.eta, 0);
+  const endFacilityTs = plannedArrivalTs + 15 * 60 * 1000;
+
+  return (
+    <div
+      aria-label="End Facility"
+      className="w-full rounded-[18px] border border-[#cbd5e1] bg-[#eef2f6] p-4 text-left shadow-sm"
+    >
+      <div className="flex items-center gap-3">
+        <div className="shrink-0 rounded-full bg-white px-3 py-2 text-sm font-black text-[#334155] shadow-sm">
+          {formatTimeOnly(plannedArrivalTs)} - {formatTimeOnly(endFacilityTs)}
+        </div>
+        <p className="text-base font-black text-[#334155]">End Facility</p>
+      </div>
+    </div>
+  );
+}
 
 function DutyStartEndBadge({ legs }: { legs: DutyLeg[] }) {
   if (!legs.length) {
@@ -2062,7 +2072,7 @@ function DutyStartEndBadge({ legs }: { legs: DutyLeg[] }) {
   const dutyEndTs = endTs + 15 * 60 * 1000;
 
   return (
-    <div className="shrink-0 rounded-[14px] border border-[#d7dde5] bg-[#f8fafc] px-4 py-3 text-right shadow-sm">
+    <div className="shrink-0 rounded-[14px] border border-[#d7dde5] bg-[#f8fafc] px-4 py-2.5 text-right shadow-sm">
       <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#64748b]">
         Start / End Time
       </p>
@@ -2204,9 +2214,8 @@ function LegCard({
         </p>
       </div>
 
-      {(leg.trailerType || leg.planzCode || leg.dueToConvey || leg.specialInstruction) && (
-        <div className="mt-4 grid grid-cols-[0.9fr_0.9fr_0.9fr_1.4fr] gap-2">
-          <CompactInfoTile label="Vehicle Type" value={leg.trailerType || "-"} />
+      {(leg.planzCode || leg.dueToConvey || leg.specialInstruction) && (
+        <div className="mt-4 grid grid-cols-[0.9fr_1fr_1.55fr] gap-2">
           <CompactInfoTile label="Planz Code" value={leg.planzCode || "-"} />
           <CompactInfoTile label="Due To Convey" value={leg.dueToConvey || "-"} />
           <CompactInfoTile label="Special Instruction" value={leg.specialInstruction || "-"} />
