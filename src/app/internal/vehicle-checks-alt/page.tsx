@@ -1,19 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import DriverName from "../DriverName";
+import DriverName, { useDriverName } from "../DriverName";
 import VehicleCheckTimer from "../vehicle-checks/VehicleCheckTimer";
 import {
   altCheckCategories,
+  altHistoryStorageKey,
+  altLogbookStorageKey,
   altMileageStorageKey,
   altStatusStorageKey,
   altVehicleDetails,
+  formatDateTime,
   type AltCheckStatus,
+  type AltHistoryItem,
+  type AltLogbookEntry,
   type AltVehicleCheckCategory,
 } from "../vehicle-checks-altData";
 
 export default function VehicleChecksAltPage() {
+  const router = useRouter();
+  const driverName = useDriverName();
   const [statuses, setStatuses] = useState<Record<number, AltCheckStatus>>(() => {
     if (typeof window === "undefined") {
       return {};
@@ -52,6 +60,47 @@ export default function VehicleChecksAltPage() {
   const completedCount = altCheckCategories.filter(
     (category) => (statuses[category.number] || "none") !== "none"
   ).length;
+  const allChecksComplete = completedCount === altCheckCategories.length;
+
+  function formatMileage(value: string) {
+    if (!value) {
+      return "Not entered";
+    }
+
+    return `${Number(value).toLocaleString("en-GB")} km`;
+  }
+
+  function completeVehicleChecks() {
+    if (!allChecksComplete) {
+      return;
+    }
+
+    const historyRaw = window.localStorage.getItem(altHistoryStorageKey);
+    const historyItems: AltHistoryItem[] = historyRaw ? JSON.parse(historyRaw) : [];
+    const defectItems = historyItems.filter((item) =>
+      (statuses[item.categoryNumber] || "none") === "defect"
+    );
+
+    const logbookEntry: AltLogbookEntry = {
+      completedAt: formatDateTime(),
+      driverName,
+      mileageStart:
+        altVehicleDetails.find((item) => item.label === "Last Mileage")?.value ||
+        "684,218 km",
+      mileageEnd: formatMileage(currentMileage),
+      hasDefects: defectItems.length > 0,
+      defectsSummary:
+        defectItems.length > 0
+          ? defectItems.map((item) =>
+              `${item.categoryTitle}: ${item.description || "Defect recorded"}`
+            )
+          : ["NIL Defects"],
+      pmts: defectItems.map((item) => item.pmt),
+    };
+
+    window.localStorage.setItem(altLogbookStorageKey, JSON.stringify(logbookEntry));
+    router.push("/internal/logbook");
+  }
 
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#111]">
@@ -188,6 +237,21 @@ export default function VehicleChecksAltPage() {
               onMarkOk={() => markOk(check.number)}
             />
           ))}
+
+          <button
+            type="button"
+            onClick={completeVehicleChecks}
+            disabled={!allChecksComplete}
+            className={`mt-6 w-full rounded-[24px] px-5 py-5 text-sm font-black uppercase tracking-[0.16em] shadow-sm transition ${
+              allChecksComplete
+                ? "bg-[#b00020] text-white hover:bg-[#7d0017]"
+                : "cursor-not-allowed bg-[#cbd5e1] text-[#64748b]"
+            }`}
+          >
+            {allChecksComplete
+              ? "Vehicle Checks Complete"
+              : `Vehicle Checks Complete ${completedCount}/${altCheckCategories.length}`}
+          </button>
         </div>
       </section>
     </main>

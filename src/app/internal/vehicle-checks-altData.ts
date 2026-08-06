@@ -59,3 +59,24 @@ export function createAltPmt(categoryNumber: number) {
   const now = Date.now().toString();
   return `PMT2${categoryNumber}${now.slice(-5)}`;
 }
+
+export const altLogbookStorageKey = "hgv-alt-vehicle-check-logbook";
+
+export type AltLogbookEntry = {
+  completedAt: string;
+  driverName: string;
+  mileageStart: string;
+  mileageEnd: string;
+  hasDefects: boolean;
+  defectsSummary: string[];
+  pmts: string[];
+};
+
+export function formatDateTime(date = new Date()) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
