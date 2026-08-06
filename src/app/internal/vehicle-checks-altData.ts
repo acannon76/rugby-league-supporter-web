@@ -63,7 +63,11 @@ export function createAltPmt(categoryNumber: number) {
 export const altLogbookStorageKey = "hgv-alt-vehicle-check-logbook";
 
 export type AltLogbookEntry = {
-  completedAt: string;
+  startDateTime: string;
+  endDateTime: string;
+  startTimestamp: number;
+  endTimestamp: number;
+  completedAt?: string;
   driverName: string;
   mileageStart: string;
   mileageEnd: string;

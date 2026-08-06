@@ -81,8 +81,20 @@ export default function VehicleChecksAltPage() {
       (statuses[item.categoryNumber] || "none") === "defect"
     );
 
+    const endTimestamp = Date.now();
+    const storedStartTimestamp = Number(
+      window.localStorage.getItem("hgv-check-timer-started-at")
+    );
+    const startTimestamp =
+      Number.isFinite(storedStartTimestamp) && storedStartTimestamp > 0
+        ? storedStartTimestamp
+        : endTimestamp - 12 * 60 * 1000;
+
     const logbookEntry: AltLogbookEntry = {
-      completedAt: formatDateTime(),
+      startDateTime: formatDateTime(new Date(startTimestamp)),
+      endDateTime: formatDateTime(new Date(endTimestamp)),
+      startTimestamp,
+      endTimestamp,
       driverName,
       mileageStart:
         altVehicleDetails.find((item) => item.label === "Last Mileage")?.value ||
