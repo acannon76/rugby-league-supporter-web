@@ -1286,7 +1286,7 @@ function NoDutyScreen({ onContinue }: { onContinue: () => void }) {
     <>
       <AppHeader title="Haulier Mock Up" />
 
-      <section className="bg-white px-5 py-6">
+      <section className="bg-white px-5 py-4">
         <OverviewCard dutyId="" />
 
         <h2 className="mt-10 text-2xl font-black text-[#222]">
@@ -1320,7 +1320,7 @@ function MenuScreen({
     <>
       <AppHeader title="Haulier Mock Up" left="Back" onBack={onBack} />
 
-      <section className="bg-white px-5 py-6">
+      <section className="bg-white px-5 py-4">
         <section className="rounded-[18px] bg-[#f0f0f0] p-5">
           <h2 className="text-2xl font-black text-[#222]">Overview</h2>
 
@@ -1468,7 +1468,7 @@ function DutyScreen({
         onOpenMessageSimulator={onOpenMessageSimulator}
       />
 
-      <section className="bg-white px-5 py-6">
+      <section className="bg-white px-5 py-4">
         <OverviewCard dutyId={dutyId} />
 
         {highestUnreadMessage && highestUnreadConfig && (
@@ -1480,16 +1480,16 @@ function DutyScreen({
           />
         )}
 
-        <h2 className="mt-8 text-2xl font-black text-[#222]">
+        <h2 className="mt-6 text-2xl font-black leading-none text-[#222]">
           Duty details
         </h2>
 
-        <div className="mt-3 flex items-start justify-between gap-4">
-          <p className="text-xl font-bold text-[#333]">{today}</p>
+        <div className="mt-2 flex items-start justify-between gap-3">
+          <p className="text-xl font-bold leading-none text-[#333]">{today}</p>
           <DutyStartEndBadge legs={legs} />
         </div>
 
-        <div className="mt-4 space-y-4">
+        <div className="mt-3 space-y-3">
           {legs[0] && <StartFacilityCard firstLeg={legs[0]} />}
 
           {legs.map((leg) => (
@@ -1681,7 +1681,7 @@ function MessagesScreen({
         onOpenMessageSimulator={onOpenMessageSimulator}
       />
 
-      <section className="bg-white px-5 py-6">
+      <section className="bg-white px-5 py-4">
         <OverviewCard dutyId={dutyId} />
 
         <div className="mt-7 flex items-end justify-between gap-3">
@@ -1997,14 +1997,14 @@ function MessageSimulatorModal({
 
 function OverviewCard({ dutyId = "NWH254" }: { dutyId?: string }) {
   return (
-    <section className="rounded-[18px] bg-[#f0f0f0] px-5 py-4">
-      <h2 className="text-2xl font-black text-[#222]">Overview</h2>
+    <section className="rounded-[18px] bg-[#f0f0f0] px-5 py-3">
+      <h2 className="text-2xl font-black leading-none text-[#222]">Overview</h2>
 
-      <p className="mt-4 text-lg font-bold text-[#333]">
+      <p className="mt-2.5 text-lg font-bold leading-tight text-[#333]">
         <span className="font-black">Driver name:</span> <DriverName />
       </p>
 
-      <p className="mt-2 text-lg font-bold text-[#333]">
+      <p className="mt-1.5 text-lg font-bold leading-tight text-[#333]">
         <span className="font-black">Duty ID:</span> {dutyId}
       </p>
     </section>
@@ -2020,13 +2020,13 @@ function StartFacilityCard({ firstLeg }: { firstLeg: DutyLeg }) {
   return (
     <div
       aria-label="Start Facility"
-      className="w-full rounded-[18px] border border-[#cbd5e1] bg-[#eef2f6] p-4 text-left shadow-sm"
+      className="w-full rounded-[18px] border border-[#cbd5e1] bg-[#eef2f6] px-4 py-3 text-left shadow-sm"
     >
-      <div className="flex items-center gap-3">
-        <div className="shrink-0 rounded-full bg-white px-3 py-2 text-sm font-black text-[#334155] shadow-sm">
+      <div className="flex items-center gap-2.5">
+        <div className="shrink-0 rounded-full bg-white px-3 py-1.5 text-sm font-black text-[#334155] shadow-sm">
           {formatTimeOnly(startFacilityTs)} - {formatTimeOnly(plannedDepartureTs)}
         </div>
-        <p className="text-base font-black text-[#334155]">Start Facility</p>
+        <p className="text-base font-black leading-none text-[#334155]">Start Facility</p>
       </div>
     </div>
   );
@@ -2041,13 +2041,13 @@ function EndFacilityCard({ lastLeg }: { lastLeg: DutyLeg }) {
   return (
     <div
       aria-label="End Facility"
-      className="w-full rounded-[18px] border border-[#cbd5e1] bg-[#eef2f6] p-4 text-left shadow-sm"
+      className="w-full rounded-[18px] border border-[#cbd5e1] bg-[#eef2f6] px-4 py-3 text-left shadow-sm"
     >
-      <div className="flex items-center gap-3">
-        <div className="shrink-0 rounded-full bg-white px-3 py-2 text-sm font-black text-[#334155] shadow-sm">
+      <div className="flex items-center gap-2.5">
+        <div className="shrink-0 rounded-full bg-white px-3 py-1.5 text-sm font-black text-[#334155] shadow-sm">
           {formatTimeOnly(plannedArrivalTs)} - {formatTimeOnly(endFacilityTs)}
         </div>
-        <p className="text-base font-black text-[#334155]">End Facility</p>
+        <p className="text-base font-black leading-none text-[#334155]">End Facility</p>
       </div>
     </div>
   );
@@ -2072,11 +2072,11 @@ function DutyStartEndBadge({ legs }: { legs: DutyLeg[] }) {
   const dutyEndTs = endTs + 15 * 60 * 1000;
 
   return (
-    <div className="shrink-0 rounded-[14px] border border-[#d7dde5] bg-[#f8fafc] px-4 py-2.5 text-right shadow-sm">
+    <div className="shrink-0 rounded-[14px] border border-[#d7dde5] bg-[#f8fafc] px-4 py-2 text-right shadow-sm">
       <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#64748b]">
         Start / End Time
       </p>
-      <p className="mt-1 text-lg font-black text-[#111827]">
+      <p className="mt-0.5 text-lg font-black leading-none text-[#111827]">
         {formatTimeOnly(dutyStartTs)} - {formatTimeOnly(dutyEndTs)}
       </p>
     </div>
@@ -2085,12 +2085,12 @@ function DutyStartEndBadge({ legs }: { legs: DutyLeg[] }) {
 
 function DutyActivityCard({ activity }: { activity: DutyActivity }) {
   return (
-    <div className="w-full rounded-[12px] border border-[#c7d2e0] bg-[#eef2f6] px-3 py-2 text-left shadow-sm">
+    <div className="w-full rounded-[12px] border border-[#c7d2e0] bg-[#eef2f6] px-3 py-1.5 text-left shadow-sm">
       <div className="flex items-center gap-3">
         <div className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-black text-[#334155] shadow-sm">
           {formatTimeOnly(activity.startTs)} - {formatTimeOnly(activity.endTs)}
         </div>
-        <p className="text-[12px] font-black leading-4 text-[#334155]">{activity.label}</p>
+        <p className="text-[12px] font-black leading-none text-[#334155]">{activity.label}</p>
       </div>
     </div>
   );
@@ -2098,7 +2098,7 @@ function DutyActivityCard({ activity }: { activity: DutyActivity }) {
 
 function SpecialInstructionsCard() {
   return (
-    <section className="mt-6 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
+    <section className="mt-4 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-4">
       <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
         Special Instructions
       </p>
@@ -2152,7 +2152,7 @@ function LegCard({
       type="button"
       onClick={isInteractive && canOpen ? onClick : undefined}
       disabled={isInteractive ? !canOpen : false}
-      className={`w-full rounded-[18px] border border-[#d0d0d0] p-4 text-left shadow-sm transition ${
+      className={`w-full rounded-[18px] border border-[#d0d0d0] px-4 py-3 text-left shadow-sm transition ${
         isInteractive && canOpen
           ? "bg-white hover:-translate-y-1 hover:shadow-md"
           : status === "Completed"
@@ -2162,7 +2162,7 @@ function LegCard({
           : "bg-white"
       }`}
     >
-      <div className="mb-5 flex items-center justify-between gap-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-lg font-black text-[#444]">Leg {leg.number}</p>
 
@@ -2200,7 +2200,7 @@ function LegCard({
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-[1fr_42px_1fr] items-center gap-2">
+      <div className="mt-4 grid grid-cols-[1fr_42px_1fr] items-center gap-2">
         <p className="text-base font-black uppercase leading-tight text-[#333] sm:text-lg">
           {leg.from}
         </p>
@@ -2215,7 +2215,7 @@ function LegCard({
       </div>
 
       {(leg.planzCode || leg.dueToConvey || leg.specialInstruction) && (
-        <div className="mt-4 grid grid-cols-[0.9fr_1fr_1.55fr] gap-2">
+        <div className="mt-3 grid grid-cols-[0.9fr_1fr_1.55fr] gap-2">
           <CompactInfoTile label="Planz Code" value={leg.planzCode || "-"} />
           <CompactInfoTile label="Due To Convey" value={leg.dueToConvey || "-"} />
           <CompactInfoTile label="Special Instruction" value={leg.specialInstruction || "-"} />
@@ -2237,9 +2237,9 @@ function LegCard({
 
 function CompactInfoTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[10px] border border-[#f2c8ce] bg-[#fffafb] px-3 py-2">
+    <div className="rounded-[10px] border border-[#f2c8ce] bg-[#fffafb] px-2.5 py-1.5">
       <p className="text-[8px] font-black uppercase tracking-[0.14em] text-[#64748b]">{label}</p>
-      <p className="mt-1 text-[10px] font-black leading-4 text-[#111827] break-words">{value}</p>
+      <p className="mt-0.5 text-[10px] font-black leading-4 text-[#111827] break-words">{value}</p>
     </div>
   );
 }
@@ -2879,7 +2879,7 @@ function DestinationScreen({
           />
         </div>
 
-        <h2 className="mt-8 text-2xl font-black text-[#222]">
+        <h2 className="mt-6 text-2xl font-black leading-none text-[#222]">
           Destination task details
         </h2>
 
@@ -2900,7 +2900,7 @@ function DestinationScreen({
           <IssueRecordedBox legNumber={leg.number} issueReport={issueReport} />
         )}
 
-        <section className="mt-6 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-5">
+        <section className="mt-4 rounded-[18px] border-2 border-[#d6001c] bg-[#fff0f2] p-4">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d6001c]">
             Important
           </p>
@@ -2965,7 +2965,7 @@ function UnloadScreen({
           />
         </div>
 
-        <h2 className="mt-8 text-2xl font-black text-[#222]">
+        <h2 className="mt-6 text-2xl font-black leading-none text-[#222]">
           Destination task details
         </h2>
 
@@ -3027,7 +3027,7 @@ function CompleteScreen({
     <>
       <AppHeader title="Haulier Mock Up" />
 
-      <section className="bg-white px-5 py-6">
+      <section className="bg-white px-5 py-4">
         <OverviewCard dutyId={dutyId} />
 
         <h2 className="mt-10 text-2xl font-black text-[#222]">
