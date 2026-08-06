@@ -111,6 +111,17 @@ export default function VehicleChecksAltPage() {
     };
 
     window.localStorage.setItem(altLogbookStorageKey, JSON.stringify(logbookEntry));
+
+    // Reset the completed check so the next vehicle check starts blank.
+    window.localStorage.removeItem(altStatusStorageKey);
+    window.localStorage.removeItem(altMileageStorageKey);
+    window.localStorage.removeItem("hgv-check-timer-started-at");
+    altCheckCategories.forEach((category) => {
+      window.localStorage.removeItem(`hgv-alt-category-state-${category.slug}`);
+    });
+    setStatuses({});
+    setCurrentMileage("");
+
     router.push("/internal/logbook");
   }
 
