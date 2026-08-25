@@ -30,6 +30,16 @@ const sidebarItems: SidebarItem[] = [
   },
 ];
 
+const futureAreas = [
+  "318 Special Instructions",
+  "MTT Late Arrival Profiles",
+  "Sites",
+  "Due to Convey",
+  "Debrief Reasons",
+  "RHC Details",
+  "Traffic",
+];
+
 export default function SystemConfigurationsPage() {
   return (
     <div className="min-h-screen bg-[#edf3f8] text-[#111827]">
@@ -52,15 +62,30 @@ export default function SystemConfigurationsPage() {
             <div className="min-h-[calc(100vh-170px)] bg-[#f8fbfe] p-4 sm:p-6">
               <div className="rounded-[18px] border border-[#d9e3ee] bg-white p-6 shadow-sm sm:p-8">
                 <h2 className="text-xl font-black text-[#10203a]">Future configuration areas</h2>
-                <ul className="mt-5 list-disc space-y-3 pl-6 text-base font-bold text-[#24344d]">
-                  <li>318 Special Instructions</li>
-                  <li>MTT Late Arrival Profiles</li>
-                  <li>Sites</li>
-                  <li>Due to Convey</li>
-                  <li>Debrief Reasons</li>
-                  <li>RHC Details</li>
-                  <li>Traffic</li>
-                </ul>
+                <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  {futureAreas.map((area) => (
+                    <button
+                      key={area}
+                      type="button"
+                      disabled
+                      className="min-h-[82px] cursor-not-allowed rounded-xl border border-[#d9e3ee] bg-[#f8fbfe] px-5 py-4 text-left text-base font-black text-[#24344d] shadow-sm"
+                    >
+                      <span className="block text-xs font-black uppercase tracking-[0.12em] text-[#7b8798]">Configuration</span>
+                      <span className="mt-1 block">{area}</span>
+                    </button>
+                  ))}
+
+                  <Link
+                    href="/internal/app-ideas/link-message-mock/configurations/user-roles"
+                    className="min-h-[82px] rounded-xl border-2 border-[#e40000] bg-white px-5 py-4 text-left text-base font-black text-[#10203a] no-underline shadow-sm transition hover:bg-[#fff3f3]"
+                  >
+                    <span className="block text-xs font-black uppercase tracking-[0.12em] text-[#e40000]">User Administration</span>
+                    <span className="mt-1 flex items-center justify-between">
+                      <span>User Roles</span>
+                      <span className="text-xl text-[#e40000]">→</span>
+                    </span>
+                  </Link>
+                </div>
               </div>
             </div>
           </section>
