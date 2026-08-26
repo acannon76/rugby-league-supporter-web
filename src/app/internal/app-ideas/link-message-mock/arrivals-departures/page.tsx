@@ -21,6 +21,7 @@ type SidebarItem = {
 
 type BoardView = "Overview" | "Departures" | "Arrivals";
 type BoardMode = "Departures" | "Arrivals";
+type PastRetentionMinutes = 30 | 60 | 90 | 120;
 
 const siteOptions = [
   "Midlands Super Hub",
@@ -97,6 +98,12 @@ const sidebarItems: SidebarItem[] = [
 const departureOffsets = [2, 8, 14, 20, 26, 32, 38, 44, 50, 56, 62, 68, 74, 80, 86, 92, 98, 104, 110, 116];
 const arrivalOffsets = [4, 11, 18, 25, 32, 39, 46, 53, 60, 67, 74, 81, 88, 95, 102, 109, 116];
 
+// Extra past duties are deliberately positioned around the four selectable retention points.
+// This makes the mock-up visibly demonstrate what disappears when the user changes the setting.
+const oldDepartureOffsets = [-118, -112, -88, -82, -58, -52, -28, -22];
+const oldArrivalOffsets = [-119, -113, -89, -83, -59, -53, -29, -23];
+const pastRetentionOptions = [30, 60, 90, 120] as const;
+
 const departureDutyNumbers = [
   "MSVx5025b",
   "MSVp5032b",
@@ -140,11 +147,34 @@ const arrivalDutyNumbers = [
   "SEVx3004b",
 ];
 
+const oldDepartureDutyNumbers = [
+  "MSVx4820a",
+  "NWVx4814b",
+  "MANx3790a",
+  "WAVx3784b",
+  "PEVx2758a",
+  "LONx2752b",
+  "BRVx1728a",
+  "YDCx1722b",
+];
+
+const oldArrivalDutyNumbers = [
+  "VPLx4919a",
+  "NWVx4913b",
+  "MVOx3889a",
+  "HFVx3883b",
+  "PEVx2859a",
+  "WAVx2853b",
+  "CRYx1929a",
+  "LONx1923b",
+];
+
 export default function ArrivalsDeparturesPage() {
   const [boardView, setBoardView] = useState<BoardView>("Overview");
   const [selectedSite, setSelectedSite] = useState<SiteOption>("Midlands Super Hub");
   const [search, setSearch] = useState("");
   const [trafficFilter, setTrafficFilter] = useState<ArrivalDepartureRow["traffic"] | "All">("All");
+  const [pastRetentionMinutes, setPastRetentionMinutes] = useState<PastRetentionMinutes>(30);
   const [refreshTime, setRefreshTime] = useState(() => new Date());
 
   useEffect(() => {
@@ -166,12 +196,12 @@ export default function ArrivalsDeparturesPage() {
   );
 
   const departureRows = useMemo(
-    () => filterRows(selectedDepartureRows, search, trafficFilter, "Departures", refreshTime),
-    [selectedDepartureRows, search, trafficFilter, refreshTime],
+    () => filterRows(selectedDepartureRows, search, trafficFilter, "Departures", refreshTime, pastRetentionMinutes),
+    [selectedDepartureRows, search, trafficFilter, refreshTime, pastRetentionMinutes],
   );
   const arrivalRows = useMemo(
-    () => filterRows(selectedArrivalRows, search, trafficFilter, "Arrivals", refreshTime),
-    [selectedArrivalRows, search, trafficFilter, refreshTime],
+    () => filterRows(selectedArrivalRows, search, trafficFilter, "Arrivals", refreshTime, pastRetentionMinutes),
+    [selectedArrivalRows, search, trafficFilter, refreshTime, pastRetentionMinutes],
   );
 
   return (
@@ -187,7 +217,7 @@ export default function ArrivalsDeparturesPage() {
             </div>
 
             <div className="px-3 py-2.5 sm:px-4">
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[auto_minmax(180px,230px)_auto_minmax(190px,1fr)_minmax(145px,190px)_auto] xl:items-end">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[auto_minmax(170px,210px)_auto_minmax(220px,1fr)_minmax(125px,155px)_minmax(110px,135px)_auto_auto] xl:items-end">
                 <div className="inline-flex flex-wrap gap-1 rounded-xl bg-[#f3f7fb] p-1 xl:flex-nowrap">
                   {(["Overview", "Arrivals", "Departures"] as BoardView[]).map((view) => (
                     <button
@@ -246,6 +276,40 @@ export default function ArrivalsDeparturesPage() {
                   </select>
                 </FilterField>
 
+                <FilterField label="Show past">
+                  <select
+                    value={pastRetentionMinutes}
+                    onChange={(event) => setPastRetentionMinutes(Number(event.target.value) as PastRetentionMinutes)}
+                    className="w-full rounded-lg border border-[#cfdae7] bg-white px-2.5 py-2 text-sm font-bold text-[#10203a] outline-none transition focus:border-[#0f3a6d] focus:ring-2 focus:ring-[#bfdbfe]"
+                    aria-label="Show duties from the last number of minutes"
+                  >
+                    {pastRetentionOptions.map((minutes) => (
+                      <option key={minutes} value={minutes}>
+                        {minutes} mins
+                      </option>
+                    ))}
+                  </select>
+                </FilterField>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    downloadArrivalDepartureSnapshot({
+                      site: selectedSite,
+                      arrivals: arrivalRows,
+                      departures: departureRows,
+                      snapshotTime: new Date(),
+                      pastRetentionMinutes,
+                      trafficFilter,
+                      search,
+                    })
+                  }
+                  className="whitespace-nowrap rounded-lg bg-[#10203a] px-3 py-2 text-sm font-black text-white shadow-sm transition hover:bg-[#1b3153]"
+                  title="Download a PDF snapshot of the current arrivals and departures"
+                >
+                  PDF Snapshot
+                </button>
+
                 <div className="whitespace-nowrap rounded-lg border border-[#c7d4e5] bg-[#f8fbfe] px-2.5 py-2 text-sm font-black text-[#10203a] xl:justify-self-end">
                   Last updated: <span className="text-[#e40000]">{formatDateTime(refreshTime)}</span>
                 </div>
@@ -284,9 +348,10 @@ export default function ArrivalsDeparturesPage() {
 
 function buildDynamicRows(rows: ArrivalDepartureRow[], mode: BoardMode, selectedSite: string, now: Date) {
   const offsets = mode === "Departures" ? departureOffsets : arrivalOffsets;
+  const oldOffsets = mode === "Departures" ? oldDepartureOffsets : oldArrivalOffsets;
+  const oldDutyNumbers = mode === "Departures" ? oldDepartureDutyNumbers : oldArrivalDutyNumbers;
 
-  return rows.map((row, index) => {
-    const offset = offsets[index % offsets.length];
+  const mapRowAtOffset = (row: ArrivalDepartureRow, offset: number, jobReference: string) => {
     const primaryDate = addMinutes(now, offset);
     const primaryTime = formatDateTime(primaryDate);
 
@@ -296,7 +361,7 @@ function buildDynamicRows(rows: ArrivalDepartureRow[], mode: BoardMode, selected
         departing: selectedSite,
         departureDateTime: primaryTime,
         departureStatus: (offset < 0 ? "Actual" : offset <= 45 ? "ETD" : "Planned") as MovementStatus,
-        jobReference: departureDutyNumbers[index] ?? row.jobReference,
+        jobReference,
       };
     }
 
@@ -305,9 +370,20 @@ function buildDynamicRows(rows: ArrivalDepartureRow[], mode: BoardMode, selected
       destination: selectedSite,
       arrivalDateTime: primaryTime,
       arrivalStatus: (offset <= 0 ? "Actual" : "ETA") as MovementStatus,
-      jobReference: arrivalDutyNumbers[index] ?? row.jobReference,
+      jobReference,
     };
-  });
+  };
+
+  const oldRows = oldOffsets.map((offset, index) =>
+    mapRowAtOffset(rows[index % rows.length], offset, oldDutyNumbers[index]),
+  );
+
+  const currentAndFutureRows = rows.map((row, index) =>
+    mapRowAtOffset(row, offsets[index % offsets.length],
+      mode === "Departures" ? departureDutyNumbers[index] ?? row.jobReference : arrivalDutyNumbers[index] ?? row.jobReference),
+  );
+
+  return [...oldRows, ...currentAndFutureRows];
 }
 
 function filterRows(
@@ -316,23 +392,18 @@ function filterRows(
   trafficFilter: ArrivalDepartureRow["traffic"] | "All",
   mode: BoardMode,
   now: Date,
+  pastRetentionMinutes: PastRetentionMinutes,
 ) {
   const term = search.trim().toLowerCase();
   const nowMs = now.getTime();
-  const lowerDepartureWindow = nowMs;
-  const upperDepartureWindow = nowMs + 120 * 60 * 1000;
-  const lowerArrivalWindow = nowMs;
-  const upperArrivalWindow = nowMs + 120 * 60 * 1000;
+  const lowerWindow = nowMs - pastRetentionMinutes * 60 * 1000;
+  const upperWindow = nowMs + 120 * 60 * 1000;
 
   return [...rows]
     .filter((row) => {
       const primaryTimeMs = parseDateTime(getPrimaryTimeForMode(row, mode));
 
-      if (mode === "Departures" && (primaryTimeMs < lowerDepartureWindow || primaryTimeMs > upperDepartureWindow)) {
-        return false;
-      }
-
-      if (mode === "Arrivals" && (primaryTimeMs < lowerArrivalWindow || primaryTimeMs > upperArrivalWindow)) {
+      if (primaryTimeMs < lowerWindow || primaryTimeMs > upperWindow) {
         return false;
       }
 
@@ -350,6 +421,282 @@ function filterRows(
       return haystack.includes(term);
     })
     .sort((a, b) => parseDateTime(getPrimaryTimeForMode(a, mode)) - parseDateTime(getPrimaryTimeForMode(b, mode)));
+}
+
+
+type SnapshotPdfArgs = {
+  site: string;
+  arrivals: ArrivalDepartureRow[];
+  departures: ArrivalDepartureRow[];
+  snapshotTime: Date;
+  pastRetentionMinutes: PastRetentionMinutes;
+  trafficFilter: ArrivalDepartureRow["traffic"] | "All";
+  search: string;
+};
+
+type PdfTableColumn = {
+  heading: string;
+  width: number;
+  value: (row: ArrivalDepartureRow) => string;
+  maxChars: number;
+};
+
+function downloadArrivalDepartureSnapshot({
+  site,
+  arrivals,
+  departures,
+  snapshotTime,
+  pastRetentionMinutes,
+  trafficFilter,
+  search,
+}: SnapshotPdfArgs) {
+  const pdfBytes = createArrivalDepartureSnapshotPdf({
+    site,
+    arrivals,
+    departures,
+    snapshotTime,
+    pastRetentionMinutes,
+    trafficFilter,
+    search,
+  });
+  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `arrival-departure-snapshot-${slugify(site)}-${formatFileDateTime(snapshotTime)}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function createArrivalDepartureSnapshotPdf(args: SnapshotPdfArgs) {
+  const pageWidth = 842;
+  const pageHeight = 595;
+  const left = 34;
+  const right = 34;
+  const bottom = 34;
+  const pages: string[][] = [];
+  let commands: string[] = [];
+  let y = 0;
+
+  const startPage = () => {
+    commands = [];
+    pages.push(commands);
+
+    // Light watermark so the document is unmistakably a point-in-time snapshot.
+    commands.push("0.94 g");
+    pdfText(commands, 248, 300, "SNAPSHOT", 56, true);
+    commands.push("0 g");
+
+    commands.push("0.89 0 0 rg");
+    pdfText(commands, left, 553, "Arrival & Departure Snapshot", 19, true);
+    commands.push("0 g");
+    pdfText(commands, left, 533, `Snapshot date/time: ${formatDateTime(args.snapshotTime)}`, 9, true);
+    pdfText(commands, left, 518, `Site: ${args.site}`, 9, false);
+
+    const filterParts = [
+      `Show past: ${args.pastRetentionMinutes} mins`,
+      `Traffic: ${args.trafficFilter === "All" ? "All traffic" : args.trafficFilter}`,
+    ];
+    if (args.search.trim()) {
+      filterParts.push(`Search: ${args.search.trim()}`);
+    }
+    pdfText(commands, left, 503, filterParts.join("   |   "), 8, false);
+    pdfLine(commands, left, 493, pageWidth - right, 493, 0.75);
+    y = 474;
+  };
+
+  const ensureSpace = (height: number) => {
+    if (y - height < bottom + 18) {
+      startPage();
+    }
+  };
+
+  const drawSection = (title: string, rows: ArrivalDepartureRow[], mode: BoardMode) => {
+    const routeHeading = mode === "Arrivals" ? "Origin" : "Destination";
+    const columns: PdfTableColumn[] = [
+      {
+        heading: mode === "Arrivals" ? "Planned arrival" : "Planned departure",
+        width: 66,
+        value: (row) => formatTimeOnly(getPrimaryTimeForMode(row, mode)),
+        maxChars: 8,
+      },
+      { heading: "C3", width: 32, value: (row) => row.c3Bay, maxChars: 4 },
+      {
+        heading: routeHeading,
+        width: 141,
+        value: (row) => (mode === "Arrivals" ? row.departing : row.destination),
+        maxChars: 29,
+      },
+      { heading: "Duty", width: 79, value: (row) => row.jobReference, maxChars: 15 },
+      { heading: "Traffic", width: 96, value: (row) => row.traffic, maxChars: 21 },
+      { heading: "Resources", width: 184, value: (row) => row.resources, maxChars: 39 },
+      { heading: "Assets", width: 42, value: (row) => String(row.assets), maxChars: 6 },
+      { heading: "Delay", width: 48, value: (row) => row.delay, maxChars: 8 },
+      { heading: "Expected", width: 61, value: (row) => getExpectedTime(row, mode), maxChars: 9 },
+    ];
+
+    const tableWidth = columns.reduce((sum, column) => sum + column.width, 0);
+    const rowHeight = 22;
+    const headerHeight = 21;
+
+    const drawHeader = (continued = false) => {
+      ensureSpace(56);
+      pdfText(commands, left, y, continued ? `${title} (continued)` : title, 12, true);
+      pdfText(commands, left + 120, y, `${rows.length} row(s)`, 8, false);
+      y -= 16;
+
+      commands.push("0.06 0.13 0.23 rg");
+      pdfRect(commands, left, y - headerHeight + 4, tableWidth, headerHeight, true);
+      commands.push("1 1 1 rg");
+      let x = left;
+      for (const column of columns) {
+        pdfText(commands, x + 3, y - 9, column.heading, 6.6, true);
+        x += column.width;
+      }
+      commands.push("0 g");
+      y -= headerHeight;
+    };
+
+    drawHeader();
+
+    if (!rows.length) {
+      pdfText(commands, left + 5, y - 10, "No rows match the current filters.", 8.5, false);
+      y -= rowHeight;
+      return;
+    }
+
+    rows.forEach((row, index) => {
+      if (y - rowHeight < bottom + 18) {
+        startPage();
+        drawHeader(true);
+      }
+
+      if (index % 2 === 0) {
+        commands.push("0.97 g");
+        pdfRect(commands, left, y - rowHeight + 4, tableWidth, rowHeight, true);
+        commands.push("0 g");
+      }
+
+      let x = left;
+      for (const column of columns) {
+        pdfText(commands, x + 3, y - 9, fitPdfText(column.value(row), column.maxChars), 7.2, false);
+        x += column.width;
+      }
+      pdfLine(commands, left, y - rowHeight + 4, left + tableWidth, y - rowHeight + 4, 0.25, 0.84);
+      y -= rowHeight;
+    });
+
+    y -= 13;
+  };
+
+  startPage();
+  drawSection("Arrivals", args.arrivals, "Arrivals");
+  ensureSpace(52);
+  drawSection("Departures", args.departures, "Departures");
+
+  pages.forEach((page, index) => {
+    pdfLine(page, left, 24, pageWidth - right, 24, 0.5, 0.75);
+    pdfText(page, left, 11, "Arrival & Departure Snapshot", 7, true);
+    pdfText(page, pageWidth - 102, 11, `Page ${index + 1} of ${pages.length}`, 7, false);
+  });
+
+  return buildPdfDocument(pages, pageWidth, pageHeight);
+}
+
+function buildPdfDocument(pages: string[][], pageWidth: number, pageHeight: number) {
+  const encoder = new TextEncoder();
+  const objects: string[] = [];
+  const pageObjectIds: number[] = [];
+  const contentObjectIds: number[] = [];
+
+  const catalogId = 1;
+  const pagesId = 2;
+  const regularFontId = 3;
+  const boldFontId = 4;
+  let nextId = 5;
+
+  pages.forEach(() => {
+    pageObjectIds.push(nextId++);
+    contentObjectIds.push(nextId++);
+  });
+
+  objects[catalogId] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
+  objects[pagesId] = `<< /Type /Pages /Kids [${pageObjectIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pages.length} >>`;
+  objects[regularFontId] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
+  objects[boldFontId] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>";
+
+  pages.forEach((pageCommands, index) => {
+    const pageId = pageObjectIds[index];
+    const contentId = contentObjectIds[index];
+    const content = pageCommands.join("\n");
+    const contentLength = encoder.encode(content).length;
+
+    objects[pageId] = `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${regularFontId} 0 R /F2 ${boldFontId} 0 R >> >> /Contents ${contentId} 0 R >>`;
+    objects[contentId] = `<< /Length ${contentLength} >>\nstream\n${content}\nendstream`;
+  });
+
+  let pdf = "%PDF-1.4\n";
+  const offsets = new Array(objects.length).fill(0);
+
+  for (let id = 1; id < objects.length; id += 1) {
+    offsets[id] = encoder.encode(pdf).length;
+    pdf += `${id} 0 obj\n${objects[id]}\nendobj\n`;
+  }
+
+  const xrefOffset = encoder.encode(pdf).length;
+  pdf += `xref\n0 ${objects.length}\n`;
+  pdf += "0000000000 65535 f \n";
+  for (let id = 1; id < objects.length; id += 1) {
+    pdf += `${String(offsets[id]).padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objects.length} /Root ${catalogId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+  return encoder.encode(pdf);
+}
+
+function pdfText(commands: string[], x: number, y: number, text: string, size: number, bold: boolean) {
+  commands.push(`BT /${bold ? "F2" : "F1"} ${size} Tf 1 0 0 1 ${x} ${y} Tm (${escapePdfText(text)}) Tj ET`);
+}
+
+function pdfLine(commands: string[], x1: number, y1: number, x2: number, y2: number, width: number, gray = 0.65) {
+  commands.push(`${gray} G ${width} w ${x1} ${y1} m ${x2} ${y2} l S 0 G`);
+}
+
+function pdfRect(commands: string[], x: number, y: number, width: number, height: number, fill: boolean) {
+  commands.push(`${x} ${y} ${width} ${height} re ${fill ? "f" : "S"}`);
+}
+
+function escapePdfText(value: string) {
+  return value
+    .replace(/•/g, " / ")
+    .replace(/[–—]/g, "-")
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[^\x20-\x7E]/g, "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
+}
+
+function fitPdfText(value: string, maxChars: number) {
+  const cleaned = escapePdfText(value).replace(/\\([()\\])/g, "$1");
+  if (cleaned.length <= maxChars) {
+    return cleaned;
+  }
+  return `${cleaned.slice(0, Math.max(1, maxChars - 3))}...`;
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function formatFileDateTime(date: Date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}`;
 }
 
 function addMinutes(date: Date, minutes: number) {
