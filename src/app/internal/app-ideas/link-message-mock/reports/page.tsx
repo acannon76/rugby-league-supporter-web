@@ -16,8 +16,8 @@ type ReportDirectoryItem = {
   description: string;
   href: string;
   status: string;
-  accent: "red" | "green" | "blue" | "amber";
-  icon: "reports" | "compliance" | "dashboard" | "plan";
+  accent: "red" | "green" | "blue" | "amber" | "purple" | "teal";
+  icon: "reports" | "compliance" | "dashboard" | "plan" | "sensor" | "fuel";
   capabilities: readonly string[];
 };
 
@@ -81,6 +81,28 @@ const reportOptions: readonly ReportDirectoryItem[] = [
     icon: "plan",
     capabilities: ["Fully filtered dashboard", "Excel, CSV & PDF", "Email scheduling"],
   },
+  {
+    number: "Report 5",
+    title: "Sensor Report Dashboard",
+    description:
+      "Monitor GPS, CANbus and Digital Tacho reporting health across the fleet, identify stale devices and investigate Red or Amber vehicles by reporting site.",
+    href: "/internal/app-ideas/link-message-mock/reports/option-5",
+    status: "Available",
+    accent: "purple",
+    icon: "sensor",
+    capabilities: ["RAG sensor health", "Excel, CSV & PDF", "All reporting sites"],
+  },
+  {
+    number: "Report 6",
+    title: "Fuel Report Dashboard",
+    description:
+      "Review vehicle fuel usage, distance and consumption, compare reporting sites and identify missing or unusual fuel readings across the fleet.",
+    href: "/internal/app-ideas/link-message-mock/reports/option-6",
+    status: "Available",
+    accent: "teal",
+    icon: "fuel",
+    capabilities: ["Fleet fuel dashboard", "Excel, CSV & PDF", "Site & vehicle analysis"],
+  },
 ] as const;
 
 const accentStyles = {
@@ -104,6 +126,16 @@ const accentStyles = {
     icon: "bg-[#d97706]",
     badge: "bg-[#fffbeb] text-[#92400e] ring-[#fde68a]",
   },
+  purple: {
+    border: "border-t-[#7c3aed]",
+    icon: "bg-[#7c3aed]",
+    badge: "bg-[#f5f3ff] text-[#6d28d9] ring-[#ddd6fe]",
+  },
+  teal: {
+    border: "border-t-[#0f766e]",
+    icon: "bg-[#0f766e]",
+    badge: "bg-[#f0fdfa] text-[#0f766e] ring-[#99f6e4]",
+  },
 } as const;
 
 export default function ReportsOptionsPage() {
@@ -124,7 +156,7 @@ export default function ReportsOptionsPage() {
               </div>
 
               <div className="grid w-full grid-cols-2 gap-3 sm:w-auto">
-                <DirectorySummary label="Reports available" value="4" />
+                <DirectorySummary label="Reports available" value="6" />
                 <DirectorySummary label="Download formats" value="3" />
               </div>
             </header>
@@ -140,7 +172,7 @@ export default function ReportsOptionsPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 2xl:grid-cols-4">
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 2xl:grid-cols-3">
                 {reportOptions.map((report) => {
                   const styles = accentStyles[report.accent];
 
@@ -222,6 +254,27 @@ function ReportIcon({ type }: { type: ReportDirectoryItem["icon"] }) {
         <circle cx="20" cy="9" r="2" fill="currentColor" stroke="none" />
         <circle cx="30" cy="13" r="2" fill="currentColor" stroke="none" />
         <circle cx="38" cy="6" r="2" fill="currentColor" stroke="none" />
+      </svg>
+    );
+  }
+
+  if (type === "sensor") {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 48 48" className="h-9 w-9 fill-none stroke-current" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="24" cy="24" r="5" />
+        <path d="M14 34a14 14 0 0 1 0-20M34 14a14 14 0 0 1 0 20" />
+        <path d="M8 40a23 23 0 0 1 0-32M40 8a23 23 0 0 1 0 32" />
+      </svg>
+    );
+  }
+
+  if (type === "fuel") {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 48 48" className="h-9 w-9 fill-none stroke-current" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 40V8h20v32" />
+        <path d="M16 13h12v10H16z" />
+        <path d="M32 15h4l4 5v13a4 4 0 0 1-8 0v-5" />
+        <path d="M8 40h28" />
       </svg>
     );
   }
