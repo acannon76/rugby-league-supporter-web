@@ -62,7 +62,7 @@ type DutyContentFilter = {
 const sideButtons: SideButton[] = [
   { label: "Settings", icon: "⚙" },
   { label: "Planning", icon: "⚙" },
-  { label: "Vehicle view", icon: "🚛" },
+  { label: "Vehicle view", icon: "🚛", href: "/internal/app-ideas/link-message-mock/vehicle-data-maintenance" },
   { label: "Trailer view", icon: "▰" },
   { label: "Fleet view", icon: "▱" },
   {

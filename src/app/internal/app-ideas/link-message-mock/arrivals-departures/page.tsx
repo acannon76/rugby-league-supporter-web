@@ -83,7 +83,7 @@ type SiteOption = (typeof siteOptions)[number];
 const sidebarItems: SidebarItem[] = [
   { label: "Duty Execution", icon: "⚙", href: "/internal/app-ideas/link-message-mock" },
   { label: "Planning", icon: "⚙", href: "/internal/app-ideas/link-message-mock" },
-  { label: "Vehicle view", icon: "🚛", href: "/internal/app-ideas/link-message-mock" },
+  { label: "Vehicle view", icon: "🚛", href: "/internal/app-ideas/link-message-mock/vehicle-data-maintenance" },
   { label: "Trailer view", icon: "▰", href: "/internal/app-ideas/link-message-mock" },
   { label: "Fleet view", icon: "▱", href: "/internal/app-ideas/link-message-mock" },
   { label: "Comms", icon: "💬", href: "/internal/app-ideas/link-message-mock/comms", alertCount: 16 },

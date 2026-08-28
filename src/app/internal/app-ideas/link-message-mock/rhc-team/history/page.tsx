@@ -94,7 +94,7 @@ const hiddenUiJobTemplateHeaders = new Set([
 const sidebarItems = [
   { label: "Duty Execution", icon: "⚙", href: "/internal/app-ideas/link-message-mock" },
   { label: "Planning", icon: "⚙", href: "/internal/app-ideas/link-message-mock" },
-  { label: "Vehicle view", icon: "🚛", href: "/internal/app-ideas/link-message-mock" },
+  { label: "Vehicle view", icon: "🚛", href: "/internal/app-ideas/link-message-mock/vehicle-data-maintenance" },
   { label: "Trailer view", icon: "▰", href: "/internal/app-ideas/link-message-mock" },
   { label: "Fleet view", icon: "▱", href: "/internal/app-ideas/link-message-mock" },
   {
