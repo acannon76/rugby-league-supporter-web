@@ -32,7 +32,6 @@ const sidebarItems: SidebarItem[] = [
 
 const futureAreas = [
   "318 Special Instructions",
-  "MTT Late Arrival Profiles",
   "Sites",
   "Due to Convey",
   "Debrief Reasons",
@@ -74,6 +73,17 @@ export default function SystemConfigurationsPage() {
                       <span className="mt-1 block">{area}</span>
                     </button>
                   ))}
+
+                  <Link
+                    href="/internal/app-ideas/link-message-mock/configurations/mtt-late-arrival-profiles"
+                    className="min-h-[82px] rounded-xl border-2 border-[#e40000] bg-white px-5 py-4 text-left text-base font-black text-[#10203a] no-underline shadow-sm transition hover:bg-[#fff3f3]"
+                  >
+                    <span className="block text-xs font-black uppercase tracking-[0.12em] text-[#e40000]">Timing Configuration</span>
+                    <span className="mt-1 flex items-center justify-between">
+                      <span>MTT Late Arrival Profiles</span>
+                      <span className="text-xl text-[#e40000]">→</span>
+                    </span>
+                  </Link>
 
                   <Link
                     href="/internal/app-ideas/link-message-mock/configurations/user-roles"

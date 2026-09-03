@@ -16,6 +16,12 @@ import {
   ScheduledReportsManager,
   type ScheduledReport,
 } from "../ScheduledReportsManager";
+import {
+  TIMING_CODE_COLOURS,
+  TIMING_CODE_LABELS,
+  classifyTimingDifference,
+  isLateTimingDifference,
+} from "../../../timingProfile";
 
 type SidebarItem = {
   label: string;
@@ -251,29 +257,15 @@ const nationalPartnerLocations = [
 const startOffsetPattern = [-4, 2, 11, -7, 18, 5, 0, -12, 7, 14, -2, 4, 9, -5, 22, 3, -8, 6, 12, 1, -3, 8, -6, 16, 4, -1, 10, -9, 5, 13];
 const finishOffsetPattern = [3, -2, 16, -5, 24, 7, 1, -8, 11, 19, -4, 6, 13, -3, 28, 4, -7, 9, 15, 2, -1, 12, -4, 21, 5, 0, 14, -6, 8, 18];
 const timingOrder: TimingCode[] = ["VE", "E", "OT", "L", "VL", "F"];
-const timingLabels: Record<TimingCode, string> = {
-  VE: "Very Early",
-  E: "Early",
-  OT: "On Time",
-  L: "Late",
-  VL: "Very Late",
-  F: "Failed",
-};
-const timingColours: Record<TimingCode, string> = {
-  VE: "#2563eb",
-  E: "#7c3aed",
-  OT: "#16a34a",
-  L: "#f59e0b",
-  VL: "#ea580c",
-  F: "#991b1b",
-};
+const timingLabels: Record<TimingCode, string> = TIMING_CODE_LABELS;
+const timingColours: Record<TimingCode, string> = TIMING_CODE_COLOURS;
 const timingPillClasses: Record<TimingCode, string> = {
-  VE: "bg-[#dbeafe] text-[#1d4ed8]",
-  E: "bg-[#ede9fe] text-[#6d28d9]",
+  VE: "bg-[#fef3c7] text-[#92400e]",
+  E: "bg-[#fef3c7] text-[#92400e]",
   OT: "bg-[#dcfce7] text-[#166534]",
-  L: "bg-[#fef3c7] text-[#a16207]",
-  VL: "bg-[#ffedd5] text-[#c2410c]",
-  F: "bg-[#fee2e2] text-[#991b1b]",
+  L: "bg-[#fee2e2] text-[#991b1b]",
+  VL: "bg-[#fee2e2] text-[#991b1b]",
+  F: "bg-[#fecaca] text-[#7f1d1d]",
 };
 const SCHEDULED_REPORTS_STORAGE_KEY = "driveros-mock-scheduled-reports";
 const defaultRange = getDateRange(5);
@@ -1545,7 +1537,7 @@ function buildNetworkPerformanceRows(dates: string[]): NetworkPerformanceRow[] {
         const actualStartTs = buildTimestamp(dutyDate, plannedStartMinutes + startOffset);
         const plannedFinishTs = buildTimestamp(dutyDate, plannedStartMinutes + durationMinutes);
         const actualFinishTs = buildTimestamp(dutyDate, plannedStartMinutes + durationMinutes + finishOffset);
-        const issueCategory = finishOffset >= 9 ? "Late Arrival" : startOffset >= 9 ? "Late Departure" : "No Issue";
+        const issueCategory = isLateTimingDifference(finishOffset) ? "Late Arrival" : isLateTimingDifference(startOffset) ? "Late Departure" : "No Issue";
         const outcome = finishOffset >= 21 ? "Part Complete" : "Complete";
         const partnerLocation = nationalPartnerLocations[siteIndex % nationalPartnerLocations.length];
         const departureLocation = legIndex === 0 ? reportingSite : partnerLocation;
@@ -1881,12 +1873,7 @@ function formatDifference(minutes: number) {
 }
 
 function getTimingCode(minutes: number): TimingCode {
-  if (minutes <= -31) return "VE";
-  if (minutes <= -9) return "E";
-  if (minutes <= 8) return "OT";
-  if (minutes <= 30) return "L";
-  if (minutes < 120) return "VL";
-  return "F";
+  return classifyTimingDifference(minutes) ?? "OT";
 }
 
 function getWeekNumberFromAprilFirst(dateInput: string) {

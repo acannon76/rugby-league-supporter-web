@@ -1,3 +1,5 @@
+import { classifyTimingDifference } from "./timingProfile";
+
 export type LegStatus = "To do" | "In Progress" | "Completed";
 export type DctStatus = "Planned" | "In Progress" | "Complete";
 
@@ -292,11 +294,13 @@ export function getTimingCellClass(plannedTs: number, actualTs: number | null) {
     return "bg-[#f3f4f6] text-[#374151]";
   }
 
-  if (actualTs > plannedTs) {
-    return "bg-[#fecaca] text-[#7f1d1d]";
-  }
+  const differenceMinutes = Math.round((actualTs - plannedTs) / 60000);
+  const code = classifyTimingDifference(differenceMinutes);
 
-  return "bg-[#bbf7d0] text-[#166534]";
+  if (code === "F") return "bg-[#fecaca] text-[#7f1d1d]";
+  if (code === "VE" || code === "E") return "bg-[#fef3c7] text-[#92400e]";
+  if (code === "OT") return "bg-[#bbf7d0] text-[#166534]";
+  return "bg-[#fecaca] text-[#991b1b]";
 }
 
 export function rowHasLateTiming(row: DctRow) {

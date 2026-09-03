@@ -1,4 +1,11 @@
-export type TimingCode = "VE" | "E" | "OT" | "L" | "VL" | "F";
+import {
+  TIMING_CODES,
+  TIMING_CODE_COLOURS,
+  TIMING_CODE_LABELS,
+  type TimingCode as SharedTimingCode,
+} from "../../../timingProfile";
+
+export type TimingCode = SharedTimingCode;
 export type TimingCounts = Record<TimingCode, number>;
 export type TimingPercentages = Record<TimingCode, number>;
 
@@ -31,25 +38,9 @@ export type NationalLocalPlanRange = {
   dates: string[];
 };
 
-export const timingCodes: TimingCode[] = ["VE", "E", "OT", "L", "VL", "F"];
-
-export const timingLabels: Record<TimingCode, string> = {
-  VE: "Very Early",
-  E: "Early",
-  OT: "On Time",
-  L: "Late",
-  VL: "Very Late",
-  F: "Failed",
-};
-
-export const timingColours: Record<TimingCode, string> = {
-  VE: "#2563eb",
-  E: "#7c3aed",
-  OT: "#16a34a",
-  L: "#f59e0b",
-  VL: "#ea580c",
-  F: "#991b1b",
-};
+export const timingCodes: TimingCode[] = [...TIMING_CODES];
+export const timingLabels: Record<TimingCode, string> = TIMING_CODE_LABELS;
+export const timingColours: Record<TimingCode, string> = TIMING_CODE_COLOURS;
 
 export const availableLocations = [
   "Aberdeen MC",

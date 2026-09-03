@@ -6,6 +6,7 @@ import routeMapImage from "../mock-route-map.png";
 import DriverName from "../DriverName";
 import { getStoredDriverUserId } from "../driverPdaSession";
 import { getOperationalWeekNumberFromDisplayDate } from "../operationalWeek";
+import { classifyTimingDifference } from "../app-ideas/timingProfile";
 
 type LegStatus = "To do" | "In Progress" | "Completed";
 type MockupType = "flex" | "mockup2";
@@ -3930,16 +3931,12 @@ function getTimingCellClass(
   }
 
   const differenceMinutes = Math.round((actualTs - plannedTs) / 60000);
+  const code = classifyTimingDifference(differenceMinutes);
 
-  if (differenceMinutes <= 0) {
-    return "bg-[#bbf7d0] text-[#166534]";
-  }
-
-  if (differenceMinutes <= 9) {
-    return "bg-[#fef3c7] text-[#92400e]";
-  }
-
-  return "bg-[#fecaca] text-[#7f1d1d]";
+  if (code === "F") return "bg-[#fecaca] text-[#7f1d1d]";
+  if (code === "VE" || code === "E") return "bg-[#fef3c7] text-[#92400e]";
+  if (code === "OT") return "bg-[#bbf7d0] text-[#166534]";
+  return "bg-[#fecaca] text-[#991b1b]";
 }
 
 function getTimingBand(plannedTs: number, actualTs: number | null) {
@@ -3948,28 +3945,7 @@ function getTimingBand(plannedTs: number, actualTs: number | null) {
   }
 
   const differenceMinutes = Math.round((actualTs - plannedTs) / 60000);
-
-  if (differenceMinutes >= -8 && differenceMinutes <= 8) {
-    return "OT";
-  }
-
-  if (differenceMinutes <= -9 && differenceMinutes >= -30) {
-    return "E";
-  }
-
-  if (differenceMinutes <= -31) {
-    return "VE";
-  }
-
-  if (differenceMinutes >= 9 && differenceMinutes <= 30) {
-    return "L";
-  }
-
-  if (differenceMinutes >= 31 && differenceMinutes < 120) {
-    return "VL";
-  }
-
-  return "F";
+  return classifyTimingDifference(differenceMinutes) ?? "-";
 }
 
 function rowHasLateTiming(row: DctRow) {

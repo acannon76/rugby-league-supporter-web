@@ -18,8 +18,13 @@ import {
   resetDriverPdaManifestMockup,
   rowHasLateTiming,
 } from "../driverPdaManifestData";
+import {
+  TIMING_PROFILE_BANDS,
+  classifyTimingDifference,
+  type TimingCode,
+} from "../timingProfile";
 
-type ToTimeCode = "VE" | "E" | "OT" | "L" | "VL" | "F";
+type ToTimeCode = TimingCode;
 const toTimeOptions: ToTimeCode[] = ["VE", "E", "OT", "L", "VL", "F"];
 
 export default function DctMockupClient() {
@@ -523,15 +528,23 @@ function ToTimeLegend() {
           <h3 className="mt-1 text-lg font-black text-[#172033]">How each timing code is set</h3>
           <p className="mt-1 text-xs font-bold text-[#64748b]">Reference ranges used for DTT, ATT and MTT.</p>
         </div>
+        <Link
+          href="/internal/app-ideas/link-message-mock/configurations/mtt-late-arrival-profiles"
+          className="shrink-0 rounded-lg border border-[#cbd5e1] bg-[#f8fafc] px-3 py-2 text-[10px] font-black uppercase tracking-[0.08em] text-[#10203a] no-underline transition hover:border-[#d6001c] hover:text-[#d6001c]"
+        >
+          View profile →
+        </Link>
       </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
-        <ToTimeLegendCard code="VE" description="Very Early" range="-00:31 to -02:00 (or earlier)" />
-        <ToTimeLegendCard code="E" description="Early" range="-00:09 to -00:30" />
-        <ToTimeLegendCard code="OT" description="On Time" range="-00:08 to +00:08" />
-        <ToTimeLegendCard code="L" description="Late" range="+00:09 to +00:30" />
-        <ToTimeLegendCard code="VL" description="Very Late" range="+00:31 to +01:59" />
-        <ToTimeLegendCard code="F" description="Failed" range="+02:00 or later" />
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        {TIMING_PROFILE_BANDS.map((band) => (
+          <ToTimeLegendCard
+            key={band.id}
+            code={band.code}
+            description={band.label}
+            range={band.range}
+          />
+        ))}
       </div>
     </section>
   );
@@ -618,12 +631,7 @@ function getDifferenceInMinutes(plannedTs: number, actualTs: number | null) {
 }
 
 function classifyToTime(diffMinutes: number): ToTimeCode {
-  if (diffMinutes >= 120) return "F";
-  if (diffMinutes >= 31) return "VL";
-  if (diffMinutes >= 9) return "L";
-  if (diffMinutes >= -8) return "OT";
-  if (diffMinutes >= -30) return "E";
-  return "VE";
+  return classifyTimingDifference(diffMinutes) ?? "OT";
 }
 
 function formatSignedDifference(plannedTs: number, actualTs: number | null) {
@@ -637,18 +645,18 @@ function formatSignedDifference(plannedTs: number, actualTs: number | null) {
 }
 
 function getToTimeCardClass(code: ToTimeCode) {
-  if (code === "F") return "border-[#991b1b] bg-[#fee2e2] text-[#7f1d1d]";
-  if (code === "VL" || code === "L") return "border-[#f5a400] bg-[#fff7e6] text-[#8a5200]";
-  return "border-[#15803d] bg-[#ecfdf3] text-[#166534]";
+  if (code === "F") return "border-[#7f1d1d] bg-[#fee2e2] text-[#7f1d1d]";
+  if (code === "VE" || code === "E") return "border-[#d97706] bg-[#fef3c7] text-[#92400e]";
+  if (code === "OT") return "border-[#15803d] bg-[#ecfdf3] text-[#166534]";
+  return "border-[#dc2626] bg-[#fee2e2] text-[#991b1b]";
 }
 
 function getToTimeCellClass(code: ToTimeCode | null) {
   if (!code) return "bg-[#f3f4f6] text-[#64748b]";
   if (code === "F") return "bg-[#fecaca] text-[#7f1d1d]";
-  if (code === "VL") return "bg-[#ffd9b3] text-[#9a3412]";
-  if (code === "L") return "bg-[#fff1c1] text-[#8a5200]";
+  if (code === "VE" || code === "E") return "bg-[#fef3c7] text-[#92400e]";
   if (code === "OT") return "bg-[#d9f7e5] text-[#166534]";
-  return "bg-[#dcfce7] text-[#166534]";
+  return "bg-[#fee2e2] text-[#991b1b]";
 }
 
 function getDivisionForRow(row: DctRow): "Pie Haulage" | "Letters" | "Network" {

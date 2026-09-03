@@ -14,6 +14,10 @@ import {
   type ScheduledReport,
   type ScheduledReportSource,
 } from "../ScheduledReportsManager";
+import {
+  classifyTimingDifference,
+  isLateTimingDifference,
+} from "../../../timingProfile";
 
 type SidebarItem = {
   label: string;
@@ -1038,7 +1042,7 @@ function buildNetworkPerformanceRows(dates: string[]): NetworkPerformanceRow[] {
         const actualStartTs = buildTimestamp(dutyDate, plannedStartMinutes + startOffset);
         const plannedFinishTs = buildTimestamp(dutyDate, plannedStartMinutes + durationMinutes);
         const actualFinishTs = buildTimestamp(dutyDate, plannedStartMinutes + durationMinutes + finishOffset);
-        const issueCategory = finishOffset >= 9 ? "Late Arrival" : startOffset >= 9 ? "Late Departure" : "No Issue";
+        const issueCategory = isLateTimingDifference(finishOffset) ? "Late Arrival" : isLateTimingDifference(startOffset) ? "Late Departure" : "No Issue";
         const outcome = finishOffset >= 21 ? "Part Complete" : "Complete";
         const partnerLocation = nationalPartnerLocations[siteIndex % nationalPartnerLocations.length];
         const departureLocation = legIndex === 0 ? reportingSite : partnerLocation;
@@ -1273,27 +1277,7 @@ function formatDifference(minutes: number) {
 }
 
 function getTimingCode(minutes: number): TimingCode {
-  if (minutes <= -31) {
-    return "VE";
-  }
-
-  if (minutes <= -9) {
-    return "E";
-  }
-
-  if (minutes <= 8) {
-    return "OT";
-  }
-
-  if (minutes <= 30) {
-    return "L";
-  }
-
-  if (minutes < 120) {
-    return "VL";
-  }
-
-  return "F";
+  return classifyTimingDifference(minutes) ?? "OT";
 }
 
 function getWeekNumberFromAprilFirst(dateInput: string) {
