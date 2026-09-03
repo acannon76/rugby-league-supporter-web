@@ -16,8 +16,8 @@ type ReportDirectoryItem = {
   description: string;
   href: string;
   status: string;
-  accent: "red" | "green" | "blue" | "amber" | "purple" | "teal";
-  icon: "reports" | "compliance" | "dashboard" | "plan" | "sensor" | "fuel";
+  accent: "red" | "green" | "blue" | "amber" | "purple" | "teal" | "indigo";
+  icon: "reports" | "compliance" | "dashboard" | "plan" | "sensor" | "fuel" | "driver";
   capabilities: readonly string[];
 };
 
@@ -103,6 +103,17 @@ const reportOptions: readonly ReportDirectoryItem[] = [
     icon: "fuel",
     capabilities: ["Fleet fuel dashboard", "Excel, CSV & PDF", "Site & vehicle analysis"],
   },
+  {
+    number: "Report 7",
+    title: "Driver Behaviour & Coaching Dashboard",
+    description:
+      "Help Advanced Driver Coaches identify driver-controllable behaviours that may benefit from targeted coaching, with driver, site and national scoring plus training assurance checks.",
+    href: "/internal/app-ideas/link-message-mock/reports/option-7",
+    status: "Available",
+    accent: "indigo",
+    icon: "driver",
+    capabilities: ["ADC coaching insight", "Excel, CSV & PDF", "Driver, site & national scores"],
+  },
 ] as const;
 
 const accentStyles = {
@@ -136,6 +147,11 @@ const accentStyles = {
     icon: "bg-[#0f766e]",
     badge: "bg-[#f0fdfa] text-[#0f766e] ring-[#99f6e4]",
   },
+  indigo: {
+    border: "border-t-[#4f46e5]",
+    icon: "bg-[#4f46e5]",
+    badge: "bg-[#eef2ff] text-[#4338ca] ring-[#c7d2fe]",
+  },
 } as const;
 
 export default function ReportsOptionsPage() {
@@ -156,7 +172,7 @@ export default function ReportsOptionsPage() {
               </div>
 
               <div className="grid w-full grid-cols-2 gap-3 sm:w-auto">
-                <DirectorySummary label="Reports available" value="6" />
+                <DirectorySummary label="Reports available" value="7" />
                 <DirectorySummary label="Download formats" value="3" />
               </div>
             </header>
@@ -275,6 +291,17 @@ function ReportIcon({ type }: { type: ReportDirectoryItem["icon"] }) {
         <path d="M16 13h12v10H16z" />
         <path d="M32 15h4l4 5v13a4 4 0 0 1-8 0v-5" />
         <path d="M8 40h28" />
+      </svg>
+    );
+  }
+
+  if (type === "driver") {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 48 48" className="h-9 w-9 fill-none stroke-current" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="18" cy="16" r="6" />
+        <path d="M8 36c1-8 5-12 10-12s9 4 10 12" />
+        <path d="M31 15h9M31 23h7M31 31h9" />
+        <path d="m34 37 3 3 6-7" />
       </svg>
     );
   }
