@@ -115,7 +115,6 @@ type DebriefFormState = {
 };
 
 const DEBRIEF_STORAGE_KEY = "mock-driver-debrief-rows-v4";
-const baseDateInput = "2026-07-02";
 
 const issueCategories = [
   "No Issue",
@@ -1485,7 +1484,7 @@ function buildInitialDebriefRows(): DebriefRow[] {
 
   return Array.from({ length: 30 }, (_, index) => {
     const dutyNumber = `NWH${String(index + 1).padStart(3, "0")}`;
-    const dutyDate = addDaysToInputDate(baseDateInput, Math.floor(index / 10));
+    const dutyDate = getTodayInputDate();
     const startMinutes = 75 + ((index * 47) % 910);
     const durationMinutes = 280 + ((index * 35) % 310);
     const actualStartDelay = startDelayPattern[index % startDelayPattern.length];
@@ -1683,16 +1682,16 @@ function buildDebriefRowsFromManifestState(
 
 function buildDummyDebriefRows(savedRowMap: Map<string, DebriefRow>) {
   const dutyDefinitions = [
-    { dutyNumber: "NWH426", legCount: 6, completedLegs: 2, inProgressLegs: [] as number[], dayOffset: 0 },
-    { dutyNumber: "NWH634", legCount: 6, completedLegs: 2, inProgressLegs: [2] as number[], dayOffset: 0 },
-    { dutyNumber: "WAVOC016", legCount: 4, completedLegs: 4, inProgressLegs: [] as number[], dayOffset: 1 },
-    { dutyNumber: "TNW7034", legCount: 4, completedLegs: 4, inProgressLegs: [] as number[], dayOffset: 1 },
-    { dutyNumber: "TNW2156", legCount: 2, completedLegs: 1, inProgressLegs: [] as number[], dayOffset: 2 },
-    { dutyNumber: "NWH8801", legCount: 2, completedLegs: 1, inProgressLegs: [] as number[], dayOffset: 2 },
+    { dutyNumber: "NWH426", legCount: 6, completedLegs: 2, inProgressLegs: [] as number[] },
+    { dutyNumber: "NWH634", legCount: 6, completedLegs: 2, inProgressLegs: [2] as number[] },
+    { dutyNumber: "WAVOC016", legCount: 4, completedLegs: 4, inProgressLegs: [] as number[] },
+    { dutyNumber: "TNW7034", legCount: 4, completedLegs: 4, inProgressLegs: [] as number[] },
+    { dutyNumber: "TNW2156", legCount: 2, completedLegs: 1, inProgressLegs: [] as number[] },
+    { dutyNumber: "NWH8801", legCount: 2, completedLegs: 1, inProgressLegs: [] as number[] },
   ] as const;
 
   return dutyDefinitions.flatMap((definition, dutyIndex) => {
-    const dutyDate = addDaysToInputDate(baseDateInput, definition.dayOffset);
+    const dutyDate = getTodayInputDate();
     const baseStartMinutes = 80 + dutyIndex * 95;
     const routeStops = [
       "NORTH WEST HUB",
@@ -1871,10 +1870,14 @@ function saveDebriefRowsToStorage(rows: DebriefRow[]) {
 function toInputDateFromDisplay(displayDate: string) {
   const [day, month, year] = displayDate.split("/");
   if (!day || !month || !year) {
-    return baseDateInput;
+    return getTodayInputDate();
   }
 
   return `${year}-${month}-${day}`;
+}
+
+function getTodayInputDate() {
+  return formatDateInput(new Date());
 }
 
 function getWeekNumberFromInputDate(dateInput: string) {

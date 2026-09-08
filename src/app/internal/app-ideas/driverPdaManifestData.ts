@@ -424,11 +424,11 @@ function moveStoredManifestToToday(
   today.setHours(0, 0, 0, 0);
 
   const dateShiftMs = today.getTime() - storedDate.getTime();
+  const dutyDateText = formatDateOnly(today.getTime());
 
-  if (dateShiftMs === 0) {
-    return storedState;
-  }
-
+  // The Duty Date belongs to the whole duty, not to each individual leg.
+  // Keep every leg on today's Duty Date, while the planned/actual timestamps
+  // can naturally roll into tomorrow for legs that cross midnight.
   return {
     ...storedState,
     dctRows: storedState.dctRows.map((row) => {
@@ -437,7 +437,7 @@ function moveStoredManifestToToday(
 
       return {
         ...row,
-        startDate: formatDateOnly(plannedDepartureTs),
+        startDate: dutyDateText,
         plannedDepartureTs,
         plannedArrivalTs,
         departureActualTs:
