@@ -19,6 +19,7 @@ import {
   sensorReportRows,
   type RagStatus,
   type SensorReportRow,
+  type SensorResourceType,
 } from "./sensorReportData";
 
 type RagFilter = "All statuses" | "G" | "A" | "R" | "-";
@@ -56,6 +57,7 @@ const ragOptions: { value: RagFilter; label: string }[] = [
 
 export default function SensorReportDashboard() {
   const [site, setSite] = useState("All sites");
+  const [resourceType, setResourceType] = useState<SensorResourceType>("Motive Unit / Rigid");
   const [overall, setOverall] = useState<RagFilter>("All statuses");
   const [gps, setGps] = useState<RagFilter>("All statuses");
   const [canbus, setCanbus] = useState<RagFilter>("All statuses");
@@ -66,22 +68,27 @@ export default function SensorReportDashboard() {
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
     return sensorReportRows.filter((row) => {
+      if (row.resourceType !== resourceType) return false;
       if (site !== "All sites" && row.locationName !== site) return false;
       if (overall !== "All statuses" && row.overallRagStatus !== overall) return false;
       if (gps !== "All statuses" && row.gpsRagStatus !== gps) return false;
-      if (canbus !== "All statuses" && row.canbusRagStatus !== canbus) return false;
-      if (tacho !== "All statuses" && row.digiTachoRagStatus !== tacho) return false;
+      if (resourceType === "Motive Unit / Rigid" && canbus !== "All statuses" && row.canbusRagStatus !== canbus) return false;
+      if (resourceType === "Motive Unit / Rigid" && tacho !== "All statuses" && row.digiTachoRagStatus !== tacho) return false;
       if (!query) return true;
       return `${row.resourceName} ${row.locationName} ${row.deviceDetails}`.toLowerCase().includes(query);
     });
-  }, [site, overall, gps, canbus, tacho, search]);
+  }, [site, resourceType, overall, gps, canbus, tacho, search]);
 
   const totals = useMemo(() => summariseSensorRows(filteredRows), [filteredRows]);
-  const channelHealth = useMemo(() => buildChannelHealth(filteredRows), [filteredRows]);
+  const channelHealth = useMemo(() => buildChannelHealth(filteredRows, resourceType), [filteredRows, resourceType]);
   const attentionSites = useMemo(() => buildAttentionSites(filteredRows), [filteredRows]);
+  const isTrailer = resourceType === "Trailer";
+  const resourceLabel = isTrailer ? "Trailers" : "Motive units / rigids";
+  const resourceNoun = isTrailer ? "trailers" : "units";
 
   const resetFilters = () => {
     setSite("All sites");
+    setResourceType("Motive Unit / Rigid");
     setOverall("All statuses");
     setGps("All statuses");
     setCanbus("All statuses");
@@ -89,37 +96,69 @@ export default function SensorReportDashboard() {
     setSearch("");
   };
 
+  const changeResourceType = (value: string) => {
+    setResourceType(value as SensorResourceType);
+    setCanbus("All statuses");
+    setTacho("All statuses");
+  };
+
   const download = async (format: ExportFormat) => {
     const generatedAt = formatSensorDateTime(new Date().toISOString());
     const statusTimestamp = formatSensorDateTime(sensorReferenceTime);
-    const headers = [
-      "ResourceName",
-      "LocationName",
-      "DeviceDetails",
-      "GPS_EventTime",
-      "GPS_RAGStatus",
-      "CANbus_EventTime",
-      "CANbus_RAGStatus",
-      "DigiTacho_EventTime",
-      "DigiTacho_RAGStatus",
-      "Vehicle_OverallRAGStatus",
-      "SensorStatusTimestamp",
-      "ReportGenerated",
-    ];
-    const rows = filteredRows.map((row) => [
-      row.resourceName,
-      row.locationName,
-      row.deviceDetails,
-      row.gpsEventTime ? formatSensorDateTime(row.gpsEventTime) : "Not fitted",
-      ragLabel(row.gpsRagStatus),
-      row.canbusEventTime ? formatSensorDateTime(row.canbusEventTime) : "Not fitted",
-      ragLabel(row.canbusRagStatus),
-      row.digiTachoEventTime ? formatSensorDateTime(row.digiTachoEventTime) : "Not fitted",
-      ragLabel(row.digiTachoRagStatus),
-      ragLabel(row.overallRagStatus),
-      statusTimestamp,
-      generatedAt,
-    ]);
+    const headers = isTrailer
+      ? [
+          "ResourceType",
+          "TrailerNumber",
+          "LocationName",
+          "DeviceDetails",
+          "GPS_EventTime",
+          "GPS_RAGStatus",
+          "Overall_RAGStatus",
+          "SensorStatusTimestamp",
+          "ReportGenerated",
+        ]
+      : [
+          "ResourceType",
+          "ResourceName",
+          "LocationName",
+          "DeviceDetails",
+          "GPS_EventTime",
+          "GPS_RAGStatus",
+          "CANbus_EventTime",
+          "CANbus_RAGStatus",
+          "DigiTacho_EventTime",
+          "DigiTacho_RAGStatus",
+          "Vehicle_OverallRAGStatus",
+          "SensorStatusTimestamp",
+          "ReportGenerated",
+        ];
+    const rows = filteredRows.map((row) => isTrailer
+      ? [
+          row.resourceType,
+          row.resourceName,
+          row.locationName,
+          row.deviceDetails,
+          row.gpsEventTime ? formatSensorDateTime(row.gpsEventTime) : "Not fitted",
+          ragLabel(row.gpsRagStatus),
+          ragLabel(row.overallRagStatus),
+          statusTimestamp,
+          generatedAt,
+        ]
+      : [
+          row.resourceType,
+          row.resourceName,
+          row.locationName,
+          row.deviceDetails,
+          row.gpsEventTime ? formatSensorDateTime(row.gpsEventTime) : "Not fitted",
+          ragLabel(row.gpsRagStatus),
+          row.canbusEventTime ? formatSensorDateTime(row.canbusEventTime) : "Not fitted",
+          ragLabel(row.canbusRagStatus),
+          row.digiTachoEventTime ? formatSensorDateTime(row.digiTachoEventTime) : "Not fitted",
+          ragLabel(row.digiTachoRagStatus),
+          ragLabel(row.overallRagStatus),
+          statusTimestamp,
+          generatedAt,
+        ]);
     const fileBase = `Sensor_Report_${new Date().toISOString().slice(0, 10)}`;
 
     if (format === "excel") {
@@ -131,6 +170,7 @@ export default function SensorReportDashboard() {
             headers: ["Metric", "Value"],
             rows: [
               ["Reporting site", site],
+              ["Resource type", resourceType],
               ["Rows selected", totals.total],
               ["Green", totals.green],
               ["Amber", totals.amber],
@@ -149,55 +189,80 @@ export default function SensorReportDashboard() {
       downloadOperationalReportPdf({
         fileName: `${fileBase}.pdf`,
         title: "Sensor Report",
-        subtitle: "Vehicle tracking device health - GPS, CANbus and Digital Tacho",
+        subtitle: isTrailer
+          ? "Trailer tracking device health - GPS"
+          : "Motive unit and rigid tracking device health - GPS, CANbus and Digital Tacho",
         filters: [
           { label: "Reporting site", value: site },
+          { label: "Resource type", value: resourceType },
           { label: "Overall RAG", value: filterLabel(overall) },
           { label: "GPS", value: filterLabel(gps) },
-          { label: "CANbus", value: filterLabel(canbus) },
-          { label: "Digital Tacho", value: filterLabel(tacho) },
+          ...(!isTrailer ? [
+            { label: "CANbus", value: filterLabel(canbus) },
+            { label: "Digital Tacho", value: filterLabel(tacho) },
+          ] : []),
           { label: "Search", value: search.trim() || "None" },
           { label: "Sensor status timestamp", value: statusTimestamp },
           { label: "Report generated", value: generatedAt },
         ],
         kpis: [
-          { label: "Vehicles selected", value: String(totals.total), helper: `${totals.siteCount} reporting site(s)`, tone: "navy" },
+          { label: `${resourceLabel} selected`, value: String(totals.total), helper: `${totals.siteCount} reporting site(s)`, tone: "navy" },
           { label: "Green", value: String(totals.green), helper: `${percent(totals.green, totals.total)}% healthy`, tone: "green" },
           { label: "Amber", value: String(totals.amber), helper: `${percent(totals.amber, totals.total)}% attention`, tone: "amber" },
           { label: "Red", value: String(totals.red), helper: `${percent(totals.red, totals.total)}% not reporting`, tone: "red" },
-          { label: "Overall health", value: `${totals.healthPercent}%`, helper: "Vehicles currently green", tone: "teal" },
-          { label: "Red channels", value: String(channelHealth.reduce((sum, item) => sum + item.red, 0)), helper: "GPS + CANbus + Tacho", tone: "red" },
+          { label: "Overall health", value: `${totals.healthPercent}%`, helper: `${resourceLabel} currently green`, tone: "teal" },
+          { label: "Red channels", value: String(channelHealth.reduce((sum, item) => sum + item.red, 0)), helper: isTrailer ? "GPS" : "GPS + CANbus + Tacho", tone: "red" },
         ],
         notes: [
           "Green: device data received within the last 4 days.",
           "Amber: no device data received for more than 4 days and up to 7 days.",
           "Red: no device data received for more than 7 days.",
-          "Digital Tacho may show Not fitted where that connection is not applicable.",
+          isTrailer
+            ? "Trailers use GPS only; CANbus and Digital Tacho do not apply."
+            : "Digital Tacho may show Not fitted where that connection is not applicable.",
         ],
-        columns: [
-          { label: "VEHICLE", width: 92, align: "left" },
-          { label: "SITE", width: 110, align: "left" },
-          { label: "GPS LAST", width: 85 },
-          { label: "GPS", width: 42 },
-          { label: "CAN LAST", width: 85 },
-          { label: "CAN", width: 44 },
-          { label: "TACHO LAST", width: 85 },
-          { label: "TACHO", width: 46 },
-          { label: "OVERALL", width: 50 },
-          { label: "DEVICE", width: 155, align: "left" },
-        ],
-        rows: filteredRows.map((row) => [
-          row.resourceName,
-          row.locationName,
-          shortDate(row.gpsEventTime),
-          ragLabel(row.gpsRagStatus),
-          shortDate(row.canbusEventTime),
-          ragLabel(row.canbusRagStatus),
-          shortDate(row.digiTachoEventTime),
-          ragLabel(row.digiTachoRagStatus),
-          ragLabel(row.overallRagStatus),
-          row.deviceDetails,
-        ]),
+        columns: isTrailer
+          ? [
+              { label: "TRAILER", width: 110, align: "left" },
+              { label: "SITE", width: 150, align: "left" },
+              { label: "GPS LAST", width: 105 },
+              { label: "GPS", width: 58 },
+              { label: "OVERALL", width: 62 },
+              { label: "DEVICE", width: 210, align: "left" },
+            ]
+          : [
+              { label: "VEHICLE", width: 92, align: "left" },
+              { label: "SITE", width: 110, align: "left" },
+              { label: "GPS LAST", width: 85 },
+              { label: "GPS", width: 42 },
+              { label: "CAN LAST", width: 85 },
+              { label: "CAN", width: 44 },
+              { label: "TACHO LAST", width: 85 },
+              { label: "TACHO", width: 46 },
+              { label: "OVERALL", width: 50 },
+              { label: "DEVICE", width: 155, align: "left" },
+            ],
+        rows: filteredRows.map((row) => isTrailer
+          ? [
+              row.resourceName,
+              row.locationName,
+              shortDate(row.gpsEventTime),
+              ragLabel(row.gpsRagStatus),
+              ragLabel(row.overallRagStatus),
+              row.deviceDetails,
+            ]
+          : [
+              row.resourceName,
+              row.locationName,
+              shortDate(row.gpsEventTime),
+              ragLabel(row.gpsRagStatus),
+              shortDate(row.canbusEventTime),
+              ragLabel(row.canbusRagStatus),
+              shortDate(row.digiTachoEventTime),
+              ragLabel(row.digiTachoRagStatus),
+              ragLabel(row.overallRagStatus),
+              row.deviceDetails,
+            ]),
       });
     }
     setDownloadOpen(false);
@@ -212,10 +277,10 @@ export default function SensorReportDashboard() {
           <section className="rounded-[22px] border border-[#d6dde8] bg-white p-4 shadow-sm sm:p-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#7c3aed]">Vehicle sensor health</p>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#7c3aed]">Fleet sensor health</p>
                 <h1 className="mt-2 text-3xl font-black text-[#10203a]">Sensor Report Dashboard</h1>
                 <p className="mt-2 max-w-4xl text-sm font-bold leading-6 text-[#4b5563]">
-                  Monitor whether vehicle GPS, CANbus and Digital Tacho connections are reporting, identify stale devices and focus attention on vehicles requiring investigation.
+                  Monitor Motive Unit / Rigid GPS, CANbus and Digital Tacho connections, or switch to Trailer to review GPS-only reporting health.
                 </p>
                 <div className="mt-3 inline-flex items-center rounded-lg border border-[#ddd6fe] bg-[#f5f3ff] px-3 py-2 text-xs font-black text-[#5b21b6]">
                   Sensor status timestamp: {formatSensorDateTime(sensorReferenceTime)}
@@ -232,18 +297,22 @@ export default function SensorReportDashboard() {
                 <p className="text-xs font-black uppercase tracking-[0.15em] text-white">Dashboard filters</p>
                 <p className="text-xs font-bold text-white/70">Every KPI, chart, table and download responds to this selection</p>
               </div>
-              <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+              <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
                 <FilterSelect label="Reporting site" value={site} onChange={setSite}>
                   <option>All sites</option>
                   {availableLocations.map((location) => <option key={location}>{location}</option>)}
                 </FilterSelect>
+                <FilterSelect label="Resource type" value={resourceType} onChange={changeResourceType}>
+                  <option>Motive Unit / Rigid</option>
+                  <option>Trailer</option>
+                </FilterSelect>
                 <FilterSelect label="Overall RAG" value={overall} onChange={(value) => setOverall(value as RagFilter)}>{ragOptions.filter((option) => option.value !== "-").map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</FilterSelect>
                 <FilterSelect label="GPS" value={gps} onChange={(value) => setGps(value as RagFilter)}>{ragOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</FilterSelect>
-                <FilterSelect label="CANbus" value={canbus} onChange={(value) => setCanbus(value as RagFilter)}>{ragOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</FilterSelect>
-                <FilterSelect label="Digital Tacho" value={tacho} onChange={(value) => setTacho(value as RagFilter)}>{ragOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</FilterSelect>
+                {!isTrailer ? <FilterSelect label="CANbus" value={canbus} onChange={(value) => setCanbus(value as RagFilter)}>{ragOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</FilterSelect> : null}
+                {!isTrailer ? <FilterSelect label="Digital Tacho" value={tacho} onChange={(value) => setTacho(value as RagFilter)}>{ragOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</FilterSelect> : null}
                 <label className="min-w-0">
                   <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.12em] text-white/80">Search</span>
-                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Vehicle, site or device" className="h-11 w-full rounded-lg border border-white/20 bg-white px-3 text-sm font-bold text-[#10203a] outline-none" />
+                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={isTrailer ? "Trailer, site or device" : "Vehicle, site or device"} className="h-11 w-full rounded-lg border border-white/20 bg-white px-3 text-sm font-bold text-[#10203a] outline-none" />
                 </label>
               </div>
               <div className="flex flex-col gap-2 border-t border-white/15 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
@@ -253,35 +322,36 @@ export default function SensorReportDashboard() {
             </section>
 
             <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
-              <KpiCard label="Vehicles selected" value={String(totals.total)} helper={`${totals.siteCount} reporting sites`} tone="navy" />
+              <KpiCard label={`${resourceLabel} selected`} value={String(totals.total)} helper={`${totals.siteCount} reporting sites`} tone="navy" />
               <KpiCard label="Green" value={String(totals.green)} helper={`${percent(totals.green, totals.total)}% healthy`} tone="green" />
               <KpiCard label="Amber" value={String(totals.amber)} helper={`${percent(totals.amber, totals.total)}% attention`} tone="amber" />
               <KpiCard label="Red" value={String(totals.red)} helper={`${percent(totals.red, totals.total)}% not reporting`} tone="red" />
-              <KpiCard label="Overall health" value={`${totals.healthPercent}%`} helper="Vehicles currently green" tone="teal" />
-              <KpiCard label="Red sensor channels" value={String(channelHealth.reduce((sum, item) => sum + item.red, 0))} helper="Across GPS, CANbus & Tacho" tone="purple" />
+              <KpiCard label="Overall health" value={`${totals.healthPercent}%`} helper={`${resourceLabel} currently green`} tone="teal" />
+              <KpiCard label="Red sensor channels" value={String(channelHealth.reduce((sum, item) => sum + item.red, 0))} helper={isTrailer ? "Across GPS" : "Across GPS, CANbus & Tacho"} tone="purple" />
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[0.9fr_1.15fr_1.1fr]">
-              <OverallHealthPanel totals={totals} />
-              <ChannelHealthPanel rows={channelHealth} />
-              <AttentionSitesPanel rows={attentionSites} />
+              <OverallHealthPanel totals={totals} resourceType={resourceType} />
+              <ChannelHealthPanel rows={channelHealth} isTrailer={isTrailer} />
+              <AttentionSitesPanel rows={attentionSites} resourceNoun={resourceNoun} />
             </div>
 
             <section className="mt-4 overflow-hidden rounded-[18px] border border-[#d7dee9] bg-white">
               <div className="flex flex-col gap-2 border-b border-[#d7dee9] bg-[#f8fafc] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-base font-black text-[#10203a]">Vehicle sensor detail</p>
-                  <p className="mt-1 text-xs font-bold text-[#64748b]">{filteredRows.length} vehicle row(s) match the active dashboard filters.</p>
+                  <p className="text-base font-black text-[#10203a]">{isTrailer ? "Trailer" : "Motive Unit / Rigid"} sensor detail</p>
+                  <p className="mt-1 text-xs font-bold text-[#64748b]">{filteredRows.length} {resourceNoun} row(s) match the active dashboard filters.</p>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-black"><RagBadge status="G" /> <RagBadge status="A" /> <RagBadge status="R" /></div>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-[1450px] w-full border-collapse text-left text-xs">
+                <table className={`${isTrailer ? "min-w-[900px]" : "min-w-[1450px]"} w-full border-collapse text-left text-xs`}>
                   <thead className="bg-[#10203a] text-white">
                     <tr>
-                      {[
-                        "Vehicle / Resource", "Reporting site", "GPS last data", "GPS", "CANbus last data", "CANbus", "Digital Tacho last data", "Tacho", "Overall", "Device details",
-                      ].map((heading) => <th key={heading} className="whitespace-nowrap px-3 py-3 text-[10px] font-black uppercase tracking-[0.07em]">{heading}</th>)}
+                      {(isTrailer
+                        ? ["Trailer number", "Reporting site", "GPS last data", "GPS", "Overall", "Device details"]
+                        : ["Vehicle / Resource", "Reporting site", "GPS last data", "GPS", "CANbus last data", "CANbus", "Digital Tacho last data", "Tacho", "Overall", "Device details"]
+                      ).map((heading) => <th key={heading} className="whitespace-nowrap px-3 py-3 text-[10px] font-black uppercase tracking-[0.07em]">{heading}</th>)}
                     </tr>
                   </thead>
                   <tbody>
@@ -291,10 +361,10 @@ export default function SensorReportDashboard() {
                         <td className="whitespace-nowrap border-b border-[#e4e9ef] px-3 py-2.5 font-bold">{row.locationName}</td>
                         <SensorTimeCell value={row.gpsEventTime} />
                         <td className="border-b border-[#e4e9ef] px-3 py-2.5"><RagBadge status={row.gpsRagStatus} /></td>
-                        <SensorTimeCell value={row.canbusEventTime} />
-                        <td className="border-b border-[#e4e9ef] px-3 py-2.5"><RagBadge status={row.canbusRagStatus} /></td>
-                        <SensorTimeCell value={row.digiTachoEventTime} />
-                        <td className="border-b border-[#e4e9ef] px-3 py-2.5"><RagBadge status={row.digiTachoRagStatus} /></td>
+                        {!isTrailer ? <SensorTimeCell value={row.canbusEventTime} /> : null}
+                        {!isTrailer ? <td className="border-b border-[#e4e9ef] px-3 py-2.5"><RagBadge status={row.canbusRagStatus} /></td> : null}
+                        {!isTrailer ? <SensorTimeCell value={row.digiTachoEventTime} /> : null}
+                        {!isTrailer ? <td className="border-b border-[#e4e9ef] px-3 py-2.5"><RagBadge status={row.digiTachoRagStatus} /></td> : null}
                         <td className="border-b border-[#e4e9ef] px-3 py-2.5"><RagBadge status={row.overallRagStatus} /></td>
                         <td className="max-w-[330px] border-b border-[#e4e9ef] px-3 py-2.5 font-semibold text-[#475569]">{row.deviceDetails}</td>
                       </tr>
@@ -331,12 +401,15 @@ function summariseSensorRows(rows: SensorReportRow[]) {
   };
 }
 
-function buildChannelHealth(rows: SensorReportRow[]) {
-  return [
-    channelSummary("GPS", rows.map((row) => row.gpsRagStatus)),
-    channelSummary("CANbus", rows.map((row) => row.canbusRagStatus)),
-    channelSummary("Digital Tacho", rows.map((row) => row.digiTachoRagStatus)),
-  ];
+function buildChannelHealth(rows: SensorReportRow[], resourceType: SensorResourceType) {
+  const channels = [channelSummary("GPS", rows.map((row) => row.gpsRagStatus))];
+  if (resourceType === "Motive Unit / Rigid") {
+    channels.push(
+      channelSummary("CANbus", rows.map((row) => row.canbusRagStatus)),
+      channelSummary("Digital Tacho", rows.map((row) => row.digiTachoRagStatus)),
+    );
+  }
+  return channels;
 }
 
 function channelSummary(label: string, statuses: RagStatus[]) {
@@ -363,9 +436,16 @@ function buildAttentionSites(rows: SensorReportRow[]) {
   return [...map.values()].sort((a, b) => (b.red * 2 + b.amber) - (a.red * 2 + a.amber) || b.total - a.total).slice(0, 8);
 }
 
-function OverallHealthPanel({ totals }: { totals: ReturnType<typeof summariseSensorRows> }) {
+function OverallHealthPanel({
+  totals,
+  resourceType,
+}: {
+  totals: ReturnType<typeof summariseSensorRows>;
+  resourceType: SensorResourceType;
+}) {
+  const isTrailer = resourceType === "Trailer";
   return (
-    <Panel title="Overall sensor health" subtitle="Vehicle-level RAG based on the worst applicable sensor channel.">
+    <Panel title="Overall sensor health" subtitle={`${isTrailer ? "Trailer" : "Vehicle"}-level RAG based on the worst applicable sensor channel.`}>
       <div className="mt-5 flex h-7 overflow-hidden rounded-full bg-[#e8edf3]">
         <div className="bg-[#16a34a]" style={{ width: `${percent(totals.green, totals.total)}%` }} />
         <div className="bg-[#f59e0b]" style={{ width: `${percent(totals.amber, totals.total)}%` }} />
@@ -376,14 +456,18 @@ function OverallHealthPanel({ totals }: { totals: ReturnType<typeof summariseSen
         <MiniStatus label="Amber" value={totals.amber} helper="> 4 days" tone="amber" />
         <MiniStatus label="Red" value={totals.red} helper="> 7 days" tone="red" />
       </div>
-      <div className="mt-5 rounded-xl border border-[#d7dee9] bg-[#f8fafc] p-3 text-xs font-bold leading-5 text-[#5b6676]">Overall RAG uses the worst status from GPS, CANbus and Digital Tacho. A channel marked Not fitted is excluded from the overall result.</div>
+      <div className="mt-5 rounded-xl border border-[#d7dee9] bg-[#f8fafc] p-3 text-xs font-bold leading-5 text-[#5b6676]">
+        {isTrailer
+          ? "Trailer overall RAG is based on GPS reporting only. CANbus and Digital Tacho do not apply to trailers."
+          : "Overall RAG uses the worst status from GPS, CANbus and Digital Tacho. A channel marked Not fitted is excluded from the overall result."}
+      </div>
     </Panel>
   );
 }
 
-function ChannelHealthPanel({ rows }: { rows: ReturnType<typeof buildChannelHealth> }) {
+function ChannelHealthPanel({ rows, isTrailer }: { rows: ReturnType<typeof buildChannelHealth>; isTrailer: boolean }) {
   return (
-    <Panel title="Sensor channel health" subtitle="Compare reporting performance across the three device connections.">
+    <Panel title="Sensor channel health" subtitle={isTrailer ? "GPS reporting performance for the selected trailers." : "Compare reporting performance across the three device connections."}>
       <div className="mt-4 space-y-5">
         {rows.map((row) => (
           <div key={row.label}>
@@ -401,13 +485,13 @@ function ChannelHealthPanel({ rows }: { rows: ReturnType<typeof buildChannelHeal
   );
 }
 
-function AttentionSitesPanel({ rows }: { rows: ReturnType<typeof buildAttentionSites> }) {
+function AttentionSitesPanel({ rows, resourceNoun }: { rows: ReturnType<typeof buildAttentionSites>; resourceNoun: string }) {
   return (
     <Panel title="Sites requiring attention" subtitle="Highest combined Red and Amber vehicle positions in the current selection.">
       <div className="mt-3 divide-y divide-[#e5eaf0]">
         {rows.length ? rows.map((row) => (
           <div key={row.site} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2.5">
-            <div className="min-w-0"><p className="truncate text-xs font-black text-[#10203a]">{row.site}</p><p className="mt-0.5 text-[10px] font-bold text-[#718096]">{row.total} vehicles</p></div>
+            <div className="min-w-0"><p className="truncate text-xs font-black text-[#10203a]">{row.site}</p><p className="mt-0.5 text-[10px] font-bold text-[#718096]">{row.total} {resourceNoun}</p></div>
             <span className="rounded-full bg-[#fff7ed] px-2.5 py-1 text-[10px] font-black text-[#b45309]">A {row.amber}</span>
             <span className="rounded-full bg-[#fff1f2] px-2.5 py-1 text-[10px] font-black text-[#b91c1c]">R {row.red}</span>
           </div>

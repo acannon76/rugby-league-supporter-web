@@ -72,8 +72,29 @@ function DctWebScreen({
   const [dttFilter, setDttFilter] = useState<"All" | ToTimeCode>("All");
   const [attFilter, setAttFilter] = useState<"All" | ToTimeCode>("All");
   const [issueFilter, setIssueFilter] = useState<"All" | "With issue" | "No issue">("All");
+  const [dutyDateFilter, setDutyDateFilter] = useState("All");
+  const [dutyIdFilter, setDutyIdFilter] = useState("All");
+  const [dueToConveyFilter, setDueToConveyFilter] = useState("All");
+  const [weekNumberFilter, setWeekNumberFilter] = useState("All");
+  const [vehicleRegFilter, setVehicleRegFilter] = useState("All");
+  const [trailerNumberFilter, setTrailerNumberFilter] = useState("All");
+  const [operatorFilter, setOperatorFilter] = useState("All");
+  const [departureLocationFilter, setDepartureLocationFilter] = useState("All");
+  const [arrivalLocationFilter, setArrivalLocationFilter] = useState("All");
   const [topView, setTopView] = useState<"summary" | "route">("summary");
-  const [selectedDutyId, setSelectedDutyId] = useState(() => rows[0]?.dutyId || "");
+
+  const dutyDateOptions = useMemo(() => buildFilterOptions(rows.map((row) => row.startDate)), [rows]);
+  const dutyIdOptions = useMemo(() => buildFilterOptions(rows.map((row) => row.dutyId)), [rows]);
+  const dueToConveyOptions = useMemo(() => buildFilterOptions(rows.map((row) => row.dueToConvey)), [rows]);
+  const weekNumberOptions = useMemo(
+    () => buildFilterOptions(rows.map((row) => String(getOperationalWeekNumberFromDisplayDate(row.startDate)))),
+    [rows]
+  );
+  const vehicleRegOptions = useMemo(() => buildFilterOptions(rows.map(getVehicleNumberForRow)), [rows]);
+  const trailerNumberOptions = useMemo(() => buildFilterOptions(rows.map((row) => row.trailerNumber)), [rows]);
+  const operatorOptions = useMemo(() => buildFilterOptions(rows.map((row) => row.operator)), [rows]);
+  const departureLocationOptions = useMemo(() => buildFilterOptions(rows.map((row) => row.departureLocation)), [rows]);
+  const arrivalLocationOptions = useMemo(() => buildFilterOptions(rows.map((row) => row.arrivalLocation)), [rows]);
 
   const displayRows = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -83,13 +104,20 @@ function DctWebScreen({
       const dtt = getDepartureToTimeCode(row);
       const att = getArrivalToTimeCode(row);
       const hasIssue = row.issues.trim().length > 0;
+      const weekNumber = String(getOperationalWeekNumberFromDisplayDate(row.startDate));
+      const vehicleReg = getVehicleNumberForRow(row);
       const matchesSearch =
         query.length === 0 ||
         [
+          row.startDate,
+          weekNumber,
           row.dutyId,
           row.dutyOrder,
           row.userId,
+          vehicleReg,
           row.trailerNumber,
+          row.operator,
+          row.dueToConvey,
           row.departureLocation,
           row.arrivalLocation,
           row.issueCategory,
@@ -106,10 +134,38 @@ function DctWebScreen({
       const matchesIssue =
         issueFilter === "All" ||
         (issueFilter === "With issue" ? hasIssue : !hasIssue);
+      const matchesDutyDate = dutyDateFilter === "All" || row.startDate === dutyDateFilter;
+      const matchesDutyId = dutyIdFilter === "All" || row.dutyId === dutyIdFilter;
+      const matchesDueToConvey = dueToConveyFilter === "All" || row.dueToConvey === dueToConveyFilter;
+      const matchesWeekNumber = weekNumberFilter === "All" || weekNumber === weekNumberFilter;
+      const matchesVehicleReg = vehicleRegFilter === "All" || vehicleReg === vehicleRegFilter;
+      const matchesTrailerNumber = trailerNumberFilter === "All" || row.trailerNumber === trailerNumberFilter;
+      const matchesOperator = operatorFilter === "All" || row.operator === operatorFilter;
+      const matchesDepartureLocation = departureLocationFilter === "All" || row.departureLocation === departureLocationFilter;
+      const matchesArrivalLocation = arrivalLocationFilter === "All" || row.arrivalLocation === arrivalLocationFilter;
 
-      return matchesSearch && matchesStatus && matchesDivision && matchesDtt && matchesAtt && matchesIssue;
+      return matchesSearch && matchesStatus && matchesDivision && matchesDtt && matchesAtt && matchesIssue &&
+        matchesDutyDate && matchesDutyId && matchesDueToConvey && matchesWeekNumber && matchesVehicleReg &&
+        matchesTrailerNumber && matchesOperator && matchesDepartureLocation && matchesArrivalLocation;
     });
-  }, [rows, searchTerm, statusFilter, divisionFilter, dttFilter, attFilter, issueFilter]);
+  }, [
+    rows,
+    searchTerm,
+    statusFilter,
+    divisionFilter,
+    dttFilter,
+    attFilter,
+    issueFilter,
+    dutyDateFilter,
+    dutyIdFilter,
+    dueToConveyFilter,
+    weekNumberFilter,
+    vehicleRegFilter,
+    trailerNumberFilter,
+    operatorFilter,
+    departureLocationFilter,
+    arrivalLocationFilter,
+  ]);
 
   const lateLegs = displayRows.filter((row) => rowHasLateTiming(row)).length;
   const issuesRecorded = displayRows.filter((row) => row.issues.trim().length > 0).length;
@@ -121,15 +177,13 @@ function DctWebScreen({
     0
   );
 
-  const availableDutyIds = useMemo(() => Array.from(new Set(rows.map((row) => row.dutyId))), [rows]);
-
-  const effectiveSelectedDutyId = availableDutyIds.includes(selectedDutyId)
-    ? selectedDutyId
-    : availableDutyIds[0] || "";
+  const effectiveSelectedDutyId = dutyIdFilter !== "All"
+    ? dutyIdFilter
+    : displayRows[0]?.dutyId || "";
 
   const selectedDutyRows = useMemo(
-    () => rows.filter((row) => row.dutyId === effectiveSelectedDutyId),
-    [rows, effectiveSelectedDutyId]
+    () => displayRows.filter((row) => row.dutyId === effectiveSelectedDutyId),
+    [displayRows, effectiveSelectedDutyId]
   );
 
   function clearFilters() {
@@ -139,6 +193,15 @@ function DctWebScreen({
     setDttFilter("All");
     setAttFilter("All");
     setIssueFilter("All");
+    setDutyDateFilter("All");
+    setDutyIdFilter("All");
+    setDueToConveyFilter("All");
+    setWeekNumberFilter("All");
+    setVehicleRegFilter("All");
+    setTrailerNumberFilter("All");
+    setOperatorFilter("All");
+    setDepartureLocationFilter("All");
+    setArrivalLocationFilter("All");
   }
 
   function resetAndClear() {
@@ -159,7 +222,7 @@ function DctWebScreen({
     { key: "dutyOrder", label: "Duty Order", headerClass: "bg-[#cfeefa]", widthClass: "w-[68px]" },
     { key: "vehicle", label: "Vehicle Reg", headerClass: "bg-[#cfeefa]", widthClass: "w-[92px]" },
     { key: "trailerNumber", label: "Trailer Number", headerClass: "bg-[#cfeefa]", widthClass: "w-[100px]" },
-    { key: "userId", label: "UserId", headerClass: "bg-[#cfeefa]", widthClass: "w-[140px]" },
+    { key: "userId", label: "Drivers Name", headerClass: "bg-[#cfeefa]", widthClass: "w-[140px]" },
     { key: "contractorCompanyName", label: "Division", subLabel: "Letters/Network/Contractor", headerClass: "bg-[#cfeefa]", widthClass: "w-[130px]" },
     { key: "operator", label: "Operator", headerClass: "bg-[#cfeefa]", widthClass: "w-[62px]" },
     { key: "dutyId", label: "Duty ID", headerClass: "bg-[#cfeefa]", widthClass: "w-[82px]" },
@@ -234,7 +297,7 @@ function DctWebScreen({
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-3">
             <div className="inline-flex rounded-full border border-[#cfd8e3] bg-[#f8fafc] p-1">
               <button
                 type="button"
@@ -252,18 +315,6 @@ function DctWebScreen({
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-[0.16em] text-[#64748b]">Selected Duty</span>
-              <select
-                value={effectiveSelectedDutyId}
-                onChange={(event) => setSelectedDutyId(event.target.value)}
-                className="rounded-full border border-[#cfd8e3] bg-white px-4 py-2 text-sm font-black text-[#172033]"
-              >
-                {availableDutyIds.map((dutyOption) => (
-                  <option key={dutyOption} value={dutyOption}>{dutyOption}</option>
-                ))}
-              </select>
-            </div>
           </div>
 
           {topView === "summary" ? (
@@ -312,13 +363,13 @@ function DctWebScreen({
             </p>
           </div>
 
-          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-7 xl:items-end">
-            <label className="block xl:col-span-2">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 xl:items-end">
+            <label className="block">
               <span className="text-[11px] font-black uppercase tracking-[0.12em] text-[#64748b]">Search DCT</span>
               <input
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Duty, location, trailer, user or issue"
+                placeholder="Duty, driver, location, vehicle, trailer or issue"
                 className="mt-2 h-10 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm font-bold text-[#172033] outline-none focus:border-[#d6001c]"
               />
             </label>
@@ -335,6 +386,15 @@ function DctWebScreen({
               options={["All", "Pie Haulage", "Letters", "Network"]}
               onChange={(value) => setDivisionFilter(value as typeof divisionFilter)}
             />
+            <FilterSelect label="Duty date" value={dutyDateFilter} options={dutyDateOptions} onChange={setDutyDateFilter} />
+            <FilterSelect label="Duty ID" value={dutyIdFilter} options={dutyIdOptions} onChange={setDutyIdFilter} />
+            <FilterSelect label="Due to convey" value={dueToConveyFilter} options={dueToConveyOptions} onChange={setDueToConveyFilter} />
+            <FilterSelect label="Week number" value={weekNumberFilter} options={weekNumberOptions} onChange={setWeekNumberFilter} />
+            <FilterSelect label="Vehicle reg" value={vehicleRegFilter} options={vehicleRegOptions} onChange={setVehicleRegFilter} />
+            <FilterSelect label="Trailer number" value={trailerNumberFilter} options={trailerNumberOptions} onChange={setTrailerNumberFilter} />
+            <FilterSelect label="Operator" value={operatorFilter} options={operatorOptions} onChange={setOperatorFilter} />
+            <FilterSelect label="Departure location" value={departureLocationFilter} options={departureLocationOptions} onChange={setDepartureLocationFilter} />
+            <FilterSelect label="Arrival location" value={arrivalLocationFilter} options={arrivalLocationOptions} onChange={setArrivalLocationFilter} />
             <FilterSelect
               label="DTT"
               value={dttFilter}
@@ -698,6 +758,14 @@ function FilterSelect({
   );
 }
 
+function buildFilterOptions(values: string[]) {
+  return [
+    "All",
+    ...Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, "en-GB", { numeric: true })),
+  ];
+}
+
 function downloadRows(rows: DctRow[], format: ExportFormat) {
   const headers = [
     "Leg Status",
@@ -706,7 +774,7 @@ function downloadRows(rows: DctRow[], format: ExportFormat) {
     "Duty Order",
     "Vehicle Reg",
     "Trailer Number",
-    "UserId",
+    "Drivers Name",
     "Division Letters/Network/Contractor",
     "Operator",
     "Duty ID",

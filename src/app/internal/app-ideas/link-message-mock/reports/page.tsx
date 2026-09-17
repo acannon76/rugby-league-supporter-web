@@ -85,7 +85,7 @@ const reportOptions: readonly ReportDirectoryItem[] = [
     number: "Report 5",
     title: "Sensor Report Dashboard",
     description:
-      "Monitor GPS, CANbus and Digital Tacho reporting health across the fleet, identify stale devices and investigate Red or Amber vehicles by reporting site.",
+      "Monitor GPS, CANbus and Digital Tacho reporting health for Motive Units / Rigids, plus GPS-only trailer tracking, by reporting site.",
     href: "/internal/app-ideas/link-message-mock/reports/option-5",
     status: "Available",
     accent: "purple",
@@ -105,7 +105,7 @@ const reportOptions: readonly ReportDirectoryItem[] = [
   },
   {
     number: "Report 7",
-    title: "Driver Behaviour & Coaching Dashboard",
+    title: "Coaching Dashboard",
     description:
       "Help Advanced Driver Coaches identify driver-controllable behaviours that may benefit from targeted coaching, with driver, site and national scoring plus training assurance checks.",
     href: "/internal/app-ideas/link-message-mock/reports/option-7",

@@ -165,7 +165,7 @@ export default function DriverBehaviourDashboard() {
 
   const download = async (format: ExportFormat) => {
     const generatedAt = formatDateTime(new Date().toISOString());
-    const fileBase = `Driver_Behaviour_Coaching_Report_${new Date().toISOString().slice(0, 10)}`;
+    const fileBase = `Coaching_Dashboard_Report_${new Date().toISOString().slice(0, 10)}`;
     const headers = [
       "DriverName",
       "EmployeeID",
@@ -250,6 +250,7 @@ export default function DriverBehaviourDashboard() {
             name: "Summary",
             headers: ["Metric", "Value"],
             rows: [
+              ["Report", "Coaching Dashboard"],
               ["Reporting site", site],
               ["Coaching filter", coachingBand],
               ["Sort", `${sortLabel(sortKey)} - ${sortOrderLabel(sortKey, sortOrder)}`],
@@ -303,12 +304,12 @@ export default function DriverBehaviourDashboard() {
         headers,
         rows,
         fileName: `${fileBase}.csv`,
-        title: "Driver Behaviour & Coaching Report",
+        title: "Coaching Dashboard",
       });
     } else {
       downloadOperationalReportPdf({
         fileName: `${fileBase}.pdf`,
-        title: "Driver Behaviour & Coaching Report",
+        title: "Coaching Dashboard",
         subtitle: "ADC coaching indicators based on driver-controllable driving behaviours",
         filters: [
           { label: "Reporting site", value: site },
@@ -372,7 +373,7 @@ export default function DriverBehaviourDashboard() {
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-[#4f46e5]">ADC driver coaching insight</p>
-                <h1 className="mt-2 text-3xl font-black text-[#10203a]">Driver Behaviour & Coaching Dashboard</h1>
+                <h1 className="mt-2 text-3xl font-black text-[#10203a]">Coaching Dashboard</h1>
                 <p className="mt-2 max-w-5xl text-sm font-bold leading-6 text-[#4b5563]">
                   Identify driving behaviours where Advanced Driver Coaches can target support and training. The score focuses on driver-controllable behaviours rather than MPG, which can be heavily affected by route, load and vehicle differences.
                 </p>
@@ -534,7 +535,7 @@ export default function DriverBehaviourDashboard() {
           </section>
         </main>
       </div>
-      {downloadOpen ? <OperationalDownloadModal title="Driver Behaviour & Coaching Report" rowCount={filteredRows.length} onClose={() => setDownloadOpen(false)} onDownload={download} /> : null}
+      {downloadOpen ? <OperationalDownloadModal title="Coaching Dashboard" rowCount={filteredRows.length} onClose={() => setDownloadOpen(false)} onDownload={download} /> : null}
     </div>
   );
 }
@@ -953,7 +954,7 @@ function toDateTimeValue(date: Date) {
 }
 
 function OfficeHeader() {
-  return <header className="flex min-h-[64px] items-center justify-between bg-[#e40000] text-white shadow-sm"><div className="flex h-full items-center"><Link href="/internal/app-ideas/link-message-mock" className="flex h-[64px] w-[68px] items-center justify-center border-r border-white/30 text-3xl font-black text-white no-underline hover:bg-white/10" aria-label="Back to Duty Execution">≡</Link><div className="px-5"><p className="text-2xl font-black uppercase tracking-wide">MOCK UP</p><p className="text-xs font-bold uppercase tracking-[0.18em] text-white/80">Report 7 · Driver Behaviour & Coaching</p></div></div><div className="flex items-center gap-4 px-4"><Link href="/internal/app-ideas" className="hidden rounded-lg border border-white/70 px-4 py-2 text-sm font-black text-white no-underline hover:bg-white/15 sm:block">← Back to DriverOS Home</Link><div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl text-[#e40000]">●</div><div className="hidden text-right sm:block"><p className="text-base font-black">Andrew Cannon</p><p className="text-xs font-bold text-white/80">Mock dashboard user</p></div></div></header>;
+  return <header className="flex min-h-[64px] items-center justify-between bg-[#e40000] text-white shadow-sm"><div className="flex h-full items-center"><Link href="/internal/app-ideas/link-message-mock" className="flex h-[64px] w-[68px] items-center justify-center border-r border-white/30 text-3xl font-black text-white no-underline hover:bg-white/10" aria-label="Back to Duty Execution">≡</Link><div className="px-5"><p className="text-2xl font-black uppercase tracking-wide">MOCK UP</p><p className="text-xs font-bold uppercase tracking-[0.18em] text-white/80">Report 7 · Coaching Dashboard</p></div></div><div className="flex items-center gap-4 px-4"><Link href="/internal/app-ideas" className="hidden rounded-lg border border-white/70 px-4 py-2 text-sm font-black text-white no-underline hover:bg-white/15 sm:block">← Back to DriverOS Home</Link><div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl text-[#e40000]">●</div><div className="hidden text-right sm:block"><p className="text-base font-black">Andrew Cannon</p><p className="text-xs font-bold text-white/80">Mock dashboard user</p></div></div></header>;
 }
 
 function OfficeSidebar() {

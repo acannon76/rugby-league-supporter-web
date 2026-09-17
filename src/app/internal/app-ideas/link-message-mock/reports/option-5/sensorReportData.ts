@@ -1,9 +1,11 @@
 import { availableLocations } from "../option-4/nationalLocalPlanDashboardData";
 
 export type RagStatus = "G" | "A" | "R" | "-";
+export type SensorResourceType = "Motive Unit / Rigid" | "Trailer";
 
 export type SensorReportRow = {
   id: string;
+  resourceType: SensorResourceType;
   resourceName: string;
   locationName: string;
   deviceDetails: string;
@@ -83,6 +85,9 @@ export const sensorReportRows: SensorReportRow[] = [
     .flatMap((site, siteIndex) =>
       Array.from({ length: 4 }, (_, vehicleIndex) => buildMockSensorRow(site, siteIndex, vehicleIndex)),
     ),
+  ...availableLocations.flatMap((site, siteIndex) =>
+    Array.from({ length: 2 }, (_, trailerIndex) => buildMockTrailerRow(site, siteIndex, trailerIndex)),
+  ),
 ];
 
 export function ragLabel(status: RagStatus) {
@@ -131,6 +136,7 @@ function normaliseSourceRow(row: (typeof sourceRows)[number], index: number): Se
   const tacho = ragFromEventTime(row.DigiTacho_EventTime);
   return {
     id: `sensor-birmingham-${index + 1}`,
+    resourceType: "Motive Unit / Rigid",
     resourceName: row.ResourceName,
     locationName: row.LocationName,
     deviceDetails: row.DeviceDetails,
@@ -158,6 +164,7 @@ function buildMockSensorRow(site: string, siteIndex: number, vehicleIndex: numbe
 
   return {
     id: `sensor-${siteIndex}-${vehicleIndex}`,
+    resourceType: "Motive Unit / Rigid",
     resourceName,
     locationName: site,
     deviceDetails: deviceTypes[(siteIndex + vehicleIndex) % deviceTypes.length],
@@ -168,6 +175,28 @@ function buildMockSensorRow(site: string, siteIndex: number, vehicleIndex: numbe
     digiTachoEventTime,
     digiTachoRagStatus: tacho,
     overallRagStatus: overallRag([gps, canbus, tacho]),
+  };
+}
+
+function buildMockTrailerRow(site: string, siteIndex: number, trailerIndex: number): SensorReportRow {
+  const ageDays = agePatterns[(siteIndex + trailerIndex) % agePatterns.length][0];
+  const gpsEventTime = dateDaysAgo(ageDays);
+  const gps = ragFromEventTime(gpsEventTime);
+  const trailerNumber = String(56500000 + siteIndex * 2 + trailerIndex);
+
+  return {
+    id: `sensor-trailer-${siteIndex}-${trailerIndex}`,
+    resourceType: "Trailer",
+    resourceName: trailerNumber,
+    locationName: site,
+    deviceDetails: "Trailer GPS tracker",
+    gpsEventTime,
+    gpsRagStatus: gps,
+    canbusEventTime: null,
+    canbusRagStatus: "-",
+    digiTachoEventTime: null,
+    digiTachoRagStatus: "-",
+    overallRagStatus: overallRag([gps]),
   };
 }
 
