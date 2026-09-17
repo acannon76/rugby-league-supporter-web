@@ -57,6 +57,7 @@ type DebriefRow = {
   jobTier: string;
   planType: string;
   traffic: string;
+  operator: string;
   vehicle: string;
   trailerNumber: string;
   trailerType: string;
@@ -155,6 +156,17 @@ export default function DebriefPage() {
   const [dttFilter, setDttFilter] = useState<"All" | ToTimeCode>("All");
   const [attFilter, setAttFilter] = useState<"All" | ToTimeCode>("All");
   const [legStateFilter, setLegStateFilter] = useState<"All" | (typeof legStateOptions)[number]>("All");
+  const [divisionFilter, setDivisionFilter] = useState("All");
+  const [dutyDateFilter, setDutyDateFilter] = useState("All");
+  const [dutyIdFilter, setDutyIdFilter] = useState("All");
+  const [trafficFilter, setTrafficFilter] = useState("All");
+  const [weekNumberFilter, setWeekNumberFilter] = useState("All");
+  const [vehicleFilter, setVehicleFilter] = useState("All");
+  const [trailerFilter, setTrailerFilter] = useState("All");
+  const [operatorFilter, setOperatorFilter] = useState("All");
+  const [departureLocationFilter, setDepartureLocationFilter] = useState("All");
+  const [arrivalLocationFilter, setArrivalLocationFilter] = useState("All");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [selectedRow, setSelectedRow] = useState<DebriefRow | null>(null);
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(() => new Set());
 
@@ -182,6 +194,17 @@ export default function DebriefPage() {
     };
   }, []);
 
+  const dutyDateOptions = useMemo(() => buildDebriefFilterOptions(rows.map((row) => formatDate(row.dutyDate))), [rows]);
+  const dutyIdOptions = useMemo(() => buildDebriefFilterOptions(rows.map((row) => row.dutyNumber)), [rows]);
+  const divisionOptions = useMemo(() => buildDebriefFilterOptions(rows.map((row) => row.division)), [rows]);
+  const trafficOptions = useMemo(() => buildDebriefFilterOptions(rows.map((row) => row.traffic)), [rows]);
+  const weekNumberOptions = useMemo(() => buildDebriefFilterOptions(rows.map((row) => String(row.weekNumber))), [rows]);
+  const vehicleOptions = useMemo(() => buildDebriefFilterOptions(rows.map((row) => row.vehicle)), [rows]);
+  const trailerOptions = useMemo(() => buildDebriefFilterOptions(rows.map((row) => row.trailerNumber)), [rows]);
+  const operatorOptions = useMemo(() => buildDebriefFilterOptions(rows.map((row) => row.operator)), [rows]);
+  const departureLocationOptions = useMemo(() => buildDebriefFilterOptions(rows.map((row) => row.startLocation)), [rows]);
+  const arrivalLocationOptions = useMemo(() => buildDebriefFilterOptions(rows.map((row) => row.finalDestination)), [rows]);
+
   const filteredRows = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
 
@@ -189,11 +212,16 @@ export default function DebriefPage() {
       const matchesSearch =
         query.length === 0 ||
         [
+          formatDate(row.dutyDate),
+          String(row.weekNumber),
           row.dutyNumber,
           row.driverName,
           row.userId,
+          row.division,
+          row.traffic,
           row.vehicle,
           row.trailerNumber,
+          row.operator,
           row.issueCategory,
           row.startLocation,
           row.finalDestination,
@@ -206,10 +234,40 @@ export default function DebriefPage() {
       const matchesDtt = dttFilter === "All" || getStartToTimeCode(row) === dttFilter;
       const matchesAtt = attFilter === "All" || getFinishToTimeCode(row) === attFilter;
       const matchesLegState = legStateFilter === "All" || getLegState(row) === legStateFilter;
+      const matchesDivision = divisionFilter === "All" || row.division === divisionFilter;
+      const matchesDutyDate = dutyDateFilter === "All" || formatDate(row.dutyDate) === dutyDateFilter;
+      const matchesDutyId = dutyIdFilter === "All" || row.dutyNumber === dutyIdFilter;
+      const matchesTraffic = trafficFilter === "All" || row.traffic === trafficFilter;
+      const matchesWeekNumber = weekNumberFilter === "All" || String(row.weekNumber) === weekNumberFilter;
+      const matchesVehicle = vehicleFilter === "All" || row.vehicle === vehicleFilter;
+      const matchesTrailer = trailerFilter === "All" || row.trailerNumber === trailerFilter;
+      const matchesOperator = operatorFilter === "All" || row.operator === operatorFilter;
+      const matchesDepartureLocation = departureLocationFilter === "All" || row.startLocation === departureLocationFilter;
+      const matchesArrivalLocation = arrivalLocationFilter === "All" || row.finalDestination === arrivalLocationFilter;
 
-      return matchesSearch && matchesStatus && matchesIssue && matchesDtt && matchesAtt && matchesLegState;
+      return matchesSearch && matchesStatus && matchesIssue && matchesDtt && matchesAtt && matchesLegState &&
+        matchesDivision && matchesDutyDate && matchesDutyId && matchesTraffic && matchesWeekNumber &&
+        matchesVehicle && matchesTrailer && matchesOperator && matchesDepartureLocation && matchesArrivalLocation;
     });
-  }, [rows, searchTerm, statusFilter, issueFilter, dttFilter, attFilter, legStateFilter]);
+  }, [
+    rows,
+    searchTerm,
+    statusFilter,
+    issueFilter,
+    dttFilter,
+    attFilter,
+    legStateFilter,
+    divisionFilter,
+    dutyDateFilter,
+    dutyIdFilter,
+    trafficFilter,
+    weekNumberFilter,
+    vehicleFilter,
+    trailerFilter,
+    operatorFilter,
+    departureLocationFilter,
+    arrivalLocationFilter,
+  ]);
 
   const bulkEligibleRows = useMemo(
     () => filteredRows.filter((row) => isBulkDebriefEligible(row)),
@@ -270,6 +328,38 @@ export default function DebriefPage() {
     setDttFilter("All");
     setAttFilter("All");
     setLegStateFilter("Complete");
+    setDivisionFilter("All");
+    setDutyDateFilter("All");
+    setDutyIdFilter("All");
+    setTrafficFilter("All");
+    setWeekNumberFilter("All");
+    setVehicleFilter("All");
+    setTrailerFilter("All");
+    setOperatorFilter("All");
+    setDepartureLocationFilter("All");
+    setArrivalLocationFilter("All");
+    setFiltersExpanded(false);
+    setSelectedRowIds(new Set());
+  }
+
+  function clearDebriefFilters() {
+    setSearchTerm("");
+    setStatusFilter("All");
+    setIssueFilter("All");
+    setDttFilter("All");
+    setAttFilter("All");
+    setLegStateFilter("All");
+    setDivisionFilter("All");
+    setDutyDateFilter("All");
+    setDutyIdFilter("All");
+    setTrafficFilter("All");
+    setWeekNumberFilter("All");
+    setVehicleFilter("All");
+    setTrailerFilter("All");
+    setOperatorFilter("All");
+    setDepartureLocationFilter("All");
+    setArrivalLocationFilter("All");
+    setFiltersExpanded(false);
     setSelectedRowIds(new Set());
   }
 
@@ -400,12 +490,17 @@ export default function DebriefPage() {
             </div>
           </section>
 
-          <section className="mt-4 rounded-md border border-[#d9dee6] bg-white p-4 shadow-sm">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7 xl:items-end">
+          <section className="mt-3 rounded-md border border-[#d9dee6] bg-white p-3 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#e40000]">Debrief filters</p>
+              <p className="text-[11px] font-bold text-[#64748b]">
+                Showing <span className="font-black text-[#172033]">{filteredRows.length}</span> of {rows.length} duties
+              </p>
+            </div>
+
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 xl:items-end">
               <label className="block xl:col-span-2">
-                <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">
-                  Search debrief
-                </span>
+                <span className="text-[9px] font-black uppercase tracking-[0.12em] text-[#6b7280]">Search debrief</span>
                 <input
                   value={searchTerm}
                   onChange={(event) => {
@@ -413,150 +508,97 @@ export default function DebriefPage() {
                     setSelectedRowIds(new Set());
                   }}
                   placeholder="Duty, driver, vehicle, trailer, issue or location"
-                  className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
+                  className="mt-1 h-8 w-full rounded-lg border border-[#ccd5e2] bg-white px-2 text-xs font-black text-[#111827] outline-none transition focus:border-[#e40000]"
                 />
               </label>
 
-              <label className="block">
-                <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">
-                  Debrief status
-                </span>
-                <select
-                  value={statusFilter}
-                  onChange={(event) => {
-                    setStatusFilter(event.target.value as "All" | DebriefStatus);
-                    setSelectedRowIds(new Set());
-                  }}
-                  className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
-                >
-                  <option>All</option>
-                  {debriefStatuses.map((status) => (
-                    <option key={status}>{status}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">
-                  Issue category
-                </span>
-                <select
-                  value={issueFilter}
-                  onChange={(event) => {
-                    setIssueFilter(event.target.value);
-                    setSelectedRowIds(new Set());
-                  }}
-                  className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
-                >
-                  <option>All</option>
-                  {issueCategories.map((category) => (
-                    <option key={category}>{category}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">
-                  DTT value
-                </span>
-                <select
-                  value={dttFilter}
-                  onChange={(event) => {
-                    setDttFilter(event.target.value as "All" | ToTimeCode);
-                    setSelectedRowIds(new Set());
-                  }}
-                  className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
-                >
-                  <option>All</option>
-                  {toTimeOptions.map((code) => (
-                    <option key={code}>{code}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">
-                  ATT value
-                </span>
-                <select
-                  value={attFilter}
-                  onChange={(event) => {
-                    setAttFilter(event.target.value as "All" | ToTimeCode);
-                    setSelectedRowIds(new Set());
-                  }}
-                  className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
-                >
-                  <option>All</option>
-                  {toTimeOptions.map((code) => (
-                    <option key={code}>{code}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">
-                  Leg state
-                </span>
-                <select
-                  value={legStateFilter}
-                  onChange={(event) => {
-                    setLegStateFilter(event.target.value as "All" | (typeof legStateOptions)[number]);
-                    setSelectedRowIds(new Set());
-                  }}
-                  className="mt-2 h-11 w-full rounded-lg border border-[#ccd5e2] bg-white px-3 text-sm font-black text-[#111827] outline-none transition focus:border-[#e40000]"
-                >
-                  <option>All</option>
-                  {legStateOptions.map((state) => (
-                    <option key={state}>{state}</option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="flex flex-col gap-3 md:flex-row xl:col-span-7">
-                <button
-                  type="button"
-                  onClick={showCompleteNoIssueRows}
-                  className="h-11 flex-1 rounded-lg border border-[#15803d] bg-[#ecfdf3] px-5 text-sm font-black uppercase tracking-[0.12em] text-[#166534] transition hover:bg-[#dcfce7]"
-                >
-                  Show Complete No Issues
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setStatusFilter("All");
-                    setIssueFilter("All");
-                    setDttFilter("All");
-                    setAttFilter("All");
-                    setLegStateFilter("All");
-                    setSelectedRowIds(new Set());
-                  }}
-                  className="h-11 flex-1 rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-5 text-sm font-black uppercase tracking-[0.12em] text-[#4b5563] transition hover:border-[#e40000]"
-                >
-                  Clear Filters
-                </button>
-              </div>
+              <CompactDebriefFilterSelect
+                label="Duty date"
+                value={dutyDateFilter}
+                options={dutyDateOptions}
+                onChange={(value) => {
+                  setDutyDateFilter(value);
+                  setSelectedRowIds(new Set());
+                }}
+              />
+              <CompactDebriefFilterSelect
+                label="Duty ID"
+                value={dutyIdFilter}
+                options={dutyIdOptions}
+                onChange={(value) => {
+                  setDutyIdFilter(value);
+                  setSelectedRowIds(new Set());
+                }}
+              />
+              <CompactDebriefFilterSelect
+                label="Debrief status"
+                value={statusFilter}
+                options={["All", ...debriefStatuses]}
+                onChange={(value) => {
+                  setStatusFilter(value as "All" | DebriefStatus);
+                  setSelectedRowIds(new Set());
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setFiltersExpanded((isExpanded) => !isExpanded)}
+                aria-expanded={filtersExpanded}
+                className="h-8 rounded-lg border border-[#001b3a] bg-[#eef4fb] px-2 text-[9px] font-black uppercase tracking-[0.07em] text-[#001b3a] transition hover:bg-[#e2ebf6]"
+              >
+                {filtersExpanded ? "Fewer filters" : "More filters"}
+              </button>
+              <button
+                type="button"
+                onClick={showCompleteNoIssueRows}
+                className="h-8 rounded-lg border border-[#15803d] bg-[#ecfdf3] px-2 text-[9px] font-black uppercase tracking-[0.06em] text-[#166534] transition hover:bg-[#dcfce7]"
+              >
+                Complete / No Issues
+              </button>
+              <button
+                type="button"
+                onClick={clearDebriefFilters}
+                className="h-8 rounded-lg border border-[#d9dee6] bg-[#f8fafc] px-2 text-[9px] font-black uppercase tracking-[0.07em] text-[#4b5563] transition hover:border-[#e40000]"
+              >
+                Clear
+              </button>
             </div>
+
+            {filtersExpanded && (
+              <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 xl:items-end">
+                <CompactDebriefFilterSelect label="Division" value={divisionFilter} options={divisionOptions} onChange={(value) => { setDivisionFilter(value); setSelectedRowIds(new Set()); }} />
+                <CompactDebriefFilterSelect label="Due to convey" value={trafficFilter} options={trafficOptions} onChange={(value) => { setTrafficFilter(value); setSelectedRowIds(new Set()); }} />
+                <CompactDebriefFilterSelect label="Week number" value={weekNumberFilter} options={weekNumberOptions} onChange={(value) => { setWeekNumberFilter(value); setSelectedRowIds(new Set()); }} />
+                <CompactDebriefFilterSelect label="Vehicle reg" value={vehicleFilter} options={vehicleOptions} onChange={(value) => { setVehicleFilter(value); setSelectedRowIds(new Set()); }} />
+                <CompactDebriefFilterSelect label="Trailer number" value={trailerFilter} options={trailerOptions} onChange={(value) => { setTrailerFilter(value); setSelectedRowIds(new Set()); }} />
+                <CompactDebriefFilterSelect label="Operator" value={operatorFilter} options={operatorOptions} onChange={(value) => { setOperatorFilter(value); setSelectedRowIds(new Set()); }} />
+                <CompactDebriefFilterSelect label="Departure location" value={departureLocationFilter} options={departureLocationOptions} onChange={(value) => { setDepartureLocationFilter(value); setSelectedRowIds(new Set()); }} />
+                <CompactDebriefFilterSelect label="Arrival location" value={arrivalLocationFilter} options={arrivalLocationOptions} onChange={(value) => { setArrivalLocationFilter(value); setSelectedRowIds(new Set()); }} />
+                <CompactDebriefFilterSelect label="Issue category" value={issueFilter} options={["All", ...issueCategories]} onChange={(value) => { setIssueFilter(value); setSelectedRowIds(new Set()); }} />
+                <CompactDebriefFilterSelect label="DTT value" value={dttFilter} options={["All", ...toTimeOptions]} onChange={(value) => { setDttFilter(value as "All" | ToTimeCode); setSelectedRowIds(new Set()); }} />
+                <CompactDebriefFilterSelect label="ATT value" value={attFilter} options={["All", ...toTimeOptions]} onChange={(value) => { setAttFilter(value as "All" | ToTimeCode); setSelectedRowIds(new Set()); }} />
+                <CompactDebriefFilterSelect label="Leg state" value={legStateFilter} options={["All", ...legStateOptions]} onChange={(value) => { setLegStateFilter(value as "All" | (typeof legStateOptions)[number]); setSelectedRowIds(new Set()); }} />
+              </div>
+            )}
           </section>
 
-          <section className="mt-4 rounded-[14px] border border-[#cfd8e3] bg-white p-4 shadow-sm">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <section className="mt-3 rounded-[14px] border border-[#cfd8e3] bg-white p-3 shadow-sm">
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-[#e40000]">Quick debrief</p>
                 <h2 className="mt-1 text-lg font-black text-[#172033]">Bulk debrief completed duties with no issue</h2>
-                <p className="mt-1 text-sm font-bold text-[#64748b]">
+                <p className="mt-1 text-xs font-bold text-[#64748b]">
                   Tick individual rows, or use Select All Filtered after applying the Complete and No Issue filters.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="rounded-full bg-[#eef2f7] px-4 py-2 text-sm font-black text-[#334155]">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-[#eef2f7] px-3 py-1.5 text-xs font-black text-[#334155]">
                   {selectedBulkRows.length} selected
                 </span>
                 <button
                   type="button"
                   onClick={toggleSelectAllFilteredRows}
                   disabled={bulkEligibleRows.length === 0}
-                  className="rounded-lg border border-[#001b3a] bg-white px-4 py-2 text-sm font-black uppercase tracking-[0.1em] text-[#001b3a] transition hover:bg-[#eef4fb] disabled:cursor-not-allowed disabled:border-[#cbd5e1] disabled:text-[#94a3b8]"
+                  className="rounded-lg border border-[#001b3a] bg-white px-3 py-1.5 text-xs font-black uppercase tracking-[0.08em] text-[#001b3a] transition hover:bg-[#eef4fb] disabled:cursor-not-allowed disabled:border-[#cbd5e1] disabled:text-[#94a3b8]"
                 >
                   {allEligibleRowsSelected ? "Clear Selected" : `Select All Filtered (${bulkEligibleRows.length})`}
                 </button>
@@ -564,7 +606,7 @@ export default function DebriefPage() {
                   type="button"
                   onClick={bulkDebriefSelectedRows}
                   disabled={selectedBulkRows.length === 0}
-                  className="rounded-lg bg-[#15803d] px-4 py-2 text-sm font-black uppercase tracking-[0.1em] text-white transition hover:bg-[#166534] disabled:cursor-not-allowed disabled:bg-[#94a3b8]"
+                  className="rounded-lg bg-[#15803d] px-3 py-1.5 text-xs font-black uppercase tracking-[0.08em] text-white transition hover:bg-[#166534] disabled:cursor-not-allowed disabled:bg-[#94a3b8]"
                 >
                   Debrief Selected as No Issue
                 </button>
@@ -572,7 +614,7 @@ export default function DebriefPage() {
             </div>
           </section>
 
-          <section className="mt-4 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
+          <section className="mt-3 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
               <table className="min-w-[2355px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
@@ -1050,6 +1092,41 @@ function OfficeSidebar() {
   );
 }
 
+function CompactDebriefFilterSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: readonly string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[9px] font-black uppercase tracking-[0.12em] text-[#6b7280]">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 h-8 w-full rounded-lg border border-[#ccd5e2] bg-white px-2 text-xs font-black text-[#111827] outline-none transition focus:border-[#e40000]"
+      >
+        {options.map((option) => (
+          <option key={option}>{option}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function buildDebriefFilterOptions(values: string[]) {
+  return [
+    "All",
+    ...Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, "en-GB", { numeric: true })),
+  ];
+}
+
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[12px] border border-[#d6dee8] bg-[#f8fafc] p-4">
@@ -1512,6 +1589,7 @@ function buildInitialDebriefRows(): DebriefRow[] {
       jobTier: "Tier 1",
       planType: index % 7 === 0 ? "FLEX" : "BAU",
       traffic: getMockTraffic(index),
+      operator: "NWH",
       vehicle: vehicles[index % vehicles.length],
       trailerNumber: String(7338000 + index + 1),
       trailerType: index % 4 === 0 ? "DD95" : "DD92",
@@ -1736,6 +1814,7 @@ function buildDummyDebriefRows(savedRowMap: Map<string, DebriefRow>) {
         jobTier: "Current Week",
         planType: "Planned",
         traffic: getMockTraffic(dutyIndex * 6 + legIndex),
+        operator: ["NWH", "NWH", "WA", "TNW", "TNW", "NWH"][dutyIndex],
         vehicle: isCompleted || isInProgress
           ? ["PE68UHD", "PN21XHD", "MX70RHA", "DK19RHC", "YX72NWH", "PK68MTE"][(dutyIndex + legIndex) % 6]
           : "",
@@ -1812,6 +1891,7 @@ function buildDebriefRowFromManifestRow(
     jobTier: "Current Week",
     planType: division === "Contractor" ? "Road Haulage" : "Planned",
     traffic: getMockTraffic(index),
+    operator: manifestRow.operator,
     vehicle: manifestRow.departureActualTs ? "PE68UHD" : "",
     trailerNumber: manifestRow.trailerNumber || "",
     trailerType: manifestRow.trailerType,

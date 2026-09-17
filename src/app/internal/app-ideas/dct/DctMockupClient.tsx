@@ -81,6 +81,7 @@ function DctWebScreen({
   const [operatorFilter, setOperatorFilter] = useState("All");
   const [departureLocationFilter, setDepartureLocationFilter] = useState("All");
   const [arrivalLocationFilter, setArrivalLocationFilter] = useState("All");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [topView, setTopView] = useState<"summary" | "route">("summary");
 
   const dutyDateOptions = useMemo(() => buildFilterOptions(rows.map((row) => row.startDate)), [rows]);
@@ -202,6 +203,7 @@ function DctWebScreen({
     setOperatorFilter("All");
     setDepartureLocationFilter("All");
     setArrivalLocationFilter("All");
+    setFiltersExpanded(false);
   }
 
   function resetAndClear() {
@@ -251,7 +253,7 @@ function DctWebScreen({
 
   return (
     <>
-      <header className="flex h-[72px] items-center justify-between border-b border-[#e5e7eb] bg-white px-5">
+      <header className="flex h-[52px] items-center justify-between border-b border-[#e5e7eb] bg-white px-4">
         <Link
           href="/internal/app-ideas"
           className="text-sm font-black text-[#d6001c] no-underline"
@@ -259,57 +261,57 @@ function DctWebScreen({
           ‹ Back
         </Link>
 
-        <h1 className="text-xl font-black text-[#222]">DCT Mockup Test</h1>
+        <h1 className="text-lg font-black text-[#222]">DCT Mockup Test</h1>
 
-        <div className="text-3xl font-black text-[#333]">⋮</div>
+        <div className="text-2xl font-black text-[#333]">⋮</div>
       </header>
 
-      <section className="bg-[#f8fafc] px-3 py-4 sm:px-4 lg:px-5">
-        <section className="rounded-[14px] border border-[#cfd8e3] bg-white p-4 shadow-sm">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+      <section className="bg-[#f8fafc] px-3 py-2.5 sm:px-4 lg:px-5">
+        <section className="rounded-[14px] border border-[#cfd8e3] bg-white p-3 shadow-sm">
+          <div className="flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#d6001c]">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#d6001c]">
                 Web results mockup
               </p>
-              <h2 className="mt-2 text-2xl font-black text-[#172033] sm:text-3xl">
+              <h2 className="mt-1 text-xl font-black text-[#172033] sm:text-2xl">
                 DCT-style output view
               </h2>
-              <p className="mt-3 max-w-[980px] text-sm font-bold leading-6 text-[#4b5563]">
+              <p className="mt-1 max-w-[980px] text-xs font-bold leading-5 text-[#4b5563]">
                 This shows the output created from the DriverOS Manifest mockup.
                 Planned values show first. Actual timings, DTT and ATT populate only as each Manifest / 318 leg is completed.
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row xl:flex-col">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <ExportDataMenu
                 disabled={displayRows.length === 0}
                 onExport={(format) => downloadRows(displayRows, format)}
-                buttonClassName="rounded-full bg-[#001b3a] px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#0f2f57] disabled:cursor-not-allowed disabled:bg-[#94a3b8]"
+                buttonClassName="rounded-full bg-[#001b3a] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#0f2f57] disabled:cursor-not-allowed disabled:bg-[#94a3b8]"
               />
 
               <button
                 type="button"
                 onClick={resetAndClear}
-                className="rounded-full bg-[#d6001c] px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#a90016]"
+                className="rounded-full bg-[#d6001c] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#a90016]"
               >
                 Complete Reset
               </button>
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <div className="inline-flex rounded-full border border-[#cfd8e3] bg-[#f8fafc] p-1">
               <button
                 type="button"
                 onClick={() => setTopView("summary")}
-                className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.14em] transition ${topView === "summary" ? "bg-[#001b3a] text-white" : "text-[#475569] hover:bg-white"}`}
+                className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] transition ${topView === "summary" ? "bg-[#001b3a] text-white" : "text-[#475569] hover:bg-white"}`}
               >
                 Summary
               </button>
               <button
                 type="button"
                 onClick={() => setTopView("route")}
-                className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.14em] transition ${topView === "route" ? "bg-[#001b3a] text-white" : "text-[#475569] hover:bg-white"}`}
+                className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] transition ${topView === "route" ? "bg-[#001b3a] text-white" : "text-[#475569] hover:bg-white"}`}
               >
                 Route Map
               </button>
@@ -319,7 +321,7 @@ function DctWebScreen({
 
           {topView === "summary" ? (
           <>
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
             <SummaryCard label="Rows shown" value={String(displayRows.length)} />
             <SummaryCard
               label="Leg status completed"
@@ -330,21 +332,9 @@ function DctWebScreen({
             <SummaryCard label="Total delay" value={formatDelayTotal(totalDelayMinutes)} />
           </div>
 
-          <div className="mt-4 grid gap-3 xl:grid-cols-[500px_minmax(0,1fr)] xl:items-stretch">
+          <div className="mt-2 grid gap-2 xl:grid-cols-[500px_minmax(0,1fr)] xl:items-stretch">
             <ToTimeSummaryTable distribution={buildToTimeDistribution(displayRows)} />
             <ToTimeLegend />
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]">
-            <span className="rounded-full border border-[#1f7a34] bg-[#d9f7e5] px-3 py-2 text-[#166534]">
-              Green = on time / early
-            </span>
-            <span className="rounded-full border border-[#c62828] bg-[#fecaca] px-3 py-2 text-[#7f1d1d]">
-              Red = late
-            </span>
-            <span className="rounded-full border border-[#6b7280] bg-[#e5e7eb] px-3 py-2 text-[#374151]">
-              Grey = not yet populated
-            </span>
           </div>
           </>
         ) : (
@@ -352,82 +342,91 @@ function DctWebScreen({
         )}
         </section>
 
-        <section className="mt-4 rounded-[14px] border border-[#cfd8e3] bg-white p-4 shadow-sm">
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#d6001c]">DCT filters</p>
-              <h3 className="mt-1 text-lg font-black text-[#172033]">Filter the reporting output</h3>
-            </div>
-            <p className="text-xs font-bold text-[#64748b]">
+        <section className="mt-2 rounded-[14px] border border-[#cfd8e3] bg-white p-3 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#d6001c]">DCT filters</p>
+            <p className="text-[11px] font-bold text-[#64748b]">
               Showing <span className="font-black text-[#172033]">{displayRows.length}</span> of {rows.length} leg(s)
             </p>
           </div>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 xl:items-end">
-            <label className="block">
-              <span className="text-[11px] font-black uppercase tracking-[0.12em] text-[#64748b]">Search DCT</span>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 xl:items-end">
+            <label className="block xl:col-span-2">
+              <span className="text-[9px] font-black uppercase tracking-[0.12em] text-[#64748b]">Search DCT</span>
               <input
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Duty, driver, location, vehicle, trailer or issue"
-                className="mt-2 h-10 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm font-bold text-[#172033] outline-none focus:border-[#d6001c]"
+                className="mt-1 h-8 w-full rounded-lg border border-[#cbd5e1] bg-white px-2 text-xs font-bold text-[#172033] outline-none focus:border-[#d6001c]"
               />
             </label>
 
+            <FilterSelect label="Duty date" value={dutyDateFilter} options={dutyDateOptions} onChange={setDutyDateFilter} />
+            <FilterSelect label="Duty ID" value={dutyIdFilter} options={dutyIdOptions} onChange={setDutyIdFilter} />
             <FilterSelect
               label="Leg status"
               value={statusFilter}
               options={["All", "Planned", "In Progress", "Complete"]}
               onChange={(value) => setStatusFilter(value as "All" | DctStatus)}
             />
-            <FilterSelect
-              label="Division"
-              value={divisionFilter}
-              options={["All", "Pie Haulage", "Letters", "Network"]}
-              onChange={(value) => setDivisionFilter(value as typeof divisionFilter)}
-            />
-            <FilterSelect label="Duty date" value={dutyDateFilter} options={dutyDateOptions} onChange={setDutyDateFilter} />
-            <FilterSelect label="Duty ID" value={dutyIdFilter} options={dutyIdOptions} onChange={setDutyIdFilter} />
-            <FilterSelect label="Due to convey" value={dueToConveyFilter} options={dueToConveyOptions} onChange={setDueToConveyFilter} />
-            <FilterSelect label="Week number" value={weekNumberFilter} options={weekNumberOptions} onChange={setWeekNumberFilter} />
-            <FilterSelect label="Vehicle reg" value={vehicleRegFilter} options={vehicleRegOptions} onChange={setVehicleRegFilter} />
-            <FilterSelect label="Trailer number" value={trailerNumberFilter} options={trailerNumberOptions} onChange={setTrailerNumberFilter} />
-            <FilterSelect label="Operator" value={operatorFilter} options={operatorOptions} onChange={setOperatorFilter} />
-            <FilterSelect label="Departure location" value={departureLocationFilter} options={departureLocationOptions} onChange={setDepartureLocationFilter} />
-            <FilterSelect label="Arrival location" value={arrivalLocationFilter} options={arrivalLocationOptions} onChange={setArrivalLocationFilter} />
-            <FilterSelect
-              label="DTT"
-              value={dttFilter}
-              options={["All", ...toTimeOptions]}
-              onChange={(value) => setDttFilter(value as "All" | ToTimeCode)}
-            />
-            <FilterSelect
-              label="ATT"
-              value={attFilter}
-              options={["All", ...toTimeOptions]}
-              onChange={(value) => setAttFilter(value as "All" | ToTimeCode)}
-            />
-            <FilterSelect
-              label="Issues"
-              value={issueFilter}
-              options={["All", "With issue", "No issue"]}
-              onChange={(value) => setIssueFilter(value as typeof issueFilter)}
-            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setFiltersExpanded((isExpanded) => !isExpanded)}
+                aria-expanded={filtersExpanded}
+                className="h-8 flex-1 rounded-lg border border-[#001b3a] bg-[#eef4fb] px-2 text-[10px] font-black uppercase tracking-[0.08em] text-[#001b3a] transition hover:bg-[#e2ebf6]"
+              >
+                {filtersExpanded ? "Fewer filters" : "More filters"}
+              </button>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="h-8 rounded-lg border border-[#cbd5e1] bg-[#f8fafc] px-3 text-[10px] font-black uppercase tracking-[0.08em] text-[#475569] transition hover:border-[#d6001c]"
+              >
+                Clear
+              </button>
+            </div>
           </div>
 
-          <div className="mt-3 flex justify-end">
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="rounded-lg border border-[#cbd5e1] bg-[#f8fafc] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#475569] transition hover:border-[#d6001c]"
-            >
-              Clear filters
-            </button>
-          </div>
+          {filtersExpanded && (
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 xl:items-end">
+              <FilterSelect
+                label="Division"
+                value={divisionFilter}
+                options={["All", "Pie Haulage", "Letters", "Network"]}
+                onChange={(value) => setDivisionFilter(value as typeof divisionFilter)}
+              />
+              <FilterSelect label="Due to convey" value={dueToConveyFilter} options={dueToConveyOptions} onChange={setDueToConveyFilter} />
+              <FilterSelect label="Week number" value={weekNumberFilter} options={weekNumberOptions} onChange={setWeekNumberFilter} />
+              <FilterSelect label="Vehicle reg" value={vehicleRegFilter} options={vehicleRegOptions} onChange={setVehicleRegFilter} />
+              <FilterSelect label="Trailer number" value={trailerNumberFilter} options={trailerNumberOptions} onChange={setTrailerNumberFilter} />
+              <FilterSelect label="Operator" value={operatorFilter} options={operatorOptions} onChange={setOperatorFilter} />
+              <FilterSelect label="Departure location" value={departureLocationFilter} options={departureLocationOptions} onChange={setDepartureLocationFilter} />
+              <FilterSelect label="Arrival location" value={arrivalLocationFilter} options={arrivalLocationOptions} onChange={setArrivalLocationFilter} />
+              <FilterSelect
+                label="DTT"
+                value={dttFilter}
+                options={["All", ...toTimeOptions]}
+                onChange={(value) => setDttFilter(value as "All" | ToTimeCode)}
+              />
+              <FilterSelect
+                label="ATT"
+                value={attFilter}
+                options={["All", ...toTimeOptions]}
+                onChange={(value) => setAttFilter(value as "All" | ToTimeCode)}
+              />
+              <FilterSelect
+                label="Issues"
+                value={issueFilter}
+                options={["All", "With issue", "No issue"]}
+                onChange={(value) => setIssueFilter(value as typeof issueFilter)}
+              />
+            </div>
+          )}
         </section>
 
         {displayRows.length === 0 ? (
-          <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white p-8 shadow-sm">
+          <section className="mt-2 rounded-[14px] border border-[#cfd8e3] bg-white p-8 shadow-sm">
             <p className="text-lg font-black text-[#172033]">
               {rows.length === 0 ? "No DCT mockup data is available yet." : "No DCT rows match the selected filters."}
             </p>
@@ -438,7 +437,7 @@ function DctWebScreen({
             </p>
           </section>
         ) : (
-          <section className="mt-5 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
+          <section className="mt-2 rounded-[14px] border border-[#cfd8e3] bg-white shadow-sm">
             <div className="overflow-x-auto">
               <table className="min-w-[3230px] border-collapse text-[10px] leading-[1.15] text-[#111827]">
                 <thead className="sticky top-0 z-10">
@@ -588,12 +587,19 @@ function ToTimeLegend() {
           <h3 className="mt-1 text-lg font-black text-[#172033]">How each timing code is set</h3>
           <p className="mt-1 text-xs font-bold text-[#64748b]">Reference ranges used for DTT, ATT and MTT.</p>
         </div>
-        <Link
-          href="/internal/app-ideas/link-message-mock/configurations/mtt-late-arrival-profiles"
-          className="shrink-0 rounded-lg border border-[#cbd5e1] bg-[#f8fafc] px-3 py-2 text-[10px] font-black uppercase tracking-[0.08em] text-[#10203a] no-underline transition hover:border-[#d6001c] hover:text-[#d6001c]"
-        >
-          View profile →
-        </Link>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <Link
+            href="/internal/app-ideas/link-message-mock/configurations/mtt-late-arrival-profiles"
+            className="rounded-lg border border-[#cbd5e1] bg-[#f8fafc] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.08em] text-[#10203a] no-underline transition hover:border-[#d6001c] hover:text-[#d6001c]"
+          >
+            View profile →
+          </Link>
+          <div className="flex flex-wrap justify-end gap-1 text-[8px] font-black uppercase tracking-[0.06em]">
+            <span className="rounded-full border border-[#1f7a34] bg-[#d9f7e5] px-2 py-1 text-[#166534]">Green = on time / early</span>
+            <span className="rounded-full border border-[#c62828] bg-[#fecaca] px-2 py-1 text-[#7f1d1d]">Red = late</span>
+            <span className="rounded-full border border-[#6b7280] bg-[#e5e7eb] px-2 py-1 text-[#374151]">Grey = not populated</span>
+          </div>
+        </div>
       </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
@@ -612,13 +618,13 @@ function ToTimeLegend() {
 
 function ToTimeLegendCard({ code, description, range }: { code: ToTimeCode; description: string; range: string }) {
   return (
-    <div className={`flex min-h-[64px] items-start gap-2 rounded-[10px] border px-2.5 py-2.5 ${getToTimeCardClass(code)}`}>
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-current text-[10px] font-black">
+    <div className={`flex min-h-[54px] items-start gap-2 rounded-[10px] border px-2 py-2 ${getToTimeCardClass(code)}`}>
+      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-current text-[9px] font-black">
         {code}
       </div>
       <div>
-        <p className="text-xs font-black leading-4">{description}</p>
-        <p className="mt-0.5 text-[10px] font-bold leading-4">{range}</p>
+        <p className="text-[11px] font-black leading-4">{description}</p>
+        <p className="text-[9px] font-bold leading-4">{range}</p>
       </div>
     </div>
   );
@@ -744,11 +750,11 @@ function FilterSelect({
 }) {
   return (
     <label className="block">
-      <span className="text-[11px] font-black uppercase tracking-[0.12em] text-[#64748b]">{label}</span>
+      <span className="text-[9px] font-black uppercase tracking-[0.12em] text-[#64748b]">{label}</span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-2 h-10 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm font-bold text-[#172033] outline-none focus:border-[#d6001c]"
+        className="mt-1 h-8 w-full rounded-lg border border-[#cbd5e1] bg-white px-2 text-xs font-bold text-[#172033] outline-none focus:border-[#d6001c]"
       >
         {options.map((option) => (
           <option key={option}>{option}</option>
@@ -914,11 +920,11 @@ function RouteSummaryCard({ label, value }: { label: string; value: string }) {
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[12px] border border-[#d6dee8] bg-[#f8fafc] p-4">
-      <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#64748b]">
+    <div className="rounded-[10px] border border-[#d6dee8] bg-[#f8fafc] px-3 py-2">
+      <p className="text-[9px] font-black uppercase tracking-[0.13em] text-[#64748b]">
         {label}
       </p>
-      <p className="mt-2 text-lg font-black text-[#172033]">{value || "-"}</p>
+      <p className="mt-1 text-base font-black leading-5 text-[#172033]">{value || "-"}</p>
     </div>
   );
 }
