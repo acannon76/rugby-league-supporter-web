@@ -62,7 +62,7 @@ type DutyContentFilter = {
 const sideButtons: SideButton[] = [
   { label: "Settings", icon: "⚙" },
   { label: "Planning", icon: "⚙" },
-  { label: "Vehicle view", icon: "🚛", href: "/internal/app-ideas/link-message-mock/vehicle-data-maintenance" },
+  { label: "Vehicle view", icon: "🚛" },
   { label: "Trailer view", icon: "▰" },
   { label: "Fleet view", icon: "▱" },
   {
@@ -644,6 +644,12 @@ function buildTravelTooltip(row: DutyRow, segmentIndex: number) {
   const vehicle =
     mockVehicleRegistrations[(dutyIndex + Math.max(travelIndex, 0)) % mockVehicleRegistrations.length];
   const trailer = mockTrailerNumbers[(dutyIndex + Math.max(travelIndex, 0)) % mockTrailerNumbers.length];
+  const containerUnavailable =
+    (row.duty === "NWH002" && safeTravelIndex === 1) ||
+    (row.duty === "NWH005" && safeTravelIndex === 0);
+  const containers = containerUnavailable
+    ? "N/A"
+    : String((dutyIndex * 17 + safeTravelIndex * 29 + 23) % 96);
   const start = formatTimelinePercentAsTime(segment.start);
   const finish = formatTimelinePercentAsTime(segment.start + segment.width);
   const duration = calculateRhcDutyDuration(start, finish);
@@ -654,6 +660,7 @@ function buildTravelTooltip(row: DutyRow, segmentIndex: number) {
     duration: formatDurationLong(duration.label),
     vehicle,
     trailer,
+    containers,
     anchor: Math.max(12, Math.min(88, segment.start + segment.width / 2)),
   };
 }
@@ -963,6 +970,20 @@ export default function LinkMessageMockPage() {
                 }`}
               >
                 All Duties <span className="ml-1 text-xs text-inherit">({duties.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveDutyTab("roadHaulage");
+                  setSelectedDetail("Road Haulage Duties tab opened.");
+                }}
+                className={`rounded-t-md border px-4 py-3 text-sm font-black transition ${
+                  activeDutyTab === "roadHaulage"
+                    ? "border-[#e40000] bg-[#fff5f5] text-[#e40000]"
+                    : "border-[#d9dee6] bg-[#f8fafc] text-[#4b5563] hover:border-[#e40000]"
+                }`}
+              >
+                Road Haulage Duties <span className="ml-1 text-xs text-inherit">({duties.filter((duty) => isRoadHaulageDuty(duty.duty)).length})</span>
               </button>
             </div>
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -1387,7 +1408,7 @@ export default function LinkMessageMockPage() {
                         </div>
                       ))}
 
-                      <div className="relative z-0 h-[64px]">
+                      <div className="relative h-[64px]">
                         {duty.segments.map((segment, segmentIndex) => {
                           const travelTimingStatus =
                             segment.label === "Travel"
@@ -1458,6 +1479,7 @@ export default function LinkMessageMockPage() {
                               <p className="text-sm font-medium">Duration - {tooltip.duration}</p>
                               <p className="text-sm font-medium">Vehicle - {tooltip.vehicle}</p>
                               <p className="text-sm font-medium">Trailer - {tooltip.trailer}</p>
+                              <p className="text-sm font-medium">Containers - {tooltip.containers}</p>
                               <span className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-[#334763]" />
                             </div>
                           );

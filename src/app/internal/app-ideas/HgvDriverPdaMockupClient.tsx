@@ -104,9 +104,9 @@ const messageLevelConfigs: Record<Exclude<MessageLevel, "none">, MessageLevelCon
 
 const appButtons: AppButton[] = [
   {
-    title: "Vehicle Checks",
-    text: "Daily checks and defect reporting.",
-    href: "/internal/vehicle-check-type",
+    title: "Vehicle Checks & Logbook",
+    text: "Daily checks, defect reporting and logbook.",
+    href: "/internal/logbook",
     icon: "✓",
     actionText: "OPEN",
   },
@@ -406,7 +406,22 @@ function ActionCard({
 
   if (button.href) {
     return (
-      <Link href={button.href} className={`${cardClasses} no-underline`}>
+      <Link
+        href={button.href}
+        onClick={() => {
+          if (
+            button.title === "Vehicle Checks & Logbook" &&
+            typeof window !== "undefined" &&
+            !window.localStorage.getItem("hgv-check-timer-started-at")
+          ) {
+            window.localStorage.setItem(
+              "hgv-check-timer-started-at",
+              String(Date.now())
+            );
+          }
+        }}
+        className={`${cardClasses} no-underline`}
+      >
         {content}
       </Link>
     );
@@ -434,10 +449,25 @@ function MessagingControls({
 
   return (
     <div className="rounded-[18px] border border-[#d0d7df] bg-white p-2 shadow-sm sm:col-span-2 lg:col-span-4">
-      <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-5">
         <button
           type="button"
-          onClick={onResetAllMocks}
+          onClick={() => {
+            // RESET_BOTH_VEHICLE_CHECK_STATES
+            // The existing reset handler continues to reset the normal Vehicle Checks.
+            // Clear the independent Backup Vehicle Checks state as well.
+            if (typeof window !== "undefined") {
+              Object.keys(window.localStorage)
+                .filter((key) => key.startsWith("hgv-backup2-"))
+                .forEach((key) => window.localStorage.removeItem(key));
+
+              Object.keys(window.sessionStorage)
+                .filter((key) => key.startsWith("hgv-backup2-"))
+                .forEach((key) => window.sessionStorage.removeItem(key));
+            }
+
+            onResetAllMocks();
+          }}
           className="flex min-h-[42px] w-full items-center justify-center rounded-[14px] bg-[#c4002f] px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#9f0026]"
         >
           Reset
@@ -450,6 +480,12 @@ function MessagingControls({
           {messageButtonLabel}
         </Link>
 
+        <Link
+          href="/internal/app-ideas/backup"
+          className="flex min-h-[42px] w-full items-center justify-center rounded-[14px] bg-[#001b3a] px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.14em] text-white no-underline transition hover:bg-[#0f2f57]"
+        >
+          Backup
+        </Link>
         <Link
           href="/internal/app-ideas/dct"
           className="flex min-h-[42px] w-full items-center justify-center rounded-[14px] bg-[#001b3a] px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.14em] text-white no-underline transition hover:bg-[#0f2f57]"
@@ -625,6 +661,7 @@ function resetAllDriverPdaMocks() {
     "driver-pda-",
     "hgv-vehicle-check",
     "hgv-brake",
+    "hgv-alt-",
     "vehicle-check",
   ];
 

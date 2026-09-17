@@ -3,12 +3,28 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import DriverName from "../DriverName";
-import VehicleCheckTimer from "../vehicle-checks/VehicleCheckTimer";
+import VehicleCheckTimer from "../vehicle-checks2/VehicleCheckTimer";
 import {
   altLogbookStorageKey,
   formatDateTime,
   type AltLogbookEntry,
-} from "../vehicle-checks-altData";
+} from "../vehicle-checks-altData2";
+
+const DEFAULT_START_TS = new Date(2026, 7, 6, 17, 47).getTime();
+const DEFAULT_END_TS = new Date(2026, 7, 6, 17, 59).getTime();
+
+const emptyEntry: AltLogbookEntry = {
+  startDateTime: formatDateTime(new Date(DEFAULT_START_TS)),
+  endDateTime: formatDateTime(new Date(DEFAULT_END_TS)),
+  startTimestamp: DEFAULT_START_TS,
+  endTimestamp: DEFAULT_END_TS,
+  driverName: "Mock Driver",
+  mileageStart: "684,218 km",
+  mileageEnd: "Not entered",
+  hasDefects: false,
+  defectsSummary: ["NIL Defects"],
+  pmts: [],
+};
 
 const DRIVER_NAMES = [
   "Andrew Cannon",
@@ -159,132 +175,119 @@ function getOutcomeContent(entry: AltLogbookEntry, rowIndex: number) {
 }
 
 export default function LogbookPage() {
-  // LOGBOOK_STATUS_LAYOUT_V2
-  const [currentEntry] = useState<AltLogbookEntry | null>(() => {
+  const [currentEntry] = useState<AltLogbookEntry>(() => {
     if (typeof window === "undefined") {
-      return null;
+      return emptyEntry;
     }
 
     const saved = window.localStorage.getItem(altLogbookStorageKey);
-    return saved ? normaliseStoredEntry(JSON.parse(saved)) : null;
+    return saved ? normaliseStoredEntry(JSON.parse(saved)) : emptyEntry;
   });
 
   const logbookEntries = useMemo(
     () =>
-      (currentEntry
-        ? [currentEntry, ...createHistoricalEntries()]
-        : createHistoricalEntries()
-      ).sort((left, right) => right.startTimestamp - left.startTimestamp),
+      [currentEntry, ...createHistoricalEntries()].sort(
+        (left, right) => right.startTimestamp - left.startTimestamp
+      ),
     [currentEntry]
   );
 
-  const currentCheckState =
-    currentEntry === null ? "pending" : currentEntry.hasDefects ? "failed" : "passed";
-
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#111]">
-      <header className="border-b border-white/20 bg-[#b00020] px-4 py-3 text-white sm:px-6 lg:px-10">
-        <div className="mx-auto flex max-w-[1280px] flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <header className="border-b border-white/20 bg-[#b00020] px-4 py-4 text-white sm:px-6 lg:px-10">
+        <div className="mx-auto flex max-w-[1280px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border-2 border-white bg-[#7d0017] text-base font-black text-white">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-white bg-[#7d0017] text-lg font-black text-white">
               HGV
             </div>
 
             <div>
-              <h1 className="text-3xl font-black leading-none text-white sm:text-4xl">
-                Logbook
-              </h1>
-              <p className="mt-1 text-xs font-bold leading-5 text-[#ffecef] sm:text-sm">
-                Vehicle check results are shown newest first.
+              <p className="text-lg font-black leading-none text-white">Logbook</p>
+              <p className="text-sm font-black leading-none text-[#ffd9df]">
+                DriverOS Concept
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <VehicleCheckTimer />
 
             <div className="rounded-2xl border border-white/30 bg-white/10 px-4 py-2">
-              <p className="text-[10px] font-black uppercase tracking-widest text-[#ffd9df]">
+              <p className="text-xs font-black uppercase tracking-widest text-[#ffd9df]">
                 Driver
               </p>
-              <p className="text-sm font-black text-white"><DriverName /></p>
+              <p className="text-base font-black text-white"><DriverName /></p>
             </div>
 
-            <Link
-              href="/internal/app-ideas"
-              className="px-2 text-sm font-black text-white no-underline"
-            >
+            <Link href="/internal/vehicle-check-type2" className="text-sm font-black text-white no-underline">
               Back
             </Link>
           </div>
         </div>
       </header>
 
-      <section className="px-4 pt-4 sm:px-6 lg:px-10">
-        <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-2 sm:grid-cols-3">
-          <Link
-            href="/internal/vehicle-checks-alt"
-            className="inline-flex min-h-[44px] items-center justify-center rounded-[16px] bg-[#18243a] px-4 py-3 text-sm font-black text-white no-underline shadow-sm transition hover:bg-[#0f172a]"
-          >
-            Motive Unit Checks
-          </Link>
+      <section className="bg-[#b00020] px-4 py-6 text-white sm:px-6 lg:px-10">
+        <div className="mx-auto max-w-[1280px]">
+          <p className="mb-3 text-xs font-black uppercase tracking-[0.22em] text-[#ffd9df]">
+            Driver daily check results
+          </p>
 
-          <button
-            type="button"
-            disabled
-            title="Trailer check mockup to be added"
-            className="min-h-[44px] cursor-not-allowed rounded-[16px] border border-[#d6dce5] bg-white px-4 py-3 text-sm font-black text-[#64748b] opacity-80"
-          >
-            Trailer Checks
-          </button>
+          <h1 className="text-[42px] font-black leading-[0.95] sm:text-[64px]">
+            Logbook
+          </h1>
 
-          <button
-            type="button"
-            disabled
-            title="Rigid check mockup to be added"
-            className="min-h-[44px] cursor-not-allowed rounded-[16px] border border-[#d6dce5] bg-white px-4 py-3 text-sm font-black text-[#64748b] opacity-80"
-          >
-            Rigid Checks
-          </button>
+          <p className="mt-4 max-w-[850px] text-sm font-bold leading-6 text-[#ffecef] sm:text-base">
+            Vehicle check results are displayed as one row per completed check. The latest Start Date and Time appears first.
+          </p>
         </div>
       </section>
 
-      <section className="px-4 py-4 sm:px-6 lg:px-10">
-        <div className="mx-auto max-w-[1280px] space-y-4">
+      <section className="px-4 py-6 sm:px-6 lg:px-10">
+        <div className="mx-auto max-w-[1280px] space-y-6">
           <div
-            className={`rounded-[20px] border px-5 py-4 shadow-sm ${
-              currentCheckState === "passed"
-                ? "border-[#b9e6c8] bg-[#eaf8ef]"
-                : "border-[#f3c2cb] bg-[#fff1f3]"
+            className={`rounded-[24px] border p-5 shadow-sm ${
+              currentEntry.hasDefects
+                ? "border-[#f3c2cb] bg-[#fff1f3]"
+                : "border-[#b9e6c8] bg-[#eaf8ef]"
             }`}
           >
             <p
               className={`text-xs font-black uppercase tracking-[0.18em] ${
-                currentCheckState === "passed" ? "text-[#078a3d]" : "text-[#b00020]"
+                currentEntry.hasDefects ? "text-[#b00020]" : "text-[#078a3d]"
               }`}
             >
-              {currentCheckState === "pending"
-                ? "Checks required"
-                : currentCheckState === "failed"
-                ? "Defect found"
-                : "Checks complete"}
+              {currentEntry.hasDefects
+                ? "Manager action required"
+                : "Driver OK to continue with duty"}
             </p>
 
-            <h2 className="mt-1 text-2xl font-black text-[#18243a]">
-              {currentCheckState === "pending"
-                ? "Driver must complete Checks"
-                : currentCheckState === "failed"
-                ? "Driver to report to Office"
-                : "Driver OK to continue"}
+            <h2 className="mt-2 text-2xl font-black text-[#18243a]">
+              {currentEntry.hasDefects
+                ? "PMT sent to manager to process"
+                : "Vehicle checks completed with no defects"}
             </h2>
 
-            <p className="mt-2 text-sm font-bold leading-5 text-[#18243a]">
-              {currentCheckState === "pending"
-                ? "The current vehicle check has not been completed. Complete the checks before continuing the duty."
-                : currentCheckState === "failed"
-                ? "A defect has been recorded. The driver must return to or contact the office for further instruction."
-                : "Vehicle checks are complete and no defects were found. The driver is clear to continue with duty."}
+            <p className="mt-3 text-sm font-bold leading-6 text-[#18243a]">
+              {currentEntry.hasDefects
+                ? "The defect details have been sent to Vehicle History. The driver must return to or contact the office for further instruction."
+                : "No defects were found. The driver is clear to continue with duty."}
             </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/internal/vehicle-checks-alt2"
+              className="inline-flex items-center justify-center rounded-[24px] bg-[#18243a] px-6 py-4 text-sm font-black uppercase tracking-[0.16em] text-white no-underline shadow-sm transition hover:bg-[#0f172a]"
+            >
+              Continue to Vehicle Checks
+            </Link>
+
+            <Link
+              href="/internal/vehicle-check-type2"
+              className="inline-flex items-center justify-center rounded-[24px] bg-[#b00020] px-6 py-4 text-sm font-black uppercase tracking-[0.16em] text-white no-underline shadow-sm transition hover:bg-[#7d0017]"
+            >
+              Finish
+            </Link>
           </div>
 
           <section className="overflow-hidden rounded-[24px] border border-[#d6dce5] bg-white shadow-sm">
@@ -299,32 +302,16 @@ export default function LogbookPage() {
               </div>
 
               <p className="text-xs font-bold text-[#64748b]">
-                Sorted newest to oldest by Start Time
+                Sorted newest to oldest by Start Date and Time
               </p>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-[1180px] w-full table-fixed border-collapse text-left">
-                <colgroup>
-                  <col className="w-[48px]" />
-                  <col className="w-[120px]" />
-                  <col className="w-[125px]" />
-                  <col className="w-[125px]" />
-                  <col className="w-[105px]" />
-                  <col className="w-[105px]" />
-                  <col className="w-[105px]" />
-                  <col className="w-[170px]" />
-                  <col className="w-[95px]" />
-                  <col />
-                </colgroup>
+              <table className="min-w-[1280px] w-full border-collapse text-left">
                 <thead className="bg-[#18243a] text-white">
                   <tr>
-                    <TableHeader>
-                      <span className="sr-only">Vehicle</span>
-                    </TableHeader>
-                    <TableHeader>Vehicle / Trailer</TableHeader>
-                    <TableHeader>Start Time</TableHeader>
-                    <TableHeader>End Time</TableHeader>
+                    <TableHeader>Start Date and Time</TableHeader>
+                    <TableHeader>End Date and Time</TableHeader>
                     <TableHeader>Driver</TableHeader>
                     <TableHeader>Mileage Start</TableHeader>
                     <TableHeader>Mileage End</TableHeader>
@@ -342,22 +329,8 @@ export default function LogbookPage() {
                         index === 0 ? "bg-[#fff7e6]" : index % 2 === 0 ? "bg-[#fbfcfd]" : "bg-white"
                       }`}
                     >
-                      <td className="w-[54px] border-r border-[#e2e8f0] px-2 py-3 align-top">
-                        <div
-                          className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#fbe7eb] text-[#b00020]"
-                          title="Vehicle check"
-                          aria-label="Vehicle check"
-                        >
-                          <TruckIcon />
-                        </div>
-                      </td>
-                      <TableCell strong>PA25 RTY</TableCell>
-                      <TableCell>
-                        <DateTimeStack value={entry.startDateTime} />
-                      </TableCell>
-                      <TableCell>
-                        <DateTimeStack value={entry.endDateTime} />
-                      </TableCell>
+                      <TableCell strong>{entry.startDateTime}</TableCell>
+                      <TableCell>{entry.endDateTime}</TableCell>
                       <TableCell strong>{entry.driverName}</TableCell>
                       <TableCell>{entry.mileageStart}</TableCell>
                       <TableCell>{entry.mileageEnd}</TableCell>
@@ -379,10 +352,10 @@ export default function LogbookPage() {
                         {(() => {
                           const outcome = getOutcomeContent(entry, index);
                           return (
-                            <div className="min-w-0 space-y-1 break-words whitespace-normal">
-                              <p className="break-words font-black leading-5 text-[#18243a]">{outcome.title}</p>
-                              <p className="break-words text-xs font-bold leading-5 text-[#64748b]">{outcome.summary}</p>
-                              <p className="break-words text-xs font-black leading-5 text-[#b00020]">{outcome.fixedBy}</p>
+                            <div className="space-y-1">
+                              <p className="font-black text-[#18243a]">{outcome.title}</p>
+                              <p className="text-xs font-bold leading-5 text-[#64748b]">{outcome.summary}</p>
+                              <p className="text-xs font-black leading-5 text-[#b00020]">{outcome.fixedBy}</p>
                             </div>
                           );
                         })()}
@@ -396,14 +369,14 @@ export default function LogbookPage() {
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
-              href="/internal/vehicle-checks-alt"
+              href="/internal/vehicle-checks-alt2"
               className="inline-flex items-center justify-center rounded-[24px] bg-[#18243a] px-6 py-4 text-sm font-black uppercase tracking-[0.16em] text-white no-underline shadow-sm transition hover:bg-[#0f172a]"
             >
               Continue to Vehicle Checks
             </Link>
 
             <Link
-              href="/internal/app-ideas"
+              href="/internal/vehicle-check-type2"
               className="inline-flex items-center justify-center rounded-[24px] bg-[#b00020] px-6 py-4 text-sm font-black uppercase tracking-[0.16em] text-white no-underline shadow-sm transition hover:bg-[#7d0017]"
             >
               Finish
@@ -415,42 +388,9 @@ export default function LogbookPage() {
   );
 }
 
-function DateTimeStack({ value }: { value: string }) {
-  const [date, ...timeParts] = value.trim().split(/\s+/);
-  const time = timeParts.join(" ");
-
-  return (
-    <span className="block leading-5">
-      <span className="block font-black text-[#18243a]">{date}</span>
-      {time && <span className="block font-bold text-[#475569]">{time}</span>}
-    </span>
-  );
-}
-
-function TruckIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M3 6h10v9H3z" />
-      <path d="M13 9h4l4 4v2h-8z" />
-      <circle cx="7" cy="17" r="2" />
-      <circle cx="17" cy="17" r="2" />
-      <path d="M3 15h2m6 0h4m4 0h2" />
-    </svg>
-  );
-}
-
 function TableHeader({ children }: { children: React.ReactNode }) {
   return (
-    <th className="whitespace-normal break-words border-r border-white/10 px-3 py-3 text-[10px] font-black uppercase leading-4 tracking-[0.10em] last:border-r-0">
+    <th className="whitespace-nowrap border-r border-white/10 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] last:border-r-0">
       {children}
     </th>
   );
@@ -465,7 +405,7 @@ function TableCell({
 }) {
   return (
     <td
-      className={`min-w-0 break-words whitespace-normal border-r border-[#e2e8f0] px-3 py-3 align-top text-sm last:border-r-0 ${
+      className={`border-r border-[#e2e8f0] px-4 py-3 align-top text-sm last:border-r-0 ${
         strong ? "font-black text-[#18243a]" : "font-bold text-[#475569]"
       }`}
     >

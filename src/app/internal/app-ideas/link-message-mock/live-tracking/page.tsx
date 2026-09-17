@@ -2,7 +2,8 @@
 
 import Image, { type StaticImageData } from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { pingDataRows, type PingDataRow } from "./ping-data";
 
 import routeAnalysisMap from "./live-tracking-route-analysis.png";
 import routeHistoryDay1 from "./route-history-day-1.png";
@@ -476,6 +477,7 @@ export default function LiveTrackingPage() {
   const [selectedResourceType, setSelectedResourceType] = useState<ResourceType>("vehicle");
   const [selectedResource, setSelectedResource] = useState(DEFAULT_TRACKING_RESOURCE);
   const [selectedSite, setSelectedSite] = useState<SiteOption>("North West VOC");
+  const [showHistogram, setShowHistogram] = useState(true);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 60000);
@@ -570,6 +572,7 @@ export default function LiveTrackingPage() {
                       {selectedTrackingDay.resource}
                     </span>
                   </div>
+                  <PingDataButton resource={selectedTrackingDay.resource} />
                 </div>
                 <p className="mt-1 max-w-4xl text-xs font-bold leading-4 text-[#4b5563]">
                   Select today for live progress, or choose a previous date to review the completed route and recorded events.
@@ -635,11 +638,28 @@ export default function LiveTrackingPage() {
                   {isCurrentDay ? "Movement and place history" : `Recorded history for ${selectedDateLabel}`}
                 </h2>
               </div>
-              <div className="rounded-full bg-[#10203a] px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-white">
-                Showing {selectedTrackingDay.events.length} {isCurrentDay ? "mock" : "recorded"} entries
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowHistogram((visible) => !visible)}
+                  className="rounded-full border border-[#b9c8da] bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#10203a] transition hover:bg-[#f1f5f9]"
+                  aria-expanded={showHistogram}
+                >
+                  {showHistogram ? "Hide histogram" : "Show histogram"}
+                </button>
+                <div className="rounded-full bg-[#10203a] px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-white">
+                  Showing {selectedTrackingDay.events.length} {isCurrentDay ? "mock" : "recorded"} entries
+                </div>
               </div>
             </div>
 
+            {showHistogram ? (
+              <JourneyHistogramCard
+                events={selectedTrackingDay.events}
+                isCurrent={isCurrentDay}
+                selectedDateLabel={selectedDateLabel}
+              />
+            ) : null}
             <div className="mt-3 overflow-x-auto rounded-[18px] border border-[#d7dee9]">
               <table className="min-w-[980px] w-full border-collapse text-sm">
                 <thead>
@@ -850,7 +870,10 @@ function TrackingModeChip({ isCurrent }: { isCurrent: boolean }) {
 function RouteMapCard({ trackingDay, selectedDateLabel }: { trackingDay: SelectedTrackingDay; selectedDateLabel: string }) {
   const [showLabels, setShowLabels] = useState(false);
   const [labelMode, setLabelMode] = useState<LabelMode>("time");
+  const [zoom, setZoom] = useState(1);
 
+  const zoomOut = () => setZoom((value) => Math.max(1, Number((value - 0.25).toFixed(2))));
+  const zoomIn = () => setZoom((value) => Math.min(2.5, Number((value + 0.25).toFixed(2))));
 
   return (
     <section className="min-w-0 rounded-[22px] border border-[#d6dde8] bg-white p-3 shadow-sm xl:p-4">
@@ -862,14 +885,12 @@ function RouteMapCard({ trackingDay, selectedDateLabel }: { trackingDay: Selecte
           <h2 className="mt-1 text-lg font-black leading-tight text-[#10203a] xl:text-xl">{trackingDay.route}</h2>
           {!trackingDay.isCurrent ? <p className="mt-1 text-xs font-bold text-[#4b5563]">Recorded on {selectedDateLabel}</p> : null}
         </div>
-
         <div className="flex flex-col items-start gap-2 sm:items-end">
           <div className={`shrink-0 rounded-full px-3 py-2 text-xs font-black ${
             trackingDay.isCurrent ? "bg-[#10203a] text-white" : "bg-[#e8eef8] text-[#0f3a6d] ring-1 ring-[#bfdbfe]"
           }`}>
             {trackingDay.statusText}
           </div>
-
           {trackingDay.isCurrent ? (
             <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#d7dee9] bg-white/90 px-3 py-2 shadow-sm">
               <label className="flex cursor-pointer items-center gap-2 text-xs font-black text-[#10203a]">
@@ -881,7 +902,6 @@ function RouteMapCard({ trackingDay, selectedDateLabel }: { trackingDay: Selecte
                 />
                 Show labels
               </label>
-
               <div className="flex rounded-full border border-[#cfd8e3] bg-[#f8fafc] p-1">
                 {(["time", "speed"] as LabelMode[]).map((mode) => (
                   <button
@@ -905,26 +925,59 @@ function RouteMapCard({ trackingDay, selectedDateLabel }: { trackingDay: Selecte
           )}
         </div>
       </div>
-
       <div className="relative mt-3 overflow-hidden rounded-[18px] border border-[#c9d5c1] bg-[#dfe6cf]">
-        <div className="absolute left-3 top-3 z-20 rounded-lg bg-white/90 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#10203a] shadow-sm">
+        <div className="absolute left-3 top-3 z-30 rounded-lg bg-white/90 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#10203a] shadow-sm">
           {trackingDay.isCurrent ? "Office route analysis" : "Historical route playback"}
         </div>
-
+        <div className="absolute right-3 top-3 z-30 flex items-center gap-1 rounded-xl border border-[#cbd7e6] bg-white/95 p-1.5 shadow-md">
+          <button
+            type="button"
+            onClick={zoomOut}
+            disabled={zoom <= 1}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#cbd7e6] bg-white text-lg font-black text-[#10203a] transition hover:bg-[#edf4fb] disabled:cursor-not-allowed disabled:opacity-35"
+            aria-label="Zoom out"
+            title="Zoom out"
+          >
+            −
+          </button>
+          <span className="min-w-[54px] text-center text-[11px] font-black text-[#10203a]">{Math.round(zoom * 100)}%</span>
+          <button
+            type="button"
+            onClick={zoomIn}
+            disabled={zoom >= 2.5}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#cbd7e6] bg-white text-lg font-black text-[#10203a] transition hover:bg-[#edf4fb] disabled:cursor-not-allowed disabled:opacity-35"
+            aria-label="Zoom in"
+            title="Zoom in"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={() => setZoom(1)}
+            disabled={zoom === 1}
+            className="rounded-lg bg-[#10203a] px-2.5 py-2 text-[9px] font-black uppercase tracking-[0.1em] text-white transition hover:bg-[#18335c] disabled:cursor-default disabled:bg-[#9aa7b8]"
+          >
+            Reset
+          </button>
+        </div>
         <div className="relative h-[360px] w-full sm:h-[440px] 2xl:h-[500px]">
-          <Image
-            src={trackingDay.map}
-            alt={`${trackingDay.isCurrent ? "Live" : "Historical"} vehicle route map for ${trackingDay.route}`}
-            fill
-            sizes="(max-width: 768px) 100vw, 60vw"
-            className={trackingDay.isCurrent ? "object-cover object-center" : "object-contain object-center"}
-            priority={trackingDay.isCurrent}
-            unoptimized
-          />
-
-          {trackingDay.isCurrent && showLabels
-            ? mapLabelPoints.map((point) => <MapOverlayLabel key={point.id} point={point} labelMode={labelMode} />)
-            : null}
+          <div
+            className="absolute inset-0 transition-transform duration-200 ease-out"
+            style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
+          >
+            <Image
+              src={trackingDay.map}
+              alt={`${trackingDay.isCurrent ? "Live" : "Historical"} vehicle route map for ${trackingDay.route}`}
+              fill
+              sizes="(max-width: 768px) 100vw, 60vw"
+              className={trackingDay.isCurrent ? "object-cover object-center" : "object-contain object-center"}
+              priority={trackingDay.isCurrent}
+              unoptimized
+            />
+            {trackingDay.isCurrent && showLabels
+              ? mapLabelPoints.map((point) => <MapOverlayLabel key={point.id} point={point} labelMode={labelMode} />)
+              : null}
+          </div>
         </div>
       </div>
     </section>
@@ -1034,6 +1087,332 @@ function JourneyStatusCard({
       </div>
     </aside>
   );
+}
+
+type HistogramLaneKey =
+  | "unknown-place"
+  | "restricted-place"
+  | "known-place"
+  | "depot"
+  | "vor"
+  | "home-depot"
+  | "on-break"
+  | "resource-moving";
+
+const histogramLanes: Array<{ key: HistogramLaneKey; label: string; barClass: string }> = [
+  { key: "unknown-place", label: "Unknown Place", barClass: "bg-[#64748b]" },
+  { key: "restricted-place", label: "Restricted Place", barClass: "bg-[#dc2626]" },
+  { key: "known-place", label: "Known Place", barClass: "bg-[#059669]" },
+  { key: "depot", label: "Depot", barClass: "bg-[#92400e]" },
+  { key: "vor", label: "VOR", barClass: "bg-[#f472b6]" },
+  { key: "home-depot", label: "Home Depot", barClass: "bg-[#111827]" },
+  { key: "on-break", label: "On Break", barClass: "bg-[#fbbf24]" },
+  { key: "resource-moving", label: "Resource Moving", barClass: "bg-[#2563eb]" },
+];
+
+function PingDataButton({ resource }: { resource: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-2 rounded-xl bg-[#e40000] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white shadow-sm transition hover:bg-[#c70000]"
+      >
+        <span className="text-base leading-none">●</span>
+        PING DATA
+      </button>
+
+      {open ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0f172a]/70 p-3 sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Resource ping data"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setOpen(false);
+          }}
+        >
+          <div className="flex max-h-[92vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-[18px] border border-[#cbd5e1] bg-white shadow-2xl">
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-[#c40000] px-4 py-3 text-white">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/80">Resource event data</p>
+                <h2 className="text-lg font-black">PING DATA : {resource} • 17/09/2026</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/60 bg-white/10 text-xl font-black text-white transition hover:bg-white/20"
+                aria-label="Close ping data"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#d7dee9] bg-[#f8fafc] px-4 py-2.5">
+              <p className="text-xs font-bold text-[#475569]">
+                Mock demonstration feed • {pingDataRows.length.toLocaleString("en-GB")} event rows
+              </p>
+              <button
+                type="button"
+                onClick={() => void downloadPingDataExcel(resource)}
+                className="rounded-lg bg-[#10203a] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#18335c]"
+              >
+                Download Excel
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-auto">
+              <table className="w-full min-w-[1120px] border-collapse text-xs">
+                <thead className="sticky top-0 z-20 bg-[#e7eef8] text-left text-[#10203a] shadow-sm">
+                  <tr>
+                    <th className="border-b border-[#cbd5e1] px-3 py-2.5 font-black">Event Time</th>
+                    <th className="border-b border-[#cbd5e1] px-3 py-2.5 font-black">Received Time</th>
+                    <th className="border-b border-[#cbd5e1] px-3 py-2.5 font-black">Event Type</th>
+                    <th className="border-b border-[#cbd5e1] px-3 py-2.5 font-black">Latitude</th>
+                    <th className="border-b border-[#cbd5e1] px-3 py-2.5 font-black">Longitude</th>
+                    <th className="border-b border-[#cbd5e1] px-3 py-2.5 text-right font-black">Speed (mi.)</th>
+                    <th className="border-b border-[#cbd5e1] px-3 py-2.5 text-right font-black">Heading</th>
+                    <th className="border-b border-[#cbd5e1] px-3 py-2.5 text-right font-black">Distance (mi.)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pingDataRows.map((row, index) => (
+                    <Fragment key={`${row.eventTime}-${row.receivedTime}-${index}`}>
+                      {row.place && row.place !== pingDataRows[index - 1]?.place ? (
+                        <tr className="bg-[#dbe5f1]">
+                          <td colSpan={8} className="border-y border-[#b8c7d9] px-3 py-2 font-black text-[#10203a]">
+                            {row.place}
+                          </td>
+                        </tr>
+                      ) : null}
+                      <tr className={index % 2 === 0 ? "bg-white" : "bg-[#fff1f1]"}>
+                        <td className="border-b border-[#f1d7d7] px-3 py-2 font-bold text-[#10203a]">{row.eventTime}</td>
+                        <td className="border-b border-[#f1d7d7] px-3 py-2 font-bold text-[#334155]">{row.receivedTime}</td>
+                        <td className="border-b border-[#f1d7d7] px-3 py-2 font-bold text-[#10203a]">{row.eventType}</td>
+                        <td className="border-b border-[#f1d7d7] px-3 py-2 text-[#334155]">{row.latitude || "—"}</td>
+                        <td className="border-b border-[#f1d7d7] px-3 py-2 text-[#334155]">{row.longitude || "—"}</td>
+                        <td className="border-b border-[#f1d7d7] px-3 py-2 text-right text-[#334155]">{row.speed || "—"}</td>
+                        <td className="border-b border-[#f1d7d7] px-3 py-2 text-right text-[#334155]">{row.heading || "—"}</td>
+                        <td className="border-b border-[#f1d7d7] px-3 py-2 text-right text-[#334155]">{row.distance || "—"}</td>
+                      </tr>
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-[#d7dee9] bg-white px-4 py-3">
+              <p className="text-[11px] font-bold text-[#64748b]">For mock-up demonstration only.</p>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-lg border border-[#cbd5e1] bg-white px-4 py-2 text-xs font-black text-[#10203a] transition hover:bg-[#f1f5f9]"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+async function downloadPingDataExcel(resource: string) {
+  const XLSX = await import("xlsx");
+  const exportRows = pingDataRows.map((row: PingDataRow) => ({
+    "Place / Zone": row.place,
+    "Event Time": row.eventTime,
+    "Received Time": row.receivedTime,
+    "Event Type": row.eventType,
+    Latitude: row.latitude,
+    Longitude: row.longitude,
+    "Speed (mi.)": row.speed,
+    Heading: row.heading,
+    "Distance (mi.)": row.distance,
+  }));
+  const worksheet = XLSX.utils.json_to_sheet(exportRows);
+  worksheet["!cols"] = [
+    { wch: 34 },
+    { wch: 21 },
+    { wch: 21 },
+    { wch: 34 },
+    { wch: 13 },
+    { wch: 13 },
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 14 },
+  ];
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Ping Data");
+  const safeResource = resource.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "") || "resource";
+  XLSX.writeFile(workbook, `Ping-Data-${safeResource}-17-09-2026.xlsx`);
+}
+
+function JourneyHistogramCard({
+  events,
+  isCurrent,
+  selectedDateLabel,
+}: {
+  events: TrackingEvent[];
+  isCurrent: boolean;
+  selectedDateLabel: string;
+}) {
+  const segments = useMemo(() => {
+    let dayOffset = 0;
+    let previousStart = Number.NEGATIVE_INFINITY;
+
+    return events.map((event, index) => {
+      let start = timeToMinutes(event.time) + dayOffset;
+
+      if (index > 0 && start < previousStart - 360) {
+        dayOffset += 24 * 60;
+        start += 24 * 60;
+      }
+
+      previousStart = start;
+      const duration = Math.max(2, durationToMinutes(event.duration));
+
+      return {
+        event,
+        start,
+        end: start + duration,
+        duration,
+        lane: histogramLaneForEvent(event),
+      };
+    });
+  }, [events]);
+
+  if (segments.length === 0) return null;
+
+  const firstStart = Math.min(...segments.map((segment) => segment.start));
+  const lastEnd = Math.max(...segments.map((segment) => segment.end));
+  const chartStart = Math.floor((firstStart - 20) / 60) * 60;
+  const chartEnd = Math.ceil((lastEnd + 20) / 60) * 60;
+  const chartSpan = Math.max(60, chartEnd - chartStart);
+  const hourMarks = Array.from(
+    { length: Math.floor(chartSpan / 60) + 1 },
+    (_, index) => chartStart + index * 60,
+  );
+  const currentSegment = segments.find((segment) => segment.event.status === "Current");
+  const currentMarker = currentSegment ? ((currentSegment.start - chartStart) / chartSpan) * 100 : null;
+  const routeStartMarker = ((segments[0].start - chartStart) / chartSpan) * 100;
+
+  return (
+    <div className="mt-2 overflow-hidden rounded-[14px] border border-[#cbd7e6] bg-[#f8fafc]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#d7dee9] bg-white px-3 py-2">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#e40000]">Driver location histogram</p>
+          <p className="mt-0.5 text-sm font-black text-[#10203a]">
+            {isCurrent ? "Today’s movement / place timeline" : `Recorded timeline • ${selectedDateLabel}`}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold text-[#475569]">
+          <span className="inline-flex items-center gap-1.5"><span className="h-3 w-1 bg-[#16a34a]" /> Route start</span>
+          {currentMarker !== null ? <span className="inline-flex items-center gap-1.5"><span className="h-3 w-1 bg-[#e40000]" /> Current event</span> : null}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto p-2">
+        <div className="min-w-[760px]">
+          <div className="grid grid-cols-[118px_minmax(560px,1fr)_60px] items-center gap-x-2">
+            {histogramLanes.map((lane) => {
+              const laneSegments = segments.filter((segment) => segment.lane === lane.key);
+              const totalMinutes = laneSegments.reduce((total, segment) => total + segment.duration, 0);
+
+              return (
+                <Fragment key={lane.key}>
+                  <div className="py-0.5 text-[10px] font-black text-[#334155]">{lane.label}</div>
+                  <div className="relative h-6 overflow-hidden border-x border-b border-[#d8e0ea] bg-white first:border-t">
+                    {hourMarks.slice(1, -1).map((mark) => {
+                      const left = ((mark - chartStart) / chartSpan) * 100;
+                      return <span key={mark} className="absolute inset-y-0 w-px bg-[#e2e8f0]" style={{ left: `${left}%` }} />;
+                    })}
+                    <span className="absolute inset-y-0 z-10 w-[2px] bg-[#16a34a]" style={{ left: `${routeStartMarker}%` }} />
+                    {currentMarker !== null ? (
+                      <span className="absolute inset-y-0 z-10 w-[2px] bg-[#e40000]" style={{ left: `${currentMarker}%` }} />
+                    ) : null}
+                    {laneSegments.map((segment, index) => {
+                      const left = ((segment.start - chartStart) / chartSpan) * 100;
+                      const width = Math.max(0.8, ((segment.end - segment.start) / chartSpan) * 100);
+
+                      return (
+                        <div
+                          key={`${segment.event.time}-${segment.event.place}-${index}`}
+                          className={`absolute top-1 h-4 overflow-hidden rounded-sm ${lane.barClass} shadow-sm`}
+                          style={{ left: `${left}%`, width: `${width}%` }}
+                          title={`${segment.event.time} • ${segment.event.place} • ${segment.event.duration}`}
+                        >
+                          {width > 8 ? (
+                            <span className="block truncate px-1.5 py-0.5 text-[8px] font-black text-white">
+                              {segment.event.place}
+                            </span>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="py-0.5 text-right text-[9px] font-black tabular-nums text-[#475569]">{formatHistogramMinutes(totalMinutes)}</div>
+                </Fragment>
+              );
+            })}
+
+            <div />
+            <div className="relative h-6">
+              {hourMarks.map((mark, index) => {
+                const left = ((mark - chartStart) / chartSpan) * 100;
+                return (
+                  <span
+                    key={mark}
+                    className={`absolute top-1 text-[10px] font-black tabular-nums text-[#475569] ${
+                      index === 0 ? "translate-x-0" : index === hourMarks.length - 1 ? "-translate-x-full" : "-translate-x-1/2"
+                    }`}
+                    style={{ left: `${left}%` }}
+                  >
+                    {formatHistogramClock(mark)}
+                  </span>
+                );
+              })}
+            </div>
+            <div />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function histogramLaneForEvent(event: TrackingEvent): HistogramLaneKey {
+  if (event.placeType === "Known Place") return "known-place";
+  if (event.placeType === "Break") return "on-break";
+  if (event.placeType === "Resource Moving" || event.placeType === "On Route") return "resource-moving";
+  if (event.placeType === "Depot" && /north west hub/i.test(event.place)) return "home-depot";
+  if (event.placeType === "Depot") return "depot";
+  return "unknown-place";
+}
+
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function durationToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function formatHistogramMinutes(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function formatHistogramClock(totalMinutes: number) {
+  const normalized = ((totalMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const hours = Math.floor(normalized / 60);
+  return `${String(hours).padStart(2, "0")}:00`;
 }
 
 function MetricCard({ label, value, detail }: { label: string; value: string; detail: string }) {
