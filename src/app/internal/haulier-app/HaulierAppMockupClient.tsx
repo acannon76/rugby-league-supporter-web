@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import routeMapImage from "../mock-route-map.png";
 import DriverName from "../DriverName";
 import { getStoredDriverUserId } from "../driverPdaSession";
@@ -9,7 +9,7 @@ import { getOperationalWeekNumberFromDisplayDate } from "../operationalWeek";
 import { classifyTimingDifference } from "../app-ideas/timingProfile";
 
 type LegStatus = "To do" | "In Progress" | "Completed";
-type MockupType = "flex" | "mockup2";
+type MockupType = "mockup1" | "mockup2";
 type TaskType = "empty" | "repat" | "load" | "skip" | "flex";
 type IssueMode = "arrival" | "skip";
 type PendingIssueAction = "arrival-complete" | null;
@@ -17,7 +17,8 @@ type DctStatus = "Planned" | "In Progress" | "Complete" | "Skip";
 type MessagePriority = "Normal" | "High" | "Critical";
 
 type Screen =
-  | "no-duty"
+  | "login"
+  | "contact"
   | "menu"
   | "duty"
   | "origin"
@@ -117,8 +118,25 @@ type DutyActivity = {
   label: string;
 };
 
+type JourneySnapshot = {
+  simulationReferenceTs: number;
+  selectedLeg: number;
+  selectedTask: TaskType;
+  vehicleInput: string;
+  trailerInput: string;
+  vehicleNumber: string;
+  trailerNumber: string;
+  manualContainer: string;
+  repatCount: string;
+  containers: string[];
+  legStatuses: Record<number, LegStatus>;
+  issueReports: Record<number, LegIssueReport>;
+  dctRows: DctRow[];
+  dutyId: string;
+};
+
 const DEFAULT_VEHICLE_REG = "MX71ESN";
-const DEFAULT_DCT_MOCKUP: MockupType = "mockup2";
+const DEFAULT_DCT_MOCKUP: MockupType = "mockup1";
 const DEFAULT_DCT_DUTY_ID = "NWH254";
 const HAULIER_MESSAGE_STORAGE_KEY = "haulier-app-incoming-messages-v1";
 
@@ -214,16 +232,6 @@ const mockup2PlanningDetails: Record<
   },
 };
 
-const flexLegs: DutyLeg[] = [
-  {
-    number: 1,
-    etd: "20:00",
-    eta: "06:00",
-    from: "NORTH WEST HUB",
-    to: "NORTH WEST HUB",
-  },
-];
-
 const defaultMockup2Legs: DutyLeg[] = [
   {
     number: 1,
@@ -277,7 +285,15 @@ const defaultMockup2Legs: DutyLeg[] = [
 
 const mockupOptions: MockupOption[] = [
   {
-    title: "Mockup 2",
+    title: "Mockup 1",
+    text: "Open a six-leg duty completed in order.",
+    icon: "1",
+    active: true,
+    kind: "mockup",
+    mockupType: "mockup1",
+  },
+  {
+    title: "Mockup 2 (App Scan)",
     text: "Open a six-leg duty completed in order.",
     icon: "2",
     active: true,
@@ -341,8 +357,13 @@ const locationCoordinates: Record<string, string> = {
 };
 
 const mockActualOffsets: Record<MockupType, Record<number, { dep: number; arr: number }>> = {
-  flex: {
-    1: { dep: 7, arr: 18 },
+  mockup1: {
+    1: { dep: 5, arr: 14 },
+    2: { dep: 8, arr: 13 },
+    3: { dep: 4, arr: 9 },
+    4: { dep: 6, arr: 11 },
+    5: { dep: 9, arr: 12 },
+    6: { dep: 10, arr: 16 },
   },
   mockup2: {
     1: { dep: 5, arr: 14 },
@@ -354,9 +375,39 @@ const mockActualOffsets: Record<MockupType, Record<number, { dep: number; arr: n
   },
 };
 
+function createInitialJourneySnapshot(mockupType: MockupType): JourneySnapshot {
+  const referenceTs = Date.now();
+  const legs = buildMockup2Legs(referenceTs);
+  const dutyId = getDutyIdForMockup(mockupType);
+
+  return {
+    simulationReferenceTs: referenceTs,
+    selectedLeg: 1,
+    selectedTask: "empty",
+    vehicleInput: DEFAULT_VEHICLE_REG,
+    trailerInput: "",
+    vehicleNumber: DEFAULT_VEHICLE_REG,
+    trailerNumber: "",
+    manualContainer: "",
+    repatCount: "",
+    containers: [],
+    legStatuses: Object.fromEntries(
+      legs.map((leg) => [leg.number, "To do" as LegStatus])
+    ),
+    issueReports: {},
+    dctRows: buildPlannedDctRows(mockupType, dutyId, legs),
+    dutyId,
+  };
+}
+
 export default function HaulierAppMockupClient() {
-  const [screen, setScreen] = useState<Screen>("no-duty");
-  const [mockup, setMockup] = useState<MockupType>("flex");
+  const [screen, setScreen] = useState<Screen>("login");
+  const [mockup, setMockup] = useState<MockupType>("mockup1");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [contactFirstName, setContactFirstName] = useState("");
+  const [contactLastName, setContactLastName] = useState("");
+  const [contactMobile, setContactMobile] = useState("");
   const [selectedLeg, setSelectedLeg] = useState(1);
   const [selectedTask, setSelectedTask] = useState<TaskType>("empty");
 
@@ -418,15 +469,19 @@ export default function HaulierAppMockupClient() {
     DEFAULT_DCT_MOCKUP
   );
   const [dctDutyId, setDctDutyId] = useState(DEFAULT_DCT_DUTY_ID);
+  const journeySnapshots = useRef<Record<MockupType, JourneySnapshot>>({
+    mockup1: createInitialJourneySnapshot("mockup1"),
+    mockup2: createInitialJourneySnapshot("mockup2"),
+  });
 
   const today = useMemo(() => getTodayDateText(), []);
   const currentTimeTs = useLiveCurrentTime();
-  const legs = mockup === "mockup2" ? mockup2Legs : flexLegs;
+  const legs = mockup2Legs;
   const currentDctRow = dctRows.find(
     (row) => row.legNumber === selectedLeg
   );
   const dutyDate =
-    mockup === "mockup2" && mockup2Legs[0]?.plannedDepartureTs
+    mockup2Legs[0]?.plannedDepartureTs
       ? formatDateOnly(mockup2Legs[0].plannedDepartureTs)
       : today;
   const currentLeg = legs.find((leg) => leg.number === selectedLeg) || legs[0];
@@ -512,40 +567,52 @@ export default function HaulierAppMockupClient() {
   }, [messages, messagesLoaded]);
 
   function startMockup(nextMockup: MockupType) {
-    const nextReferenceTs = Date.now();
-    const nextMockup2Legs = buildMockup2Legs(nextReferenceTs);
-    const nextLegs =
-      nextMockup === "mockup2" ? nextMockup2Legs : flexLegs;
-    const nextStatuses: Record<number, LegStatus> = {};
-
-    if (nextMockup === "mockup2") {
-      setSimulationReferenceTs(nextReferenceTs);
-    }
-
-    nextLegs.forEach((leg) => {
-      nextStatuses[leg.number] = "To do";
-    });
-
-    const nextDutyId = getDutyIdForMockup(nextMockup);
-
+    saveCurrentJourney();
+    const saved = journeySnapshots.current[nextMockup];
     setMockup(nextMockup);
-    setSelectedLeg(1);
-    setSelectedTask("empty");
-    setVehicleInput(DEFAULT_VEHICLE_REG);
-    setTrailerInput("");
-    setVehicleNumber(DEFAULT_VEHICLE_REG);
-    setTrailerNumber("");
-    setManualContainer("");
-    setRepatCount("");
-    setContainers([]);
-    setLegStatuses(nextStatuses);
-    setIssueReports({});
+    setSimulationReferenceTs(saved.simulationReferenceTs);
+    setSelectedLeg(saved.selectedLeg);
+    setSelectedTask(saved.selectedTask);
+    setVehicleInput(saved.vehicleInput);
+    setTrailerInput(saved.trailerInput);
+    setVehicleNumber(saved.vehicleNumber);
+    setTrailerNumber(saved.trailerNumber);
+    setManualContainer(saved.manualContainer);
+    setRepatCount(saved.repatCount);
+    setContainers([...saved.containers]);
+    setLegStatuses({ ...saved.legStatuses });
+    setIssueReports({ ...saved.issueReports });
     setIssueCategory("");
     setDctSourceMockup(nextMockup);
-    setDctDutyId(nextDutyId);
-    setDctRows(buildPlannedDctRows(nextMockup, nextDutyId, nextLegs));
+    setDctDutyId(saved.dutyId);
+    setDctRows(saved.dctRows.map((row) => ({ ...row })));
     closeAllModals();
     setScreen("duty");
+  }
+
+  function saveCurrentJourney() {
+    journeySnapshots.current[mockup] = {
+      simulationReferenceTs: simulationReferenceTs ?? Date.now(),
+      selectedLeg,
+      selectedTask,
+      vehicleInput,
+      trailerInput,
+      vehicleNumber,
+      trailerNumber,
+      manualContainer,
+      repatCount,
+      containers: [...containers],
+      legStatuses: { ...legStatuses },
+      issueReports: { ...issueReports },
+      dctRows: dctRows.map((row) => ({ ...row })),
+      dutyId: dctDutyId,
+    };
+  }
+
+  function openDct() {
+    saveCurrentJourney();
+    setDctSourceMockup(mockup);
+    setScreen("dct");
   }
 
   function closeAllModals() {
@@ -557,8 +624,19 @@ export default function HaulierAppMockupClient() {
   }
 
   function resetAllData() {
-    setScreen("no-duty");
-    setMockup("flex");
+    const resetMockup1 = createInitialJourneySnapshot("mockup1");
+    const resetMockup2 = createInitialJourneySnapshot("mockup2");
+    journeySnapshots.current = {
+      mockup1: resetMockup1,
+      mockup2: resetMockup2,
+    };
+    setScreen("login");
+    setMockup("mockup1");
+    setLoginEmail("");
+    setLoginPassword("");
+    setContactFirstName("");
+    setContactLastName("");
+    setContactMobile("");
     setSelectedLeg(1);
     setSelectedTask("empty");
     setVehicleInput(DEFAULT_VEHICLE_REG);
@@ -576,18 +654,10 @@ export default function HaulierAppMockupClient() {
     setIssueLocation("");
     setIssueManager("");
     setPendingIssueAction(null);
-    const nextReferenceTs = Date.now();
-    const nextMockup2Legs = buildMockup2Legs(nextReferenceTs);
-    setSimulationReferenceTs(nextReferenceTs);
-    setDctRows(
-      buildPlannedDctRows(
-        DEFAULT_DCT_MOCKUP,
-        DEFAULT_DCT_DUTY_ID,
-        nextMockup2Legs
-      )
-    );
-    setDctSourceMockup(DEFAULT_DCT_MOCKUP);
-    setDctDutyId(DEFAULT_DCT_DUTY_ID);
+    setSimulationReferenceTs(resetMockup1.simulationReferenceTs);
+    setDctRows(resetMockup1.dctRows);
+    setDctSourceMockup("mockup1");
+    setDctDutyId(resetMockup1.dutyId);
     setMessages([]);
     setMessageSimulatorOpen(false);
     setMessageComposerOpen(false);
@@ -961,7 +1031,8 @@ export default function HaulierAppMockupClient() {
     );
   }
 
-  const currentTitle = mockup === "mockup2" ? "Mockup 2" : "Flex Mock Up";
+  const currentTitle =
+    mockup === "mockup2" ? "Mockup 2 (App Scan)" : "Mockup 1";
 
   return (
     <main
@@ -978,16 +1049,36 @@ export default function HaulierAppMockupClient() {
       >
         {!isDctScreen && <PhoneStatusBar />}
 
-        {screen === "no-duty" && (
-          <NoDutyScreen onContinue={() => setScreen("menu")} />
+        {screen === "login" && (
+          <LoginScreen
+            email={loginEmail}
+            password={loginPassword}
+            onEmailChange={setLoginEmail}
+            onPasswordChange={setLoginPassword}
+            onLogin={() => setScreen("contact")}
+          />
+        )}
+
+        {screen === "contact" && (
+          <ContactScreen
+            email={loginEmail}
+            firstName={contactFirstName}
+            lastName={contactLastName}
+            mobile={contactMobile}
+            onFirstNameChange={setContactFirstName}
+            onLastNameChange={setContactLastName}
+            onMobileChange={setContactMobile}
+            onContinue={() => setScreen("menu")}
+            onBack={() => setScreen("login")}
+          />
         )}
 
         {screen === "menu" && (
           <MenuScreen
             onOpenMockup={startMockup}
-            onOpenDct={() => setScreen("dct")}
+            onOpenDct={openDct}
             onCompleteReset={handleCompleteReset}
-            onBack={() => setScreen("no-duty")}
+            onBack={() => setScreen("contact")}
           />
         )}
 
@@ -1038,6 +1129,7 @@ export default function HaulierAppMockupClient() {
             actualArrivalTs={currentDctRow?.arrivalActualTs ?? null}
             currentTimeTs={currentTimeTs}
             issueReport={issueReports[selectedLeg]}
+            allowFlex={mockup !== "mockup1"}
             onBack={() => setScreen("duty")}
             onTask={selectTask}
             onBackToMenu={() => setScreen("menu")}
@@ -1284,27 +1376,178 @@ function LastRefreshedText() {
   );
 }
 
-function NoDutyScreen({ onContinue }: { onContinue: () => void }) {
+function LoginScreen({
+  email,
+  password,
+  onEmailChange,
+  onPasswordChange,
+  onLogin,
+}: {
+  email: string;
+  password: string;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onLogin: () => void;
+}) {
+  function submitLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (email.trim() && password) {
+      onLogin();
+    }
+  }
+
   return (
     <>
-      <AppHeader title="Haulier Mock Up" />
+      <AppHeader title="Royal Mail Haulage App" />
 
-      <section className="bg-white px-5 py-4">
-        <OverviewCard dutyId="" />
+      <section className="flex min-h-[760px] flex-col bg-white px-7 py-8">
+        <div>
+          <h2 className="text-3xl font-black text-[#222]">Log in</h2>
+          <p className="mt-6 text-base font-bold leading-7 text-[#444]">
+            Welcome to the Royal Mail Haulage app. If you are already registered
+            on royalmail.com, please enter your details below.
+          </p>
+          <p className="mt-4 text-base font-bold leading-7 text-[#444]">
+            If you don&apos;t have an account, please register first, and return to
+            complete your log in.
+          </p>
+        </div>
 
-        <h2 className="mt-10 text-2xl font-black text-[#222]">
-          Duty details
-        </h2>
+        <form className="mt-8 space-y-5" onSubmit={submitLogin}>
+          <label className="block text-sm font-black text-[#333]">
+            Email
+            <input
+              type="text"
+              value={email}
+              onChange={(event) => onEmailChange(event.target.value)}
+              autoComplete="username"
+              className="mt-2 w-full rounded-lg border-2 border-[#777] px-4 py-3 text-base font-bold outline-none focus:border-[#d6001c]"
+            />
+          </label>
 
-        <button
-          type="button"
-          onClick={onContinue}
-          className="mt-6 w-full rounded-[18px] bg-[#d6001c] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white"
-        >
-          Continue
-        </button>
+          <label className="block text-sm font-black text-[#333]">
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => onPasswordChange(event.target.value)}
+              autoComplete="current-password"
+              className="mt-2 w-full rounded-lg border-2 border-[#777] px-4 py-3 text-base font-bold outline-none focus:border-[#d6001c]"
+            />
+          </label>
+
+          <p className="text-sm font-bold text-[#555]">
+            If you&apos;ve forgotten your password, please reset here.
+          </p>
+
+          <button
+            type="submit"
+            disabled={!email.trim() || !password}
+            className={`w-full rounded-[18px] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white ${
+              email.trim() && password ? "bg-[#d6001c]" : "bg-[#bbb]"
+            }`}
+          >
+            Log in
+          </button>
+        </form>
+
+        <p className="mt-auto border-t border-[#ddd] pt-6 text-center text-sm font-bold text-[#555]">
+          Click{" "}
+          <a
+            href="https://www.royalmail.com/login"
+            target="_blank"
+            rel="noreferrer"
+            className="text-[#d6001c] underline underline-offset-2"
+          >
+            www.royalmail.com/login
+          </a>{" "}
+          to register
+        </p>
       </section>
     </>
+  );
+}
+
+function ContactScreen({
+  email,
+  firstName,
+  lastName,
+  mobile,
+  onFirstNameChange,
+  onLastNameChange,
+  onMobileChange,
+  onContinue,
+  onBack,
+}: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  mobile: string;
+  onFirstNameChange: (value: string) => void;
+  onLastNameChange: (value: string) => void;
+  onMobileChange: (value: string) => void;
+  onContinue: () => void;
+  onBack: () => void;
+}) {
+  function submitContact(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (firstName.trim() && lastName.trim() && mobile.trim()) {
+      onContinue();
+    }
+  }
+
+  const canContinue = firstName.trim() && lastName.trim() && mobile.trim();
+
+  return (
+    <>
+      <AppHeader title="User Registration" left="Back" onBack={onBack} />
+
+      <section className="bg-white px-7 py-8">
+        <h2 className="text-3xl font-black text-[#222]">Contact</h2>
+        <p className="mt-3 text-sm font-bold text-[#666]">Signed in as {email}</p>
+
+        <form className="mt-8 space-y-5" onSubmit={submitContact}>
+          <ContactField label="First name" value={firstName} onChange={onFirstNameChange} />
+          <ContactField label="Last name" value={lastName} onChange={onLastNameChange} />
+          <ContactField label="Mobile number" value={mobile} onChange={onMobileChange} inputMode="tel" />
+
+          <button
+            type="submit"
+            disabled={!canContinue}
+            className={`mt-3 w-full rounded-[18px] px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white ${
+              canContinue ? "bg-[#d6001c]" : "bg-[#bbb]"
+            }`}
+          >
+            Continue
+          </button>
+        </form>
+      </section>
+    </>
+  );
+}
+
+function ContactField({
+  label,
+  value,
+  onChange,
+  inputMode,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  inputMode?: "tel";
+}) {
+  return (
+    <label className="block text-sm font-black text-[#333]">
+      {label}
+      <input
+        type="text"
+        inputMode={inputMode}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-2 w-full rounded-lg border-2 border-[#777] px-4 py-3 text-base font-bold outline-none focus:border-[#d6001c]"
+      />
+    </label>
   );
 }
 
@@ -2544,6 +2787,7 @@ function OriginScreen({
   actualArrivalTs,
   currentTimeTs,
   issueReport,
+  allowFlex,
   onBack,
   onTask,
   onBackToMenu,
@@ -2557,6 +2801,7 @@ function OriginScreen({
   actualArrivalTs: number | null;
   currentTimeTs: number | null;
   issueReport?: LegIssueReport;
+  allowFlex: boolean;
   onBack: () => void;
   onTask: (task: TaskType) => void;
   onBackToMenu: () => void;
@@ -2586,7 +2831,9 @@ function OriginScreen({
         </h2>
 
         <div className="mt-4 space-y-3">
-          {originTasks.map((task) => (
+          {originTasks
+            .filter((task) => allowFlex || task.type !== "flex")
+            .map((task) => (
             <button
               key={task.label}
               type="button"
@@ -3421,9 +3668,9 @@ function DctWebScreen({
 }) {
   const sourceTitle =
     sourceMockup === "mockup2"
-      ? "Mockup 2"
-      : sourceMockup === "flex"
-      ? "Flex Mock Up"
+      ? "Mockup 2 (App Scan)"
+      : sourceMockup === "mockup1"
+      ? "Mockup 1"
       : "No mock-up selected";
 
   const lateLegs = rows.filter((row) => rowHasLateTiming(row)).length;
@@ -3776,8 +4023,7 @@ function buildPlannedDctRows(
   sourceLegsOverride?: DutyLeg[]
 ) {
   const sourceLegs =
-    sourceLegsOverride ??
-    (mockupType === "mockup2" ? defaultMockup2Legs : flexLegs);
+    sourceLegsOverride ?? defaultMockup2Legs;
   const baseDate = new Date(
     sourceLegs[0]?.plannedDepartureTs ?? Date.now()
   );
@@ -3786,14 +4032,7 @@ function buildPlannedDctRows(
   let previousDepartureTs: number | null = null;
 
   return sourceLegs.map((leg) => {
-    const planningDetails =
-      mockupType === "mockup2"
-        ? mockup2PlanningDetails[leg.number]
-        : {
-            trailerType: "49 Artic",
-            planzCode: "NWH.FLEX.1",
-            dueToConvey: "1C 24 Mail",
-          };
+    const planningDetails = mockup2PlanningDetails[leg.number];
 
     let departureTs =
       leg.plannedDepartureTs ?? combineDateAndTime(baseDate, leg.etd, 0);
@@ -3878,9 +4117,7 @@ function updateDctForDeparture(
         ...row,
         status: "In Progress" as DctStatus,
         departureActualTs:
-          context.currentMockup === "mockup2" && row.legNumber === 1
-            ? Date.now()
-            : actualTimes.departureActualTs,
+          row.legNumber === 1 ? Date.now() : actualTimes.departureActualTs,
         departureAssets: assetCount,
         arrivalAssets: assetCount,
         yorkBarCodes,
@@ -3919,7 +4156,8 @@ function getActualTimesForRow(mockupType: MockupType, row: DctRow) {
 }
 
 function getDutyIdForMockup(mockupType: MockupType) {
-  return mockupType === "mockup2" ? "NWH254" : "NWHFLEX01";
+  void mockupType;
+  return "NWH254";
 }
 
 function getTimingCellClass(
