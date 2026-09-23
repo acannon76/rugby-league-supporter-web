@@ -169,6 +169,23 @@ const oldArrivalDutyNumbers = [
   "LONx1923b",
 ];
 
+// These four example duties demonstrate trailer swaps in the mock boards.
+const trailerXchangeDuties: Record<BoardMode, ReadonlySet<string>> = {
+  Arrivals: new Set(["CRYx1929a", "VPLt3012a"]),
+  Departures: new Set(["BRVx1728a", "MSVx5025b"]),
+};
+
+function splitResources(resources: string) {
+  return {
+    vehicle: resources.match(/Vehicle ID:\s*([^•]+)/i)?.[1]?.trim() || "—",
+    trailer: resources.match(/Trailer ID:\s*([^•]+)/i)?.[1]?.trim() || "—",
+  };
+}
+
+function trailerXchange(row: ArrivalDepartureRow, mode: BoardMode) {
+  return row.traffic === "1C 24 Mail" && trailerXchangeDuties[mode].has(row.jobReference) ? "Yes" : "";
+}
+
 export default function ArrivalsDeparturesPage() {
   const [boardView, setBoardView] = useState<BoardView>("Overview");
   const [selectedSite, setSelectedSite] = useState<SiteOption>("Midlands Super Hub");
@@ -415,7 +432,7 @@ function filterRows(
         return true;
       }
 
-      const haystack = [row.departing, row.destination, row.jobReference, row.c3Bay, row.resources, row.assets, row.traffic, row.delay]
+      const haystack = [row.departing, row.destination, row.jobReference, row.c3Bay, row.resources, row.assets, row.traffic, row.delay, trailerXchange(row, mode)]
         .join(" ")
         .toLowerCase();
       return haystack.includes(term);
@@ -525,16 +542,18 @@ function createArrivalDepartureSnapshotPdf(args: SnapshotPdfArgs) {
       { heading: "C3", width: 32, value: (row) => row.c3Bay, maxChars: 4 },
       {
         heading: routeHeading,
-        width: 141,
+        width: 135,
         value: (row) => (mode === "Arrivals" ? row.departing : row.destination),
         maxChars: 29,
       },
       { heading: "Duty", width: 79, value: (row) => row.jobReference, maxChars: 15 },
-      { heading: "Traffic", width: 96, value: (row) => row.traffic, maxChars: 21 },
-      { heading: "Resources", width: 184, value: (row) => row.resources, maxChars: 39 },
+      { heading: "Vehicle", width: 72, value: (row) => splitResources(row.resources).vehicle, maxChars: 12 },
+      { heading: "Trailers", width: 74, value: (row) => splitResources(row.resources).trailer, maxChars: 13 },
+      { heading: "Trailer Xchange", width: 72, value: (row) => trailerXchange(row, mode), maxChars: 8 },
+      { heading: "Traffic", width: 105, value: (row) => row.traffic, maxChars: 21 },
       { heading: "Assets", width: 42, value: (row) => String(row.assets), maxChars: 6 },
-      { heading: "Delay", width: 48, value: (row) => row.delay, maxChars: 8 },
-      { heading: "Expected", width: 61, value: (row) => getExpectedTime(row, mode), maxChars: 9 },
+      { heading: "Delay", width: 45, value: (row) => row.delay, maxChars: 8 },
+      { heading: "Expected", width: 52, value: (row) => getExpectedTime(row, mode), maxChars: 9 },
     ];
 
     const tableWidth = columns.reduce((sum, column) => sum + column.width, 0);
@@ -801,14 +820,16 @@ function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow
   const plannedHeading = mode === "Departures" ? "Planned departure" : "Planned arrival";
 
   return (
-    <div className="max-h-[calc(100vh-390px)] min-h-[420px] overflow-y-auto overflow-x-hidden rounded-xl border border-[#dbe5f0] bg-white">
-      <div className="w-full min-w-0">
-        <div className="sticky top-0 z-10 grid grid-cols-[70px_36px_88px_minmax(90px,1fr)_minmax(120px,1.15fr)_100px_42px_70px] items-center gap-x-2 border-b border-[#dbe5f0] bg-[#f8fbff] px-1.5 py-2 text-[9px] font-black uppercase tracking-[0.1em] text-[#6b7280]">
+    <div className="max-h-[calc(100vh-390px)] min-h-[420px] overflow-auto rounded-xl border border-[#dbe5f0] bg-white">
+      <div className="min-w-[700px]">
+        <div className="sticky top-0 z-10 grid grid-cols-[62px_30px_78px_minmax(80px,1fr)_70px_65px_55px_85px_38px_64px] items-center gap-x-1.5 border-b border-[#dbe5f0] bg-[#f8fbff] px-1.5 py-2 text-[9px] font-black uppercase tracking-[0.06em] text-[#6b7280]">
           <span className="leading-tight">{plannedHeading}</span>
           <span className="text-center leading-[1.05]">C3<br />Bay</span>
           <span>Duty</span>
           <span>{routeHeading}</span>
-          <span>Resources</span>
+          <span>Vehicle</span>
+          <span>Trailers</span>
+          <span className="leading-tight">Trailer Xchange</span>
           <span>Traffic</span>
           <span className="text-center">Assets</span>
           <span className="border-l border-[#dbe5f0] pl-2 text-center leading-tight">Expected</span>
@@ -820,13 +841,15 @@ function CompactBoardList({ rows, mode, emptyText }: { rows: ArrivalDepartureRow
           return (
             <div
               key={`${row.jobReference}-${index}`}
-              className="grid grid-cols-[70px_36px_88px_minmax(90px,1fr)_minmax(120px,1.15fr)_100px_42px_70px] items-center gap-x-2 border-b border-[#edf1f5] px-1.5 py-2 last:border-b-0"
+              className="grid grid-cols-[62px_30px_78px_minmax(80px,1fr)_70px_65px_55px_85px_38px_64px] items-center gap-x-1.5 border-b border-[#edf1f5] px-1.5 py-2 last:border-b-0"
             >
               <span className="text-[13px] font-black text-[#10203a]">{formatTimeOnly(getPrimaryTimeForMode(row, mode))}</span>
               <C3BayBadge value={row.c3Bay} compact />
               <span className="break-words text-[11px] font-black leading-tight text-[#e40000]">{row.jobReference}</span>
               <span className="break-words text-[11px] font-black leading-tight text-[#10203a]">{route}</span>
-              <span className="break-words text-[10px] font-bold leading-tight text-[#4b5563]">{row.resources}</span>
+              <span className="break-words text-[10px] font-bold leading-tight text-[#4b5563]">{splitResources(row.resources).vehicle}</span>
+              <span className="break-words text-[10px] font-bold leading-tight text-[#4b5563]">{splitResources(row.resources).trailer}</span>
+              <span className="text-center text-[10px] font-black text-[#10203a]">{trailerXchange(row, mode)}</span>
               <TrafficBadge value={row.traffic} compact />
               <AssetsBadge value={row.assets} compact />
               <div className="border-l border-[#edf1f5] pl-2"><ExpectedTimePill time={getExpectedTime(row, mode)} late={isRunningLate(row.delay)} compact /></div>
@@ -844,25 +867,29 @@ function DepartureBoardTable({ site, rows, hidden }: { site: string; rows: Arriv
       <BoardHeader title={`${site} Departure Board`} subtitle="Planned departure time order" rowCount={rows.length} />
 
       <div className="mt-3 overflow-x-auto rounded-[16px] border border-[#dbe5f0] bg-[#f8fbff] p-1">
-        <table className="min-w-full table-fixed border-separate border-spacing-y-1 text-sm">
+        <table className="w-full min-w-[1280px] table-fixed border-separate border-spacing-y-1 text-sm">
           <colgroup>
-            <col className="w-[10%]" />
-            <col className="w-[7%]" />
+            <col className="w-[8%]" />
+            <col className="w-[5%]" />
             <col className="w-[16%]" />
-            <col className="w-[12%]" />
-            <col className="w-[23%]" />
+            <col className="w-[10%]" />
+            <col className="w-[9%]" />
+            <col className="w-[9%]" />
+            <col className="w-[8%]" />
             <col className="w-[13%]" />
-            <col className="w-[7%]" />
+            <col className="w-[6%]" />
             <col className="w-[6%]" />
             <col className="w-[10%]" />
           </colgroup>
           <thead>
-            <tr className="text-left text-[11px] font-black uppercase tracking-[0.14em] text-[#6b7280]">
+            <tr className="text-left text-[11px] font-black uppercase tracking-[0.08em] text-[#6b7280]">
               <th className="px-3 py-2">Planned departure</th>
               <th className="px-3 py-2">C3 Bay</th>
               <th className="px-3 py-2">Destination</th>
               <th className="px-3 py-2">Duty number</th>
-              <th className="px-3 py-2">Resources</th>
+              <th className="px-2 py-2">Vehicle</th>
+              <th className="px-2 py-2">Trailers</th>
+              <th className="px-2 py-2">Trailer Xchange</th>
               <th className="px-3 py-2">Traffic</th>
               <th className="px-3 py-2">Assets</th>
               <th className="px-3 py-2">Delay</th>
@@ -879,7 +906,9 @@ function DepartureBoardTable({ site, rows, hidden }: { site: string; rows: Arriv
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><C3BayBadge value={row.c3Bay} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.destination}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#e40000]">{row.jobReference}</td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-sm font-bold text-[#4b5563]">{row.resources}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-2 py-3 text-sm font-bold text-[#4b5563]">{splitResources(row.resources).vehicle}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-2 py-3 text-sm font-bold text-[#4b5563]">{splitResources(row.resources).trailer}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-2 py-3 text-sm font-black text-[#10203a]">{trailerXchange(row, "Departures")}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><TrafficBadge value={row.traffic} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><AssetsBadge value={row.assets} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.delay}</td>
@@ -889,7 +918,7 @@ function DepartureBoardTable({ site, rows, hidden }: { site: string; rows: Arriv
                 </tr>
               ))
             ) : (
-              <EmptyRow colSpan={9} />
+              <EmptyRow colSpan={11} />
             )}
           </tbody>
         </table>
@@ -904,26 +933,30 @@ function ArrivalBoardTable({ site, rows, hidden }: { site: string; rows: Arrival
       <BoardHeader title={`${site} Arrival Board`} subtitle="Planned arrival time order" rowCount={rows.length} />
 
       <div className="mt-3 overflow-x-auto rounded-[16px] border border-[#dbe5f0] bg-[#f8fbff] p-1">
-        <table className="min-w-full table-fixed border-separate border-spacing-y-1 text-sm">
+        <table className="w-full min-w-[1280px] table-fixed border-separate border-spacing-y-1 text-sm">
           <colgroup>
-            <col className="w-[10%]" />
-            <col className="w-[7%]" />
+            <col className="w-[8%]" />
+            <col className="w-[5%]" />
             <col className="w-[16%]" />
-            <col className="w-[12%]" />
+            <col className="w-[10%]" />
+            <col className="w-[9%]" />
+            <col className="w-[9%]" />
+            <col className="w-[8%]" />
             <col className="w-[13%]" />
-            <col className="w-[23%]" />
-            <col className="w-[7%]" />
+            <col className="w-[6%]" />
             <col className="w-[6%]" />
             <col className="w-[10%]" />
           </colgroup>
           <thead>
-            <tr className="text-left text-[11px] font-black uppercase tracking-[0.14em] text-[#6b7280]">
+            <tr className="text-left text-[11px] font-black uppercase tracking-[0.08em] text-[#6b7280]">
               <th className="px-3 py-2">Planned arrival</th>
               <th className="px-3 py-2">C3 Bay</th>
               <th className="px-3 py-2">Origin</th>
               <th className="px-3 py-2">Duty number</th>
+              <th className="px-2 py-2">Vehicle</th>
+              <th className="px-2 py-2">Trailers</th>
+              <th className="px-2 py-2">Trailer Xchange</th>
               <th className="px-3 py-2">Traffic</th>
-              <th className="px-3 py-2">Resources</th>
               <th className="px-3 py-2">Assets</th>
               <th className="px-3 py-2">Delay</th>
               <th className="px-3 py-2">Expected time</th>
@@ -939,8 +972,10 @@ function ArrivalBoardTable({ site, rows, hidden }: { site: string; rows: Arrival
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><C3BayBadge value={row.c3Bay} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.departing}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#e40000]">{row.jobReference}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-2 py-3 text-sm font-bold text-[#4b5563]">{splitResources(row.resources).vehicle}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-2 py-3 text-sm font-bold text-[#4b5563]">{splitResources(row.resources).trailer}</td>
+                  <td className="border-y border-[#e2e8f0] bg-white px-2 py-3 text-sm font-black text-[#10203a]">{trailerXchange(row, "Arrivals")}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><TrafficBadge value={row.traffic} /></td>
-                  <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-sm font-bold text-[#4b5563]">{row.resources}</td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3"><AssetsBadge value={row.assets} /></td>
                   <td className="border-y border-[#e2e8f0] bg-white px-3 py-3 text-base font-black text-[#10203a]">{row.delay}</td>
                   <td className="rounded-r-2xl border-y border-r border-[#e2e8f0] bg-white px-3 py-3">
@@ -949,7 +984,7 @@ function ArrivalBoardTable({ site, rows, hidden }: { site: string; rows: Arrival
                 </tr>
               ))
             ) : (
-              <EmptyRow colSpan={9} />
+              <EmptyRow colSpan={11} />
             )}
           </tbody>
         </table>
