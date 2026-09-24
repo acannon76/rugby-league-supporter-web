@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import VehicleCheckTimer, { resetVehicleCheckMockup } from "../vehicle-checks/VehicleCheckTimer";
+import { motiveAnswersStorageKey, motiveLogbookHistoryStorageKey } from "../vehicle-checks-alt/motiveCheckData";
 import { resetDriverPdaManifestMockup } from "./driverPdaManifestData";
 import {
   clearDriverSession,
@@ -640,6 +641,8 @@ function resetAllDriverPdaMocks() {
   resetVehicleCheckMockup();
 
   const exactKeysToRemove = [
+    motiveAnswersStorageKey,
+    motiveLogbookHistoryStorageKey,
     "hgv-check-timer-started-at",
     "hgv-vehicle-check-status",
     "hgv-current-mileage-km",

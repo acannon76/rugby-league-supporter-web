@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DriverName from "../DriverName";
 import VehicleCheckTimer from "../vehicle-checks/VehicleCheckTimer";
 import {
@@ -9,6 +9,7 @@ import {
   formatDateTime,
   type AltLogbookEntry,
 } from "../vehicle-checks-altData";
+import { motiveLogbookHistoryStorageKey } from "../vehicle-checks-alt/motiveCheckData";
 
 const DRIVER_NAMES = [
   "Andrew Cannon",
@@ -122,18 +123,37 @@ function normaliseStoredEntry(entry: Partial<AltLogbookEntry>): AltLogbookEntry 
     startTimestamp: fallbackStartTimestamp,
     endTimestamp: fallbackEndTimestamp,
     driverName: entry.driverName || "Mock Driver",
+    registration: entry.registration || "PA25 RTY",
     mileageStart: entry.mileageStart || "684,218 km",
     mileageEnd: entry.mileageEnd || "Not entered",
     hasDefects: Boolean(entry.hasDefects),
+    decision: entry.decision,
     defectsSummary:
       entry.defectsSummary && entry.defectsSummary.length > 0
         ? entry.defectsSummary
         : ["NIL Defects"],
     pmts: entry.pmts || [],
+    photoEvidence: entry.photoEvidence || [],
   };
 }
 
 function getOutcomeContent(entry: AltLogbookEntry, rowIndex: number) {
+  if (entry.decision === "monitor") {
+    return {
+      title: "OK to continue with duty",
+      summary: "Amber issue recorded under PMT for review at the next service.",
+      fixedBy: "Awaiting next service",
+    };
+  }
+
+  if (entry.decision === "stop") {
+    return {
+      title: "Do not use vehicle — return to transport office",
+      summary: "Red defect recorded under PMT. Speak to the manager before using the vehicle.",
+      fixedBy: "Awaiting manager / workshop action",
+    };
+  }
+
   if (!entry.hasDefects) {
     return {
       title: "OK to continue with duty",
@@ -160,26 +180,35 @@ function getOutcomeContent(entry: AltLogbookEntry, rowIndex: number) {
 
 export default function LogbookPage() {
   // LOGBOOK_STATUS_LAYOUT_V2
-  const [currentEntry] = useState<AltLogbookEntry | null>(() => {
-    if (typeof window === "undefined") {
-      return null;
-    }
+  const [currentEntry, setCurrentEntry] = useState<AltLogbookEntry | null>(null);
+  const [savedChecks, setSavedChecks] = useState<AltLogbookEntry[]>([]);
 
-    const saved = window.localStorage.getItem(altLogbookStorageKey);
-    return saved ? normaliseStoredEntry(JSON.parse(saved)) : null;
-  });
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        const latest = window.localStorage.getItem(altLogbookStorageKey);
+        if (latest) setCurrentEntry(normaliseStoredEntry(JSON.parse(latest)));
+        const raw = window.localStorage.getItem(motiveLogbookHistoryStorageKey);
+        const parsed: unknown = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(parsed)) setSavedChecks(parsed.map(normaliseStoredEntry));
+      } catch {
+        // Invalid mock history should not prevent the Logbook opening.
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const logbookEntries = useMemo(
     () =>
-      (currentEntry
-        ? [currentEntry, ...createHistoricalEntries()]
-        : createHistoricalEntries()
-      ).sort((left, right) => right.startTimestamp - left.startTimestamp),
-    [currentEntry]
+      [...savedChecks,
+        ...(currentEntry && !savedChecks.some((entry) => entry.endTimestamp === currentEntry.endTimestamp) ? [currentEntry] : []),
+        ...createHistoricalEntries(),
+      ].sort((left, right) => right.startTimestamp - left.startTimestamp),
+    [currentEntry, savedChecks]
   );
 
   const currentCheckState =
-    currentEntry === null ? "pending" : currentEntry.hasDefects ? "failed" : "passed";
+    currentEntry === null ? "pending" : currentEntry.decision === "monitor" ? "monitor" : currentEntry.hasDefects ? "failed" : "passed";
 
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#111]">
@@ -255,18 +284,22 @@ export default function LogbookPage() {
             className={`rounded-[20px] border px-5 py-4 shadow-sm ${
               currentCheckState === "passed"
                 ? "border-[#b9e6c8] bg-[#eaf8ef]"
+                : currentCheckState === "monitor"
+                ? "border-[#f8df8d] bg-[#fff7e6]"
                 : "border-[#f3c2cb] bg-[#fff1f3]"
             }`}
           >
             <p
               className={`text-xs font-black uppercase tracking-[0.18em] ${
-                currentCheckState === "passed" ? "text-[#078a3d]" : "text-[#b00020]"
+                currentCheckState === "passed" ? "text-[#078a3d]" : currentCheckState === "monitor" ? "text-[#92400e]" : "text-[#b00020]"
               }`}
             >
               {currentCheckState === "pending"
                 ? "Checks required"
                 : currentCheckState === "failed"
                 ? "Defect found"
+                : currentCheckState === "monitor"
+                ? "Amber issue recorded"
                 : "Checks complete"}
             </p>
 
@@ -274,7 +307,7 @@ export default function LogbookPage() {
               {currentCheckState === "pending"
                 ? "Driver must complete Checks"
                 : currentCheckState === "failed"
-                ? "Driver to report to Office"
+                ? "Do not use vehicle — report to Office"
                 : "Driver OK to continue"}
             </h2>
 
@@ -282,7 +315,9 @@ export default function LogbookPage() {
               {currentCheckState === "pending"
                 ? "The current vehicle check has not been completed. Complete the checks before continuing the duty."
                 : currentCheckState === "failed"
-                ? "A defect has been recorded. The driver must return to or contact the office for further instruction."
+                ? "A RED defect has been recorded. Do not use the vehicle. Return to the transport office and speak to your manager."
+                : currentCheckState === "monitor"
+                ? "An AMBER issue has been recorded under a PMT. You may continue; it will be reviewed at the next service."
                 : "Vehicle checks are complete and no defects were found. The driver is clear to continue with duty."}
             </p>
           </div>
@@ -351,7 +386,7 @@ export default function LogbookPage() {
                           <TruckIcon />
                         </div>
                       </td>
-                      <TableCell strong>PA25 RTY</TableCell>
+                      <TableCell strong>{entry.registration || "PA25 RTY"}</TableCell>
                       <TableCell>
                         <DateTimeStack value={entry.startDateTime} />
                       </TableCell>
@@ -363,9 +398,9 @@ export default function LogbookPage() {
                       <TableCell>{entry.mileageEnd}</TableCell>
                       <TableCell>
                         <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${
+                          className={`inline-block max-w-full break-words whitespace-normal rounded-full px-3 py-1 text-xs font-black ${
                             entry.hasDefects
-                              ? "bg-[#ffe6eb] text-[#b00020]"
+                              ? entry.decision === "monitor" ? "bg-[#fff3cd] text-[#92400e]" : "bg-[#ffe6eb] text-[#b00020]"
                               : "bg-[#e8f7ee] text-[#078a3d]"
                           }`}
                         >
@@ -373,6 +408,7 @@ export default function LogbookPage() {
                             ? entry.defectsSummary.join("; ")
                             : "NIL Defects"}
                         </span>
+                        {entry.photoEvidence?.map((photo) => <a key={photo.check} href={photo.dataUrl} target="_blank" rel="noreferrer" className="mt-2 block text-xs font-bold text-[#b00020] underline">View photo for {photo.check}</a>)}
                       </TableCell>
                       <TableCell>{entry.pmts.length > 0 ? entry.pmts.join(", ") : "-"}</TableCell>
                       <TableCell>

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import NextImage from "next/image";
+import { useEffect, useMemo, useState } from "react";
 
 import { DRIVER_MESSAGE_STORE_CHANGED_EVENT } from "../../driverMessageSync";
 
@@ -24,6 +25,7 @@ type ActionType =
   | "Marked actioned"
   | "Reply and actioned"
   | "Message driver and OK to continue"
+  | "Send PMT to Workshops for next service"
   | "VOR vehicle / M5 workshops";
 
 type PmtDetails = {
@@ -35,6 +37,7 @@ type PmtDetails = {
   mileage: string;
   pmtStatus: string;
   notes: string;
+  photoEvidence?: { check: string; title: string; dataUrl: string }[];
 };
 
 type RtcDetails = {
@@ -545,6 +548,19 @@ const sidebarItems = [
 
 export default function LinkCommsDashboardPage() {
   const [items, setItems] = useState<CommsItem[]>(() => readOpenItems());
+
+  useEffect(() => {
+    const refreshFromStore = () => setItems(readOpenItems());
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === COMMS_OPEN_STORAGE_KEY) refreshFromStore();
+    };
+    window.addEventListener(DRIVER_MESSAGE_STORE_CHANGED_EVENT, refreshFromStore);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(DRIVER_MESSAGE_STORE_CHANGED_EVENT, refreshFromStore);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
   const [selectedSource, setSelectedSource] = useState<CommsSource | "All" | "Unread messages">("All");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<CommsStatus | "All">("All");
   const [selectedPriorityFilter, setSelectedPriorityFilter] = useState<Priority | "All">("All");
@@ -746,7 +762,7 @@ export default function LinkCommsDashboardPage() {
     const now = new Date();
     const manualMessage = newMessageText.trim() || "Please contact the transport office when safe to do so.";
     const newItem: CommsItem = {
-      id: `MANUAL-${Date.now()}`,
+      id: `MANUAL-${now.getTime()}`,
       source: "Messaging",
       priority: newMessagePriority,
       status: "Awaiting driver read",
@@ -1201,13 +1217,20 @@ function CommunicationModal({
 
             {item.source === "PMT Confirmation" ? (
               <div className="mt-4 grid grid-cols-1 gap-3">
-                <button
-                  type="button"
-                  onClick={() => onSaveHistory(item, "Message driver and OK to continue")}
-                  className="rounded-lg bg-[#15803d] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0f5f2d]"
-                >
-                  Message driver & OK to continue
-                </button>
+                {item.id.startsWith("CHECK-PMT-") && item.pmt?.severity === "Vehicle Issue" && (
+                  <button type="button" onClick={() => onSaveHistory(item, "Send PMT to Workshops for next service")} className="rounded-lg bg-[#d99500] px-4 py-3 text-sm font-black text-white transition hover:bg-[#ae7700]">
+                    Send PMT to Workshops for next service
+                  </button>
+                )}
+                {!(item.id.startsWith("CHECK-PMT-") && item.pmt?.severity === "Defect") && (
+                  <button
+                    type="button"
+                    onClick={() => onSaveHistory(item, "Message driver and OK to continue")}
+                    className="rounded-lg bg-[#15803d] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0f5f2d]"
+                  >
+                    Message driver & OK to continue
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => onSaveHistory(item, "VOR vehicle / M5 workshops")}
@@ -1305,6 +1328,11 @@ function PmtDetailsPanel({ item, details }: { item: CommsItem; details: PmtDetai
       </div>
 
       <p className="mt-3 text-sm font-bold leading-6 text-[#4b5563]">{details.notes}</p>
+      {details.photoEvidence && details.photoEvidence.length > 0 && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {details.photoEvidence.map((photo) => <figure key={photo.check} className="rounded-lg border border-[#d9dee6] p-2"><NextImage src={photo.dataUrl} alt={`Photo evidence: ${photo.title}`} width={720} height={480} unoptimized className="max-h-48 w-full rounded object-contain" /><figcaption className="mt-2 text-xs font-bold text-[#4b5563]">{photo.check} {photo.title}</figcaption></figure>)}
+        </div>
+      )}
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <InfoBox label="Issue type" value={details.severity} tone={details.severity === "Defect" ? "red" : "amber"} />
@@ -1316,7 +1344,11 @@ function PmtDetailsPanel({ item, details }: { item: CommsItem; details: PmtDetai
       </div>
 
       <div className="mt-4 rounded-lg border border-[#f5a400] bg-[#fff7e6] p-3 text-sm font-bold leading-6 text-[#7a4b00]">
-        Manager must decide whether the vehicle is OK to continue or whether it should be VOR and sent to Workshops via M5. If VOR is selected, a mock message is sent to the driver stating that the vehicle has been de-allocated.
+        {item.id.startsWith("CHECK-PMT-") && details.severity === "Defect"
+          ? "HIGH PRIORITY — Driver must not use the vehicle. Manager decision required: confirm VOR, send the PMT to Workshops and message the driver."
+          : details.severity === "Vehicle Issue"
+          ? "For information: driver may continue. The manager can send this PMT to Workshops for review at the next service without marking the vehicle VOR."
+          : "Manager must decide whether the vehicle is OK to continue or whether it should be VOR and sent to Workshops via M5."}
       </div>
     </section>
   );
@@ -1700,6 +1732,9 @@ function defaultReplyForItem(item: CommsItem) {
 }
 
 function getDriverMessage(item: CommsItem, action: ActionType, replyText: string) {
+  if (action === "Send PMT to Workshops for next service") {
+    return `PMT ${item.pmt?.pmt || ""} sent to Workshops for review at the next service. Vehicle may continue.`;
+  }
   if (action === "VOR vehicle / M5 workshops") {
     return "Vehicle has been de-allocated. Workshop data has been sent to M5 in the mockup.";
   }
@@ -1822,7 +1857,19 @@ function buildActionedThread(
       senderName: "M5 Workshops",
       message: `Mock M5 workshop notification created for ${item.vehicle}, duty ${item.duty}. Vehicle set to VOR and driver told the vehicle has been de-allocated.`,
       timestamp: actionedAt,
-      priority: "Critical",
+      priority: item.id.startsWith("CHECK-PMT-") ? "High" : "Critical",
+      direction: "Workshop",
+    });
+  }
+
+  if (action === "Send PMT to Workshops for next service") {
+    thread.push({
+      id: `${item.id}-m5-${Date.now()}`,
+      sender: "M5 Workshops",
+      senderName: "M5 Workshops",
+      message: `Mock workshop notification created for PMT ${item.pmt?.pmt || ""}, ${item.vehicle}. Review at next service; vehicle remains in use.`,
+      timestamp: actionedAt,
+      priority: "Normal",
       direction: "Workshop",
     });
   }
@@ -1910,7 +1957,7 @@ function getCurrentMockDriverName(item: CommsItem, index: number) {
     item.message?.direction === "Driver to office" ||
     (item.source === "Breakdown" && item.duty === "NWH254");
 
-  if (item.id?.startsWith("MANUAL-") || isDriverPdaMessage) {
+  if (item.id?.startsWith("MANUAL-") || item.id?.startsWith("CHECK-PMT-") || isDriverPdaMessage) {
     return item.driver?.trim() || driverNames[0];
   }
 

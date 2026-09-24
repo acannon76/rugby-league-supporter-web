@@ -69,11 +69,14 @@ export type AltLogbookEntry = {
   endTimestamp: number;
   completedAt?: string;
   driverName: string;
+  registration?: string;
   mileageStart: string;
   mileageEnd: string;
   hasDefects: boolean;
+  decision?: "clear" | "monitor" | "stop";
   defectsSummary: string[];
   pmts: string[];
+  photoEvidence?: { check: string; title: string; dataUrl: string }[];
 };
 
 export function formatDateTime(date = new Date()) {

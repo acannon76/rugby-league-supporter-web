@@ -24,6 +24,17 @@ export type DriverCommsItem = {
   receivedDate: string;
   title: string;
   summary: string;
+  pmt?: {
+    pmt: string;
+    issueTitle: string;
+    severity: "Vehicle Issue" | "Defect";
+    reported: string;
+    fixed: string;
+    mileage: string;
+    pmtStatus: string;
+    notes: string;
+    photoEvidence?: { check: string; title: string; dataUrl: string }[];
+  };
   message?: {
     messageText: string;
     route: string;
