@@ -1040,7 +1040,7 @@ export default function LinkCommsDashboardPage() {
                       onClick={() => openCommunication(item)}
                       className="cursor-pointer bg-white transition hover:bg-[#fff0f0]"
                     >
-                      <td className="border-b border-[#edf0f4] px-4 py-3 font-black text-[#111827]">{item.source}</td>
+                      <td className="border-b border-[#edf0f4] px-4 py-3 font-black text-[#111827]"><SourceLabel item={item} /></td>
                       <td className="border-b border-[#edf0f4] px-4 py-3 font-black text-[#374151]">{item.duty}</td>
                       <td className="border-b border-[#edf0f4] px-4 py-3 font-bold text-[#374151]">{MOCK_DUTY_START_DATE}</td>
                       <td className="border-b border-[#edf0f4] px-4 py-3"><FlowBadge flow={getMessageFlow(item)} /></td>
@@ -1132,7 +1132,7 @@ function CommunicationModal({
       <section className="w-full max-w-[1050px] rounded-2xl border border-[#d9dee6] bg-white shadow-2xl">
         <header className="flex flex-col gap-3 border-b border-[#d9dee6] p-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e40000]">{item.source}</p>
+            <div className="text-xs font-black uppercase tracking-[0.18em]"><SourceLabel item={item} /></div>
             <h2 className="mt-2 text-3xl font-black text-[#111827]">{item.title}</h2>
             <p className="mt-2 text-sm font-bold leading-6 text-[#6b7280]">{item.summary}</p>
           </div>
@@ -1599,6 +1599,18 @@ function OfficeSidebar() {
         »
       </button>
     </aside>
+  );
+}
+
+function SourceLabel({ item }: { item: CommsItem }) {
+  if (item.source !== "PMT Confirmation" || !item.pmt?.severity) return <span>{item.source}</span>;
+
+  const amber = item.pmt.severity === "Vehicle Issue";
+  return (
+    <span className={`inline-flex flex-col rounded-lg border px-2 py-1 text-xs font-black leading-5 ${amber ? "border-[#e3a008] bg-[#fff3cd] text-[#92400e]" : "border-[#b00020] bg-[#ffe5eb] text-[#b00020]"}`}>
+      <span>PMT Confirmation</span>
+      <span className="text-[10px] uppercase tracking-wide">{amber ? "AMBER · Vehicle issue" : "RED · Defect"}</span>
+    </span>
   );
 }
 

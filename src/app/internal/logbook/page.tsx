@@ -109,6 +109,15 @@ function parseDisplayDateTime(value: string | undefined) {
   ).getTime();
 }
 
+function getCheckDecision(entry: Pick<AltLogbookEntry, "decision" | "hasDefects" | "defectsSummary">) {
+  const details = (entry.defectsSummary || []).join(" ");
+  // Older saved checks did not include a decision; their reported severity is still in the summary.
+  if (/\bRED defect\b/i.test(details)) return "stop";
+  if (/\bAMBER issue\b/i.test(details)) return "monitor";
+  if (entry.decision === "stop" || entry.decision === "monitor") return entry.decision;
+  return entry.hasDefects ? "stop" : "clear";
+}
+
 function normaliseStoredEntry(entry: Partial<AltLogbookEntry>): AltLogbookEntry {
   const fallbackEndTimestamp =
     entry.endTimestamp || parseDisplayDateTime(entry.endDateTime || entry.completedAt) || Date.now();
@@ -127,7 +136,11 @@ function normaliseStoredEntry(entry: Partial<AltLogbookEntry>): AltLogbookEntry 
     mileageStart: entry.mileageStart || "684,218 km",
     mileageEnd: entry.mileageEnd || "Not entered",
     hasDefects: Boolean(entry.hasDefects),
-    decision: entry.decision,
+    decision: getCheckDecision({
+      decision: entry.decision,
+      hasDefects: Boolean(entry.hasDefects),
+      defectsSummary: entry.defectsSummary || [],
+    }),
     defectsSummary:
       entry.defectsSummary && entry.defectsSummary.length > 0
         ? entry.defectsSummary
@@ -138,7 +151,7 @@ function normaliseStoredEntry(entry: Partial<AltLogbookEntry>): AltLogbookEntry 
 }
 
 function getOutcomeContent(entry: AltLogbookEntry, rowIndex: number) {
-  if (entry.decision === "monitor") {
+  if (getCheckDecision(entry) === "monitor") {
     return {
       title: "OK to continue with duty",
       summary: "Amber issue recorded under PMT for review at the next service.",
@@ -146,7 +159,7 @@ function getOutcomeContent(entry: AltLogbookEntry, rowIndex: number) {
     };
   }
 
-  if (entry.decision === "stop") {
+  if (getCheckDecision(entry) === "stop" && entry.decision === "stop") {
     return {
       title: "Do not use vehicle — return to transport office",
       summary: "Red defect recorded under PMT. Speak to the manager before using the vehicle.",
@@ -208,7 +221,7 @@ export default function LogbookPage() {
   );
 
   const currentCheckState =
-    currentEntry === null ? "pending" : currentEntry.decision === "monitor" ? "monitor" : currentEntry.hasDefects ? "failed" : "passed";
+    currentEntry === null ? "pending" : getCheckDecision(currentEntry) === "monitor" ? "monitor" : currentEntry.hasDefects ? "failed" : "passed";
 
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#111]">
@@ -400,7 +413,7 @@ export default function LogbookPage() {
                         <span
                           className={`inline-block max-w-full break-words whitespace-normal rounded-full px-3 py-1 text-xs font-black ${
                             entry.hasDefects
-                              ? entry.decision === "monitor" ? "bg-[#fff3cd] text-[#92400e]" : "bg-[#ffe6eb] text-[#b00020]"
+                              ? getCheckDecision(entry) === "monitor" ? "bg-[#fff3cd] text-[#92400e]" : "bg-[#ffe6eb] text-[#b00020]"
                               : "bg-[#e8f7ee] text-[#078a3d]"
                           }`}
                         >
@@ -418,7 +431,7 @@ export default function LogbookPage() {
                             <div className="min-w-0 space-y-1 break-words whitespace-normal">
                               <p className="break-words font-black leading-5 text-[#18243a]">{outcome.title}</p>
                               <p className="break-words text-xs font-bold leading-5 text-[#64748b]">{outcome.summary}</p>
-                              <p className="break-words text-xs font-black leading-5 text-[#b00020]">{outcome.fixedBy}</p>
+                              <p className={`break-words text-xs font-black leading-5 ${getCheckDecision(entry) === "monitor" ? "text-[#92400e]" : "text-[#b00020]"}`}>{outcome.fixedBy}</p>
                             </div>
                           );
                         })()}
