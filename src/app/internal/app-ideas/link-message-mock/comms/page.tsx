@@ -5,6 +5,7 @@ import NextImage from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
 import { DRIVER_MESSAGE_STORE_CHANGED_EVENT } from "../../driverMessageSync";
+import { recordManagerClearance } from "../../../vehicle-checks-altData";
 
 type CommsSource = "RTC" | "Breakdown" | "Messaging" | "PMT Confirmation";
 type CommsStatus = "New" | "Office review" | "Awaiting driver read" | "Actioned";
@@ -26,6 +27,7 @@ type ActionType =
   | "Reply and actioned"
   | "Message driver and OK to continue"
   | "Send PMT to Workshops for next service"
+  | "Reject PMT and clear vehicle"
   | "VOR vehicle / M5 workshops";
 
 type PmtDetails = {
@@ -633,8 +635,8 @@ export default function LinkCommsDashboardPage() {
     }
 
     setActiveItem(nextItem);
-    setReplyText(nextItem.pendingReplyText || defaultReplyForItem(nextItem));
-    setReplyPriority(nextItem.pendingReplyPriority || "Normal");
+    setReplyText(nextItem.pendingReplyText || (nextItem.id.startsWith("CHECK-PMT-") && nextItem.pmt?.severity === "Defect" ? "" : defaultReplyForItem(nextItem)));
+    setReplyPriority(nextItem.pendingReplyPriority || (nextItem.id.startsWith("CHECK-PMT-") && nextItem.pmt?.severity === "Defect" ? "High" : "Normal"));
     setManagerName(nextItem.pendingManager || MANAGER_NAME);
   }
 
@@ -660,6 +662,10 @@ export default function LinkCommsDashboardPage() {
     const messageThread = buildActionedThread(item, action, replyText, replyPriority, manager, actionedAt);
     const replyForHistory = getReplyTextForHistory(action, replyText, driverMessage);
 
+    if (action === "Reject PMT and clear vehicle" && item.pmt?.pmt && replyText.trim()) {
+      recordManagerClearance(item.pmt.pmt, manager, replyText.trim(), actionedAt);
+    }
+
     const nextItems = items.map((currentItem) =>
       currentItem.id === item.id
         ? {
@@ -676,6 +682,14 @@ export default function LinkCommsDashboardPage() {
             pendingManager: manager,
             pendingReplyText: replyForHistory,
             pendingReplyPriority: replyPriority,
+            pmt: action === "Reject PMT and clear vehicle" && currentItem.pmt
+              ? {
+                  ...currentItem.pmt,
+                  fixed: `Cleared by ${manager} on ${actionedAt} (no workshop repair)`,
+                  pmtStatus: "Manager rejected PMT — vehicle cleared for use",
+                  notes: `${currentItem.pmt.notes} Manager reason: ${replyText.trim()}.`,
+                }
+              : currentItem.pmt,
           }
         : currentItem,
     );
@@ -683,8 +697,10 @@ export default function LinkCommsDashboardPage() {
     persistOpenItems(nextItems);
     setActiveItem(null);
     setSummaryPopup({
-      title: `${item.duty} retained until driver read confirmation`,
-      detail: `The office message has been kept in the Comms queue. It will remain visible even if the duty is completed until the driver confirms that the message has been read via the mock popup.`,
+      title: action === "Reject PMT and clear vehicle" ? `${item.pmt?.pmt} rejected — vehicle cleared by ${manager}` : `${item.duty} retained until driver read confirmation`,
+      detail: action === "Reject PMT and clear vehicle"
+        ? "The manager's reason was recorded in the Logbook and vehicle history. The clearance message remains in Comms until the driver confirms it has been read."
+        : "The office message has been kept in the Comms queue. It will remain visible even if the duty is completed until the driver confirms that the message has been read via the mock popup.",
     });
   }
 
@@ -1176,7 +1192,7 @@ function CommunicationModal({
             </label>
 
             <label className="mt-4 block">
-              <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">Message back to driver</span>
+              <span className="text-xs font-black uppercase tracking-[0.14em] text-[#6b7280]">{item.id.startsWith("CHECK-PMT-") && item.pmt?.severity === "Defect" ? "Manager decision reason / message back to driver" : "Message back to driver"}</span>
               <textarea
                 value={replyText}
                 onChange={(event) => onReplyTextChange(event.target.value)}
@@ -1231,10 +1247,19 @@ function CommunicationModal({
                     Message driver & OK to continue
                   </button>
                 )}
+                {item.id.startsWith("CHECK-PMT-") && item.pmt?.severity === "Defect" && (
+                  <div>
+                    <button type="button" disabled={!replyText.trim() || Boolean(item.retainUntilDriverRead)} onClick={() => onSaveHistory(item, "Reject PMT and clear vehicle")} className="w-full rounded-lg bg-[#15803d] px-4 py-3 text-sm font-black text-white transition hover:bg-[#0f5f2d] disabled:cursor-not-allowed disabled:opacity-50">
+                      Reject PMT and clear vehicle for use &amp; Message Driver
+                    </button>
+                    {!replyText.trim() && <p className="mt-1 text-xs font-bold text-[#475569]">Enter the manager&apos;s reason above before clearing the vehicle.</p>}
+                  </div>
+                )}
                 <button
                   type="button"
+                  disabled={Boolean(item.retainUntilDriverRead)}
                   onClick={() => onSaveHistory(item, "VOR vehicle / M5 workshops")}
-                  className="rounded-lg bg-[#e40000] px-4 py-3 text-sm font-black text-white transition hover:bg-[#b80000]"
+                  className="rounded-lg bg-[#e40000] px-4 py-3 text-sm font-black text-white transition hover:bg-[#b80000] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   VOR vehicle and send PMT to Workshops & Message Driver
                 </button>
@@ -1345,7 +1370,7 @@ function PmtDetailsPanel({ item, details }: { item: CommsItem; details: PmtDetai
 
       <div className="mt-4 rounded-lg border border-[#f5a400] bg-[#fff7e6] p-3 text-sm font-bold leading-6 text-[#7a4b00]">
         {item.id.startsWith("CHECK-PMT-") && details.severity === "Defect"
-          ? "HIGH PRIORITY — Driver must not use the vehicle. Manager decision required: confirm VOR, send the PMT to Workshops and message the driver."
+          ? "HIGH PRIORITY — Driver must not use the vehicle until the manager decides. The manager can confirm VOR and send the PMT to Workshops, or reject the PMT with a recorded reason and clear the vehicle for use. The decision is sent to the driver."
           : details.severity === "Vehicle Issue"
           ? "For information: driver may continue. The manager can send this PMT to Workshops for review at the next service without marking the vehicle VOR."
           : "Manager must decide whether the vehicle is OK to continue or whether it should be VOR and sent to Workshops via M5."}
@@ -1744,6 +1769,9 @@ function defaultReplyForItem(item: CommsItem) {
 }
 
 function getDriverMessage(item: CommsItem, action: ActionType, replyText: string) {
+  if (action === "Reject PMT and clear vehicle") {
+    return `Manager has rejected PMT ${item.pmt?.pmt || ""} and cleared the vehicle for use. Reason: ${replyText.trim()}`;
+  }
   if (action === "Send PMT to Workshops for next service") {
     return `PMT ${item.pmt?.pmt || ""} sent to Workshops for review at the next service. Vehicle may continue.`;
   }

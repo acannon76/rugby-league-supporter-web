@@ -50,6 +50,7 @@ export default function VehicleChecksAltPage() {
   const [answers, setAnswers] = useState<MotiveAnswers>({});
   const answersRef = useRef<MotiveAnswers>({});
   const [currentMileage, setCurrentMileage] = useState("");
+  const [mileageError, setMileageError] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -119,6 +120,7 @@ export default function VehicleChecksAltPage() {
   function updateCurrentMileage(value: string) {
     const digits = value.replace(/[^\d]/g, "");
     setCurrentMileage(digits);
+    if (Number(digits) > 0) setMileageError(false);
     window.localStorage.setItem(altMileageStorageKey, digits);
   }
 
@@ -138,13 +140,19 @@ export default function VehicleChecksAltPage() {
 
   function completeVehicleChecks() {
     if (!canSubmit) return;
+    if (!currentMileage || Number(currentMileage) <= 0) {
+      setMileageError(true);
+      document.getElementById("current-mileage")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.getElementById("current-mileage")?.focus({ preventScroll: true });
+      return;
+    }
     setSubmitting(true);
     const now = new Date();
     const endTimestamp = now.getTime();
     const storedStart = Number(window.localStorage.getItem("hgv-check-timer-started-at"));
     const startTimestamp = Number.isFinite(storedStart) && storedStart > 0 ? storedStart : endTimestamp - 12 * 60 * 1000;
     const pmt = issues.length ? `PMT${endTimestamp.toString().slice(-9)}` : "";
-    const mileageEnd = currentMileage ? `${Number(currentMileage).toLocaleString("en-GB")} km` : "Not entered";
+    const mileageEnd = `${Number(currentMileage).toLocaleString("en-GB")} km`;
     const summary = issues.map(({ category, check, answer }) =>
       `${category.number}.${check.number} ${category.title} — ${check.title} (${answer.status === "defect" ? "RED defect" : "AMBER issue"}): ${answer.description.trim() || "No further description supplied"}${answer.photoName ? ` [Photo: ${answer.photoName}]` : ""}`
     );
@@ -239,30 +247,31 @@ export default function VehicleChecksAltPage() {
         </div>
       </header>
 
-      <section className="bg-[#b00020] px-4 py-6 text-white sm:px-6 lg:px-10">
+      <section className="bg-[#b00020] px-4 py-3 text-white sm:px-6 lg:px-10">
         <div className="mx-auto max-w-[900px]">
-          <p className="mb-3 text-xs font-black uppercase tracking-[0.22em] text-[#ffd9df]">Driver daily check</p>
-          <h1 className="text-[42px] font-black leading-[0.95] sm:text-[64px]">Vehicle Checks</h1>
-          <p className="mt-4 max-w-[720px] text-sm font-bold leading-6 text-[#ffecef] sm:text-base">Enter the current mileage. Open each category to complete its numbered checks on this page. Use the category OK button when every check in that category is satisfactory.</p>
-          <div className="mt-5 grid grid-cols-2 gap-2 rounded-[24px] bg-white/95 p-2 sm:grid-cols-4 lg:grid-cols-8">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h1 className="text-[30px] font-black leading-tight sm:text-[38px]">Vehicle Checks</h1>
+            <p className="text-xs font-bold text-[#ffecef] sm:text-sm">Enter mileage, then complete all ten categories below.</p>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-1 rounded-2xl bg-white/95 p-1 sm:grid-cols-4 lg:grid-cols-8">
             {altVehicleDetails.map((detail) => (
-              <div key={detail.label} className={`rounded-2xl border px-3 py-2 ${detail.label === "Last Mileage" ? "border-[#f8df8d] bg-[#fff7e6]" : "border-[#ead6dc] bg-[#fff7f8]"}`}>
-                <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${detail.label === "Last Mileage" ? "text-[#92400e]" : "text-[#b00020]"}`}>{detail.label}</p>
-                <p className="mt-1 text-sm font-black text-[#18243a]">{detail.value}</p>
+              <div key={detail.label} className={`rounded-xl border px-2 py-1 ${detail.label === "Last Mileage" ? "border-[#f8df8d] bg-[#fff7e6]" : "border-[#ead6dc] bg-[#fff7f8]"}`}>
+                <p className={`text-[9px] font-black uppercase tracking-[0.08em] ${detail.label === "Last Mileage" ? "text-[#92400e]" : "text-[#b00020]"}`}>{detail.label}</p>
+                <p className="text-xs font-black leading-tight text-[#18243a]">{detail.value}</p>
               </div>
             ))}
           </div>
-          <div className="mt-4 rounded-[24px] border border-white/25 bg-white/10 p-3">
-            <label htmlFor="current-mileage" className="text-xs font-black uppercase tracking-[0.18em] text-[#ffd9df]">Current mileage / KM</label>
-            <div className="mt-2 flex items-center gap-3">
-              <input id="current-mileage" type="text" inputMode="numeric" value={currentMileage} onChange={(event) => updateCurrentMileage(event.target.value)} placeholder="Enter current mileage" className="min-h-[52px] min-w-0 flex-1 rounded-2xl border border-white/30 bg-white px-4 text-lg font-black text-[#18243a] outline-none placeholder:text-[#94a3b8]" />
-              <div className="rounded-2xl border border-white/25 bg-white/10 px-4 py-3"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#ffd9df]">Last use</p><p className="text-sm font-black">{lastMileage}</p></div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+            <div className="rounded-2xl border border-white/25 bg-white/10 p-2">
+              <label htmlFor="current-mileage" className="text-xs font-black uppercase tracking-[0.1em] text-[#ffd9df]">Current mileage / KM <span className="text-white">(required)</span></label>
+              <input id="current-mileage" type="text" inputMode="numeric" required aria-required="true" aria-invalid={mileageError} value={currentMileage} onChange={(event) => updateCurrentMileage(event.target.value)} placeholder="Enter current mileage" className={`mt-1 min-h-[44px] w-full rounded-xl border bg-white px-3 text-base font-black text-[#18243a] outline-none placeholder:text-[#94a3b8] ${mileageError ? "border-[#ffbf47] ring-2 ring-[#ffbf47]" : "border-white/30"}`} />
+              {mileageError && <p role="alert" className="mt-1 text-xs font-black text-white">Enter the current mileage before submitting.</p>}
             </div>
-          </div>
-          <div className="mt-4 rounded-[20px] border border-white/25 bg-white/10 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ffd9df]">Completion progress</p>
-            <p className="mt-1 text-lg font-black">{completedCount} of {motiveCheckCategories.length} categories completed</p>
-            <p className="mt-1 text-sm font-bold text-[#ffecef]">Open a category to select OK, Vehicle Issue (amber) or Defect (red) for each check.</p>
+            <div className="rounded-2xl border border-white/25 bg-white/10 p-2">
+              <p className="text-xs font-black uppercase tracking-[0.1em] text-[#ffd9df]">Completion progress</p>
+              <p className="mt-1 text-base font-black">{completedCount} of {motiveCheckCategories.length} categories completed</p>
+              <p className="text-xs font-bold text-[#ffecef]">Select OK, amber or red for each check.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -326,7 +335,7 @@ export default function VehicleChecksAltPage() {
           })}
           {issues.length > 0 && <div role="alert" className={`rounded-[22px] border p-5 text-sm font-black ${hasRed ? "border-[#b00020] bg-[#ffe5eb] text-[#7d0017]" : "border-[#e3a008] bg-[#fff3cd] text-[#92400e]"}`}>{hasRed ? "RED ✕ — Vehicle must not be used. Return to the transport office and speak to your manager. The PMT will be added to vehicle history and manager Comms when you submit." : "AMBER — You may continue with duty. The PMT will be recorded for review at the next service and shown in manager Comms when you submit."}</div>}
           <button type="button" onClick={completeVehicleChecks} disabled={!canSubmit} className={`mt-6 w-full rounded-[24px] px-5 py-5 text-sm font-black uppercase tracking-[0.12em] shadow-sm ${canSubmit ? "bg-[#b00020] text-white hover:bg-[#7d0017]" : "cursor-not-allowed bg-[#cbd5e1] text-[#64748b]"}`}>Submit vehicle checks {completedCount}/{motiveCheckCategories.length}</button>
-          {!currentMileage && <p className="text-sm font-bold text-[#92400e]">Current mileage has not been entered; the Logbook will record “Not entered”.</p>}
+          {(!currentMileage || Number(currentMileage) <= 0) && completedCount === motiveCheckCategories.length && <p className="text-sm font-bold text-[#92400e]">Mileage is required. Use the button to return to the mileage field before submission.</p>}
           {missingDescriptions && <p className="text-sm font-bold text-[#92400e]">Add a description where possible. If left blank, the reported check and its status will still go to the Logbook and manager.</p>}
         </div>
       </section>

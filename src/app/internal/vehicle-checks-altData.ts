@@ -1,3 +1,5 @@
+import { motiveLogbookHistoryStorageKey } from "./vehicle-checks-alt/motiveCheckData";
+
 export type AltCheckStatus = "none" | "ok" | "defect";
 
 export type AltVehicleCheckCategory = {
@@ -61,6 +63,7 @@ export function createAltPmt(categoryNumber: number) {
 }
 
 export const altLogbookStorageKey = "hgv-alt-vehicle-check-logbook";
+const vehicleHistoryStorageKey = "hgv-backup2-mock-vehicle-history-extra";
 
 export type AltLogbookEntry = {
   startDateTime: string;
@@ -73,11 +76,41 @@ export type AltLogbookEntry = {
   mileageStart: string;
   mileageEnd: string;
   hasDefects: boolean;
-  decision?: "clear" | "monitor" | "stop";
+  decision?: "clear" | "monitor" | "stop" | "cleared";
+  managerDecision?: { action: "cleared"; manager: string; decidedAt: string; reason: string };
+  workshopFix?: { manager: string; fixedAt: string; summary: string };
   defectsSummary: string[];
   pmts: string[];
   photoEvidence?: { check: string; title: string; dataUrl: string }[];
 };
+
+export function recordManagerClearance(pmt: string, manager: string, reason: string, decidedAt: string) {
+  if (typeof window === "undefined") return;
+  const decision: NonNullable<AltLogbookEntry["managerDecision"]> = { action: "cleared", manager, reason, decidedAt };
+  try {
+    const raw = window.localStorage.getItem(motiveLogbookHistoryStorageKey);
+    const entries: unknown = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(entries)) {
+      window.localStorage.setItem(motiveLogbookHistoryStorageKey, JSON.stringify(entries.map((entry: AltLogbookEntry) =>
+        entry.pmts?.includes(pmt) ? { ...entry, managerDecision: decision } : entry
+      )));
+    }
+    const latestRaw = window.localStorage.getItem(altLogbookStorageKey);
+    if (latestRaw) {
+      const latest = JSON.parse(latestRaw) as AltLogbookEntry;
+      if (latest.pmts?.includes(pmt)) window.localStorage.setItem(altLogbookStorageKey, JSON.stringify({ ...latest, managerDecision: decision }));
+    }
+    const historyRaw = window.localStorage.getItem(vehicleHistoryStorageKey);
+    const history: unknown = historyRaw ? JSON.parse(historyRaw) : [];
+    if (Array.isArray(history)) {
+      window.localStorage.setItem(vehicleHistoryStorageKey, JSON.stringify(history.map((item: { pmt: string; status: string; fixed: string; notes: string }) =>
+        item.pmt === pmt ? { ...item, status: "Closed", fixed: `Cleared by ${manager} on ${decidedAt} (no repair)`, notes: `${item.notes} Manager decision: ${reason}` } : item
+      )));
+    }
+  } catch {
+    // Invalid older mock records must not prevent the manager's Comms reply.
+  }
+}
 
 export function formatDateTime(date = new Date()) {
   const day = String(date.getDate()).padStart(2, "0");

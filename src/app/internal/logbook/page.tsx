@@ -46,14 +46,14 @@ const FIX_SUMMARIES = [
   "Air line inspected and suspension recalibrated",
 ];
 
-const FIXED_BY_NAMES = [
-  "Wigan Workshop",
-  "Fleet Maintenance Team",
-  "Mobile Technician A. Hughes",
-  "Night Shift Workshop",
-  "Transport Engineering",
-  "Workshop Controller S. Green",
-  "Regional Fleet Support",
+const WORKSHOP_MANAGERS = [
+  "John Morgan",
+  "Priya Shah",
+  "David Hughes",
+  "Sarah Green",
+  "Mark Taylor",
+  "Claire Roberts",
+  "Paul Williams",
 ];
 
 function createHistoricalEntries(): AltLogbookEntry[] {
@@ -83,6 +83,11 @@ function createHistoricalEntries(): AltLogbookEntry[] {
       hasDefects,
       defectsSummary: hasDefects ? [defectText] : ["NIL Defects"],
       pmts: hasDefects ? [pmt] : [],
+      workshopFix: hasDefects ? {
+        manager: WORKSHOP_MANAGERS[index % WORKSHOP_MANAGERS.length],
+        fixedAt: formatDateTime(new Date(endTimestamp + (index % 3 + 1) * 6 * 60 * 60 * 1000)),
+        summary: FIX_SUMMARIES[index % FIX_SUMMARIES.length],
+      } : undefined,
     });
   }
 
@@ -109,7 +114,8 @@ function parseDisplayDateTime(value: string | undefined) {
   ).getTime();
 }
 
-function getCheckDecision(entry: Pick<AltLogbookEntry, "decision" | "hasDefects" | "defectsSummary">) {
+function getCheckDecision(entry: Pick<AltLogbookEntry, "decision" | "hasDefects" | "defectsSummary" | "managerDecision">) {
+  if (entry.managerDecision?.action === "cleared") return "cleared";
   const details = (entry.defectsSummary || []).join(" ");
   // Older saved checks did not include a decision; their reported severity is still in the summary.
   if (/\bRED defect\b/i.test(details)) return "stop";
@@ -140,7 +146,10 @@ function normaliseStoredEntry(entry: Partial<AltLogbookEntry>): AltLogbookEntry 
       decision: entry.decision,
       hasDefects: Boolean(entry.hasDefects),
       defectsSummary: entry.defectsSummary || [],
+      managerDecision: entry.managerDecision,
     }),
+    managerDecision: entry.managerDecision,
+    workshopFix: entry.workshopFix,
     defectsSummary:
       entry.defectsSummary && entry.defectsSummary.length > 0
         ? entry.defectsSummary
@@ -151,6 +160,22 @@ function normaliseStoredEntry(entry: Partial<AltLogbookEntry>): AltLogbookEntry 
 }
 
 function getOutcomeContent(entry: AltLogbookEntry, rowIndex: number) {
+  if (entry.managerDecision?.action === "cleared") {
+    return {
+      title: "Cleared by manager for use",
+      summary: `Reported PMT retained. Manager's reason: ${entry.managerDecision.reason}`,
+      fixedBy: `${entry.managerDecision.manager} · ${entry.managerDecision.decidedAt}`,
+    };
+  }
+
+  if (entry.workshopFix) {
+    return {
+      title: "Fixed by Workshops",
+      summary: entry.workshopFix.summary,
+      fixedBy: `Workshop manager ${entry.workshopFix.manager} · Fixed ${entry.workshopFix.fixedAt}`,
+    };
+  }
+
   if (getCheckDecision(entry) === "monitor") {
     return {
       title: "OK to continue with duty",
@@ -183,11 +208,10 @@ function getOutcomeContent(entry: AltLogbookEntry, rowIndex: number) {
     };
   }
 
-  const defectIndex = rowIndex % FIX_SUMMARIES.length;
   return {
-    title: "Return to / contact office",
-    summary: FIX_SUMMARIES[defectIndex],
-    fixedBy: `Fixed by ${FIXED_BY_NAMES[defectIndex]}`,
+    title: "Previous PMT recorded",
+    summary: "Workshop resolution has not been recorded for this earlier check.",
+    fixedBy: "Fix date and manager not recorded",
   };
 }
 
@@ -221,7 +245,7 @@ export default function LogbookPage() {
   );
 
   const currentCheckState =
-    currentEntry === null ? "pending" : getCheckDecision(currentEntry) === "monitor" ? "monitor" : currentEntry.hasDefects ? "failed" : "passed";
+    currentEntry === null ? "pending" : getCheckDecision(currentEntry) === "cleared" ? "cleared" : getCheckDecision(currentEntry) === "monitor" ? "monitor" : currentEntry.hasDefects ? "failed" : "passed";
 
   return (
     <main className="min-h-screen bg-[#f4f1ec] font-sans text-[#111]">
@@ -295,7 +319,7 @@ export default function LogbookPage() {
         <div className="mx-auto max-w-[1280px] space-y-4">
           <div
             className={`rounded-[20px] border px-5 py-4 shadow-sm ${
-              currentCheckState === "passed"
+              currentCheckState === "passed" || currentCheckState === "cleared"
                 ? "border-[#b9e6c8] bg-[#eaf8ef]"
                 : currentCheckState === "monitor"
                 ? "border-[#f8df8d] bg-[#fff7e6]"
@@ -304,11 +328,13 @@ export default function LogbookPage() {
           >
             <p
               className={`text-xs font-black uppercase tracking-[0.18em] ${
-                currentCheckState === "passed" ? "text-[#078a3d]" : currentCheckState === "monitor" ? "text-[#92400e]" : "text-[#b00020]"
+                currentCheckState === "passed" || currentCheckState === "cleared" ? "text-[#078a3d]" : currentCheckState === "monitor" ? "text-[#92400e]" : "text-[#b00020]"
               }`}
             >
               {currentCheckState === "pending"
                 ? "Checks required"
+                : currentCheckState === "cleared"
+                ? "Manager cleared reported defect"
                 : currentCheckState === "failed"
                 ? "Defect found"
                 : currentCheckState === "monitor"
@@ -319,6 +345,8 @@ export default function LogbookPage() {
             <h2 className="mt-1 text-2xl font-black text-[#18243a]">
               {currentCheckState === "pending"
                 ? "Driver must complete Checks"
+                : currentCheckState === "cleared"
+                ? "Manager cleared vehicle for use"
                 : currentCheckState === "failed"
                 ? "Do not use vehicle — report to Office"
                 : "Driver OK to continue"}
@@ -327,6 +355,8 @@ export default function LogbookPage() {
             <p className="mt-2 text-sm font-bold leading-5 text-[#18243a]">
               {currentCheckState === "pending"
                 ? "The current vehicle check has not been completed. Complete the checks before continuing the duty."
+                : currentCheckState === "cleared"
+                ? `The original RED report remains in the Logbook. ${currentEntry?.managerDecision?.manager} cleared the vehicle on ${currentEntry?.managerDecision?.decidedAt}: ${currentEntry?.managerDecision?.reason}`
                 : currentCheckState === "failed"
                 ? "A RED defect has been recorded. Do not use the vehicle. Return to the transport office and speak to your manager."
                 : currentCheckState === "monitor"
@@ -413,12 +443,12 @@ export default function LogbookPage() {
                         <span
                           className={`inline-block max-w-full break-words whitespace-normal rounded-full px-3 py-1 text-xs font-black ${
                             entry.hasDefects
-                              ? getCheckDecision(entry) === "monitor" ? "bg-[#fff3cd] text-[#92400e]" : "bg-[#ffe6eb] text-[#b00020]"
+                              ? entry.workshopFix ? "bg-[#e6f2ff] text-[#175cd3]" : getCheckDecision(entry) === "cleared" ? "bg-[#e8f7ee] text-[#078a3d]" : getCheckDecision(entry) === "monitor" ? "bg-[#fff3cd] text-[#92400e]" : "bg-[#ffe6eb] text-[#b00020]"
                               : "bg-[#e8f7ee] text-[#078a3d]"
                           }`}
                         >
                           {entry.hasDefects
-                            ? entry.defectsSummary.join("; ")
+                            ? `${entry.workshopFix ? "FIXED · " : getCheckDecision(entry) === "cleared" ? "CLEARED BY MANAGER · " : ""}${entry.defectsSummary.join("; ")}`
                             : "NIL Defects"}
                         </span>
                         {entry.photoEvidence?.map((photo) => <a key={photo.check} href={photo.dataUrl} target="_blank" rel="noreferrer" className="mt-2 block text-xs font-bold text-[#b00020] underline">View photo for {photo.check}</a>)}
@@ -431,7 +461,7 @@ export default function LogbookPage() {
                             <div className="min-w-0 space-y-1 break-words whitespace-normal">
                               <p className="break-words font-black leading-5 text-[#18243a]">{outcome.title}</p>
                               <p className="break-words text-xs font-bold leading-5 text-[#64748b]">{outcome.summary}</p>
-                              <p className={`break-words text-xs font-black leading-5 ${getCheckDecision(entry) === "monitor" ? "text-[#92400e]" : "text-[#b00020]"}`}>{outcome.fixedBy}</p>
+                              <p className={`break-words text-xs font-black leading-5 ${entry.workshopFix ? "text-[#175cd3]" : getCheckDecision(entry) === "monitor" ? "text-[#92400e]" : getCheckDecision(entry) === "cleared" ? "text-[#078a3d]" : "text-[#b00020]"}`}>{outcome.fixedBy}</p>
                             </div>
                           );
                         })()}
