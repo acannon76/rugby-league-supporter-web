@@ -1,4 +1,6 @@
+
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -13,7 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://rugby-league-supporter-web.vercel.app"),
+  metadataBase: new URL(
+    "https://rugby-league-supporter-web.vercel.app"
+  ),
 
   title: {
     default: "Rugby League Supporter Guide",
@@ -84,7 +88,16 @@ export default function RootLayout({
       lang="en-GB"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+
+        {/* Cloudflare Web Analytics */}
+        <Script
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          strategy="afterInteractive"
+          data-cf-beacon='{"token":"356f87caa6b24fc9a86d6b377845852c"}'
+        />
+      </body>
     </html>
   );
 }
